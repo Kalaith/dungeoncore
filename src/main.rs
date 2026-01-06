@@ -36,7 +36,20 @@ async fn main() {
     // Load or create new game
     let mut state = persistence::load_game().unwrap_or_else(|_| {
         println!("Starting new game...");
-        GameState::new()
+        let mut new_state = GameState::new();
+        
+        // Automatically unlock the first species (Goblinoid) for new games
+        new_state.unlocked_species.push("Goblinoid".to_string());
+        new_state.unlocked_monsters.push("Goblin".to_string());
+        
+        // Place starting Goblin in core room of floor 1
+        if let Err(e) = simulation::place_monster(&mut new_state, 1, 1, "Goblin") {
+            eprintln!("Error placing starting Goblin: {}", e);
+        } else {
+            new_state.add_log(crate::game_state::LogEntry::system("A Goblin has been placed in your core room."));
+        }
+        
+        new_state
     });
 
     // Timing variables
@@ -83,7 +96,7 @@ async fn main() {
              let modal_h = 500.0;
              let modal_x = (sw - modal_w) / 2.0;
              let modal_y = (sh - modal_h) / 2.0;
-             
+
              // Draw a semi-transparent background to dim the game
              draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.7));
 
@@ -91,10 +104,15 @@ async fn main() {
                  // Unlock the selected species
                  if let Err(e) = simulation::unlock_species(&mut state, &selected_species_id) {
                      eprintln!("Error unlocking species: {}", e);
+                 } else {
+                     // Species unlocked successfully - player can now place monsters manually
+                     state.add_log(crate::game_state::LogEntry::system(format!(
+                         "Unlocked {} species! Build rooms and place monsters to defend your dungeon.",
+                         selected_species_id
+                     )));
                  }
-                 // Add 100 gold as starter money logic if needed, or rely on default
              }
-             
+
              // Skip drawing other UI if modal is open (optional, but good for focus)
              next_frame().await;
              continue;
@@ -134,6 +152,7 @@ async fn main() {
                 state = GameState::new();
                 let _ = persistence::save_game(&state);
             }
+            ControlAction::ProcessEvolutions => simulation::process_evolutions(&mut state),
             ControlAction::None => {}
         }
 

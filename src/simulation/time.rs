@@ -29,6 +29,9 @@ pub fn advance_time(state: &mut GameState) {
     
     // Process hourly monster traits
     crate::simulation::monsters::process_hourly_traits(state);
+
+    // Process monster evolutions
+    crate::simulation::monsters::process_evolutions(state);
 }
 
 /// Toggle dungeon status between Open and Closed

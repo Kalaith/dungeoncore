@@ -72,6 +72,21 @@
             ]
         },
         {
+            "name": "Lich",
+            "base_cost": 120,
+            "hp": 150,
+            "attack": 25,
+            "defense": 20,
+            "species": "Undead",
+            "tier": 3,
+            "emoji": "💀",
+            "description": "An undead sorcerer with immense magical power.",
+            "traits": [
+                "regenerate_minor",
+                "undead_resilience"
+            ]
+        },
+        {
             "name": "Dragon",
             "base_cost": 100,
             "hp": 200,

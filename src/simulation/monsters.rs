@@ -18,6 +18,11 @@ pub fn place_monster(
         return Err(format!("Species '{}' is not unlocked!", template.species));
     }
 
+    // Check if this specific monster type is unlocked
+    if !state.unlocked_monsters.contains(&template.name) {
+        return Err(format!("Monster '{}' is not unlocked! Evolve to unlock higher tiers.", template.name));
+    }
+
     // Find floor and room
     let floor = state
         .floors
@@ -75,6 +80,7 @@ pub fn place_monster(
         is_boss,
         scaled_stats: scaled,
         active_traits,
+        experience: 0,
     };
 
     room.monsters.push(monster);
@@ -126,17 +132,23 @@ pub fn unlock_species(state: &mut GameState, species_name: &str) -> Result<(), S
         .ok_or_else(|| format!("Unknown species: {}", species_name))?;
 
     if unlock_cost == 0 {
-        // Warning: This branch might not be hit if valid cost is always returned, 
-        // but nice to have distinct error or just success.
-        // For now, consistent with previous code.
+        // Free unlock - still unlock the starting monster
+    } else {
+        if state.gold < unlock_cost {
+            return Err(format!("Not enough gold! Need {} gold.", unlock_cost));
+        }
+        state.gold -= unlock_cost;
     }
-
-    if state.gold < unlock_cost {
-        return Err(format!("Not enough gold! Need {} gold.", unlock_cost));
-    }
-
-    state.gold -= unlock_cost;
+    
     state.unlocked_species.push(species_name.to_string());
+    
+    // Also unlock the starting monster for this species
+    if let Some(starting_monster) = crate::data::evolutions::get_starting_monsters().get(species_name) {
+        if !state.unlocked_monsters.contains(starting_monster) {
+            state.unlocked_monsters.push(starting_monster.clone());
+        }
+    }
+    
     state.add_log(LogEntry::system(format!(
         "Unlocked new species: {} for {} gold!",
         species_name, unlock_cost
@@ -172,5 +184,100 @@ pub fn process_hourly_traits(state: &mut GameState) {
                 }
             }
         }
+    }
+}
+
+/// Check and perform monster evolutions
+pub fn process_evolutions(state: &mut GameState) {
+    let mut evolutions_performed = Vec::new();
+
+    // First pass: collect all evolutions that can happen
+    for floor_idx in 0..state.floors.len() {
+        for room_idx in 0..state.floors[floor_idx].rooms.len() {
+            let room = &state.floors[floor_idx].rooms[room_idx];
+            let floor_num = room.floor_number;
+
+            for monster_idx in 0..room.monsters.len() {
+                let monster = &room.monsters[monster_idx];
+                let monster_name = &monster.type_name;
+                let experience = monster.experience;
+
+                // Check if this monster can evolve
+                if let Some(evolution_path) = crate::data::evolutions::can_evolve(
+                    monster_name,
+                    experience,
+                    floor_num,
+                    state.gold,
+                ) {
+                    evolutions_performed.push((
+                        floor_idx,
+                        room_idx,
+                        monster_idx,
+                        evolution_path,
+                    ));
+                }
+            }
+        }
+    }
+
+    // Second pass: perform evolutions
+    let mut log_messages = Vec::new();
+    for (floor_idx, room_idx, monster_idx, evolution_path) in evolutions_performed {
+        let floor = &mut state.floors[floor_idx];
+        let room = &mut floor.rooms[room_idx];
+        let monster = &mut room.monsters[monster_idx];
+
+        let old_name = monster.type_name.clone();
+        let new_name = evolution_path.to_monster.clone();
+
+        // Deduct gold cost
+        state.gold -= evolution_path.conditions.gold_cost;
+
+        // Get new monster template
+        if let Some(new_template) = crate::data::monsters::get_monster_template(&new_name) {
+            // Update monster type and stats
+            monster.type_name = new_name.clone();
+
+            // Rescale stats based on current floor and boss status
+            let base_stats = crate::game_state::Stats {
+                hp: new_template.hp,
+                attack: new_template.attack,
+                defense: new_template.defense,
+            };
+            let scaled = crate::data::get_scaled_stats(base_stats, room.floor_number, monster.is_boss);
+
+            monster.hp = scaled.hp;
+            monster.max_hp = scaled.hp;
+            monster.scaled_stats = scaled;
+
+            // Update traits
+            monster.active_traits = new_template.traits.iter().map(|trait_id| {
+                crate::game_state::ActiveTrait {
+                    id: trait_id.clone(),
+                    name: crate::data::traits::get_trait(trait_id)
+                        .map(|t| t.name)
+                        .unwrap_or_else(|| trait_id.clone()),
+                    cooldown_timer: 0,
+                }
+            }).collect();
+
+            // Reset experience for new form
+            monster.experience = 0;
+
+            // Unlock the new monster type if not already unlocked
+            if !state.unlocked_monsters.contains(&new_name) {
+                state.unlocked_monsters.push(new_name.clone());
+            }
+
+            log_messages.push(format!(
+                "{} evolved into {} on floor {}!",
+                old_name, new_name, room.floor_number
+            ));
+        }
+    }
+
+    // Add log messages after all mutations are done
+    for message in log_messages {
+        state.add_log(crate::game_state::LogEntry::system(message));
     }
 }

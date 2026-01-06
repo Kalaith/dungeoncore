@@ -1,0 +1,93 @@
+use serde::Deserialize;
+use std::collections::HashMap;
+
+/// Evolution path from one monster to another
+#[derive(Clone, Debug, Deserialize)]
+pub struct EvolutionPath {
+    pub from_monster: String,
+    pub to_monster: String,
+    pub experience_required: i32,
+    pub conditions: EvolutionConditions,
+}
+
+/// Conditions required for evolution
+#[derive(Clone, Debug, Deserialize)]
+pub struct EvolutionConditions {
+    pub min_floor: i32,
+    pub gold_cost: i32,
+}
+
+/// Root structure of evolution_trees.json
+#[derive(Debug, Deserialize)]
+struct EvolutionData {
+    evolution_trees: HashMap<String, Vec<EvolutionPath>>,
+    starting_monsters: HashMap<String, String>,
+}
+
+// Embed JSON at compile time for WASM compatibility
+const EVOLUTION_JSON: &str = include_str!("../../assets/evolution_trees.json");
+
+/// Load all evolution trees from embedded JSON
+pub fn get_evolution_trees() -> HashMap<String, Vec<EvolutionPath>> {
+    let data: EvolutionData = serde_json::from_str(EVOLUTION_JSON)
+        .expect("Failed to parse evolution_trees.json");
+    data.evolution_trees
+}
+
+/// Load starting monsters map
+pub fn get_starting_monsters() -> HashMap<String, String> {
+    let data: EvolutionData = serde_json::from_str(EVOLUTION_JSON)
+        .expect("Failed to parse evolution_trees.json");
+    data.starting_monsters
+}
+
+/// Get the evolution path for a specific monster (if it can evolve)
+pub fn get_evolution_for_monster(monster_name: &str) -> Option<EvolutionPath> {
+    let trees = get_evolution_trees();
+
+    for paths in trees.values() {
+        if let Some(path) = paths.iter().find(|p| p.from_monster == monster_name) {
+            return Some(path.clone());
+        }
+    }
+
+    None
+}
+
+/// Check if a monster can evolve given current conditions
+pub fn can_evolve(
+    monster_name: &str,
+    experience: i32,
+    current_floor: i32,
+    available_gold: i32,
+) -> Option<EvolutionPath> {
+    if let Some(path) = get_evolution_for_monster(monster_name) {
+        if experience >= path.experience_required
+            && current_floor >= path.conditions.min_floor
+            && available_gold >= path.conditions.gold_cost
+        {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
+/// Get all monsters that can be reached through evolution from a starting monster
+pub fn get_all_evolutions_for_species(species: &str) -> Vec<String> {
+    let trees = get_evolution_trees();
+    let mut monsters = Vec::new();
+
+    if let Some(paths) = trees.get(species) {
+        for path in paths {
+            if !monsters.contains(&path.from_monster) {
+                monsters.push(path.from_monster.clone());
+            }
+            if !monsters.contains(&path.to_monster) {
+                monsters.push(path.to_monster.clone());
+            }
+        }
+    }
+
+    monsters
+}

@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
-use macroquad_toolkit::ui::{ButtonStyle, button_styled, panel};
-use crate::data::monsters::get_all_species;
+use macroquad_toolkit::{colors::dark, ui::{ButtonStyle, button_styled, panel}};
+use crate::data::monsters::{get_all_species, get_species_unlock_cost};
 use crate::game_state::GameState;
 
 pub fn draw_species_selector(
@@ -26,9 +26,32 @@ pub fn draw_species_selector(
             break; 
         }
 
-        let label = format!("{}", species.name);
-        if button_styled(x + 10.0, current_y, w - 20.0, 30.0, &label, &ButtonStyle::default_dark()) {
+        let cost = crate::data::monsters::get_species_unlock_cost(&species.name).unwrap_or(0);
+        let can_afford = cost == 0 || state.gold >= cost;
+        let label = if cost == 0 {
+            format!("{} (Free)", species.name)
+        } else {
+            format!("{} ({} gold)", species.name, cost)
+        };
+
+        let button_color = if can_afford {
+            &ButtonStyle::default_dark()
+        } else {
+            // Grayed out style for unaffordable species
+            &ButtonStyle {
+                normal: Color::new(0.3, 0.3, 0.3, 1.0),
+                hovered: Color::new(0.3, 0.3, 0.3, 1.0),
+                pressed: Color::new(0.3, 0.3, 0.3, 1.0),
+                border: Color::new(0.4, 0.4, 0.4, 1.0),
+                text_color: Color::new(0.5, 0.5, 0.5, 1.0),
+            }
+        };
+
+        if can_afford && button_styled(x + 10.0, current_y, w - 20.0, 30.0, &label, button_color) {
              selected = Some(species.name.clone());
+        } else if !can_afford {
+            // Draw disabled button
+            button_styled(x + 10.0, current_y, w - 20.0, 30.0, &label, button_color);
         }
         
         current_y += 35.0;

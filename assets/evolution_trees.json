@@ -1,0 +1,41 @@
+{
+    "evolution_trees": {
+        "Goblinoid": [
+            {
+                "from_monster": "Goblin",
+                "to_monster": "Orc",
+                "experience_required": 50,
+                "conditions": {
+                    "min_floor": 1,
+                    "gold_cost": 0
+                }
+            },
+            {
+                "from_monster": "Orc",
+                "to_monster": "Troll",
+                "experience_required": 100,
+                "conditions": {
+                    "min_floor": 2,
+                    "gold_cost": 25
+                }
+            }
+        ],
+        "Undead": [
+            {
+                "from_monster": "Skeleton",
+                "to_monster": "Vampire",
+                "experience_required": 100,
+                "conditions": {
+                    "min_floor": 2,
+                    "gold_cost": 50
+                }
+            }
+        ],
+        "Draconic": []
+    },
+    "starting_monsters": {
+        "Goblinoid": "Goblin",
+        "Undead": "Skeleton",
+        "Draconic": "Dragon"
+    }
+}

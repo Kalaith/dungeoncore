@@ -1,0 +1,102 @@
+{
+  "mana": 105,
+  "max_mana": 200,
+  "mana_regen": 1.1,
+  "gold": 50,
+  "souls": 0,
+  "day": 1,
+  "hour": 11,
+  "speed": 1,
+  "status": "Open",
+  "floors": [
+    {
+      "id": 1,
+      "number": 1,
+      "rooms": [
+        {
+          "id": 1,
+          "room_type": "Entrance",
+          "position": 0,
+          "floor_number": 1,
+          "monsters": [],
+          "upgrade": null,
+          "explored": false,
+          "loot": 0
+        },
+        {
+          "id": 2,
+          "room_type": "Core",
+          "position": 1,
+          "floor_number": 1,
+          "monsters": [],
+          "upgrade": null,
+          "explored": false,
+          "loot": 0
+        }
+      ],
+      "is_deepest": true
+    }
+  ],
+  "total_floors": 1,
+  "deep_core_bonus": 0.1,
+  "adventurer_parties": [],
+  "next_party_spawn": 12,
+  "unlocked_species": [
+    "Goblinoid"
+  ],
+  "unlocked_monsters": [
+    "Goblin"
+  ],
+  "log": [
+    {
+      "message": "Welcome to Dungeon Core! Your dungeon has a Goblin ready to defend it.",
+      "log_type": "system",
+      "timestamp": 0
+    },
+    {
+      "message": "Unlocked new species: Goblinoid for 0 gold!",
+      "log_type": "system",
+      "timestamp": 0
+    },
+    {
+      "message": "New adventurer party enters! (2 members)",
+      "log_type": "adventure",
+      "timestamp": 0
+    },
+    {
+      "message": "Party advances to room 1 on floor 1",
+      "log_type": "adventure",
+      "timestamp": 0
+    },
+    {
+      "message": "Party completed exploration! +0 gold",
+      "log_type": "adventure",
+      "timestamp": 0
+    },
+    {
+      "message": "Quinn says: \"We did well today!\"",
+      "log_type": "adventure",
+      "timestamp": 0
+    },
+    {
+      "message": "New adventurer party enters! (2 members)",
+      "log_type": "adventure",
+      "timestamp": 0
+    },
+    {
+      "message": "Party advances to room 1 on floor 1",
+      "log_type": "adventure",
+      "timestamp": 0
+    },
+    {
+      "message": "Party completed exploration! +0 gold",
+      "log_type": "adventure",
+      "timestamp": 0
+    },
+    {
+      "message": "Maya says: \"Time to head back to town.\"",
+      "log_type": "adventure",
+      "timestamp": 0
+    }
+  ]
+}

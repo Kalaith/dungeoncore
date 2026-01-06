@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Combat stats for monsters and adventurers
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -56,6 +55,8 @@ pub struct Monster {
     pub scaled_stats: Stats,
     #[serde(default)]
     pub active_traits: Vec<ActiveTrait>,
+    #[serde(default)]
+    pub experience: i32,
 }
 
 /// Room in a dungeon floor
@@ -105,6 +106,14 @@ impl Room {
     pub fn reinforcement_multiplier(&self) -> f32 {
         match &self.upgrade {
             Some(u) if u.upgrade_type == RoomUpgradeType::Reinforcement => u.multiplier,
+            _ => 1.0,
+        }
+    }
+
+    /// Get XP multiplier from evolution upgrade
+    pub fn evolution_multiplier(&self) -> f32 {
+        match &self.upgrade {
+            Some(u) if u.upgrade_type == RoomUpgradeType::Evolution => u.multiplier,
             _ => 1.0,
         }
     }
@@ -250,7 +259,7 @@ pub struct GameState {
 
     // Monster progression
     pub unlocked_species: Vec<String>,
-    pub monster_experience: HashMap<String, i32>,
+    pub unlocked_monsters: Vec<String>,
 
     // UI state (not persisted)
     #[serde(skip)]
@@ -290,11 +299,11 @@ impl GameState {
             deep_core_bonus: 0.1,
             adventurer_parties: Vec::new(),
             next_party_spawn: 8,
-            unlocked_species: vec!["Goblinoid".into()],
-            monster_experience: HashMap::new(),
+            unlocked_species: vec![],
+            unlocked_monsters: vec![],
             selected_room: None,
             selected_monster: None,
-            log: vec![LogEntry::system("Welcome to Dungeon Core!")],
+            log: vec![LogEntry::system("Welcome to Dungeon Core! Your dungeon has a Goblin ready to defend it.")],
         }
     }
 

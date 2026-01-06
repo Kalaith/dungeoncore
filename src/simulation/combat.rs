@@ -147,7 +147,7 @@ pub fn resolve_combat(
 
     if result < adventurer_death_chance {
         // Adventurer takes fatal hit
-        adventurer_dies(state, party_idx, floor_idx);
+        adventurer_dies(state, party_idx, floor_idx, room_idx);
     } else if result < adventurer_death_chance + monster_death_chance {
         // Monster dies
         monster_dies(state, party_idx, floor_idx, room_idx);
@@ -217,7 +217,7 @@ fn apply_trap_damage(
 }
 
 
-fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize) {
+fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
     let floor_num = state.floors[floor_idx].number;
 
     // Find alive adventurer and kill them
@@ -229,12 +229,12 @@ fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize) {
              let victim_level = victim.level;
              victim.alive = false;
              party.casualties += 1;
-             
+
              let retreating = party.casualties >= RETREAT_THRESHOLD;
              if retreating {
                  party.retreating = true;
              }
-             
+
              Some((victim_name, victim_level, retreating))
          } else {
              None
@@ -246,9 +246,19 @@ fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize) {
         let mana_gain = victim_level * 10;
         state.mana = (state.mana + mana_gain).min(state.max_mana);
 
+        // Award XP to all surviving monsters in the room
+        let room = &mut state.floors[floor_idx].rooms[room_idx];
+        let evolution_mult = room.evolution_multiplier();
+        let base_xp = victim_level * 5;
+        let xp_gain = (base_xp as f32 * evolution_mult) as i32;
+
+        for monster in room.monsters.iter_mut().filter(|m| m.alive) {
+            monster.experience += xp_gain;
+        }
+
         state.add_log(LogEntry::combat(format!(
-            "{} has fallen on floor {}! +{} mana",
-            victim_name, floor_num, mana_gain
+            "{} has fallen on floor {}! +{} mana, +{} XP to monsters",
+            victim_name, floor_num, mana_gain, xp_gain
         )));
 
         // Check retreat condition

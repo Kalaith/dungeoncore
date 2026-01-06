@@ -12,6 +12,7 @@ pub enum ControlAction {
     RespawnMonsters,
     AddRoom,
     ResetGame,
+    ProcessEvolutions,
 }
 
 /// Draw the controls panel
@@ -74,15 +75,9 @@ pub fn draw_controls(state: &GameState, x: f32, y: f32, w: f32) -> ControlAction
         draw_text("Respawn All", x + 15.0, row2_y + 18.0, 13.0, dark::TEXT_DIM);
     }
 
-    // Add room button
-    let can_add = state.adventurer_parties.is_empty();
-    if can_add {
-        if button(x + 10.0 + btn_w, row2_y, btn_w, btn_h, "Add Room") {
-            action = ControlAction::AddRoom;
-        }
-    } else {
-        draw_rectangle(x + 10.0 + btn_w, row2_y, btn_w, btn_h, dark::PANEL);
-        draw_text("Add Room", x + 20.0 + btn_w, row2_y + 18.0, 13.0, dark::TEXT_DIM);
+    // Process evolutions button
+    if button(x + 10.0 + btn_w, row2_y, btn_w, btn_h, "Evolve") {
+        action = ControlAction::ProcessEvolutions;
     }
 
     // Reset game button
