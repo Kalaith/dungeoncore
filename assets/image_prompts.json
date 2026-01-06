@@ -1,0 +1,146 @@
+{
+    "room_entrance": {
+        "prompt": "Dungeon entrance doorway, stone archway with torch lighting on sides, dark corridor behind, pixel art style, 64x64",
+        "filename": "room_entrance.png",
+        "width": 64,
+        "height": 64
+    },
+    "room_normal": {
+        "prompt": "Dark dungeon room interior, cobblestone floor, stone walls with cracks, dim lighting, pixel art style, 64x64",
+        "filename": "room_normal.png",
+        "width": 64,
+        "height": 64
+    },
+    "room_boss": {
+        "prompt": "Grand boss chamber, red carpet leading to throne, ominous purple lighting, large stone pillars, pixel art style, 64x64",
+        "filename": "room_boss.png",
+        "width": 64,
+        "height": 64
+    },
+    "room_core": {
+        "prompt": "Magical dungeon core room, glowing purple crystal floating in center, mystical energy swirls, dark stone walls, pixel art style, 64x64",
+        "filename": "room_core.png",
+        "width": 64,
+        "height": 64
+    },
+    "monster_goblin": {
+        "prompt": "Small green goblin creature holding wooden club, aggressive stance, tattered cloth, pixel art game sprite, transparent background, 32x32",
+        "filename": "monster_goblin.png",
+        "width": 32,
+        "height": 32
+    },
+    "monster_skeleton": {
+        "prompt": "Skeletal warrior with rusty sword and shield, glowing red eyes, tattered armor pieces, pixel art game sprite, transparent background, 32x32",
+        "filename": "monster_skeleton.png",
+        "width": 32,
+        "height": 32
+    },
+    "monster_orc": {
+        "prompt": "Large muscular orc with battle axe, green skin, tusks, warrior armor, pixel art game sprite, transparent background, 32x32",
+        "filename": "monster_orc.png",
+        "width": 32,
+        "height": 32
+    },
+    "monster_troll": {
+        "prompt": "Large gray troll with club, hunched posture, thick skin, small eyes, pixel art game sprite, transparent background, 48x48",
+        "filename": "monster_troll.png",
+        "width": 48,
+        "height": 48
+    },
+    "monster_vampire": {
+        "prompt": "Elegant vampire lord in dark cape, pale skin, red eyes, fangs visible, pixel art game sprite, transparent background, 32x32",
+        "filename": "monster_vampire.png",
+        "width": 32,
+        "height": 32
+    },
+    "monster_dragon": {
+        "prompt": "Fierce red dragon, wings spread, breathing fire, scales detailed, fearsome expression, pixel art game sprite, transparent background, 64x64",
+        "filename": "monster_dragon.png",
+        "width": 64,
+        "height": 64
+    },
+    "adventurer_warrior": {
+        "prompt": "Medieval warrior adventurer, sword and shield, plate armor, determined expression, pixel art game sprite, transparent background, 32x32",
+        "filename": "adventurer_warrior.png",
+        "width": 32,
+        "height": 32
+    },
+    "adventurer_rogue": {
+        "prompt": "Stealthy rogue adventurer, dual daggers, hooded cloak, leather armor, pixel art game sprite, transparent background, 32x32",
+        "filename": "adventurer_rogue.png",
+        "width": 32,
+        "height": 32
+    },
+    "adventurer_mage": {
+        "prompt": "Wizard adventurer, flowing robes, magical staff, pointed hat, glowing orb, pixel art game sprite, transparent background, 32x32",
+        "filename": "adventurer_mage.png",
+        "width": 32,
+        "height": 32
+    },
+    "adventurer_cleric": {
+        "prompt": "Holy cleric adventurer, white and gold robes, healing staff, holy symbol, pixel art game sprite, transparent background, 32x32",
+        "filename": "adventurer_cleric.png",
+        "width": 32,
+        "height": 32
+    },
+    "icon_mana": {
+        "prompt": "Blue glowing mana crystal icon, magical sparkles, pixel art style, transparent background, 16x16",
+        "filename": "icon_mana.png",
+        "width": 16,
+        "height": 16
+    },
+    "icon_gold": {
+        "prompt": "Shiny gold coin icon, detailed edges, pixel art style, transparent background, 16x16",
+        "filename": "icon_gold.png",
+        "width": 16,
+        "height": 16
+    },
+    "icon_soul": {
+        "prompt": "Ghostly purple soul wisp icon, ethereal glow, pixel art style, transparent background, 16x16",
+        "filename": "icon_soul.png",
+        "width": 16,
+        "height": 16
+    },
+    "icon_hp": {
+        "prompt": "Red pixel art heart icon, detailed, transparent background, 16x16",
+        "filename": "icon_hp.png",
+        "width": 16,
+        "height": 16
+    },
+    "icon_attack": {
+        "prompt": "Iron swords crossed icon, sharp edges, pixel art style, transparent background, 16x16",
+        "filename": "icon_attack.png",
+        "width": 16,
+        "height": 16
+    },
+    "icon_defense": {
+        "prompt": "Wooden shield icon with iron rim, reliable, pixel art style, transparent background, 16x16",
+        "filename": "icon_defense.png",
+        "width": 16,
+        "height": 16
+    },
+    "icon_trap": {
+        "prompt": "Steel bear trap icon, dangerous, pixel art style, transparent background, 16x16",
+        "filename": "icon_trap.png",
+        "width": 16,
+        "height": 16
+    },
+    "icon_treasure": {
+        "prompt": "Golden treasure chest icon, ornate, pixel art style, transparent background, 16x16",
+        "filename": "icon_treasure.png",
+        "width": 16,
+        "height": 16
+    },
+    "icon_reinforcement": {
+        "prompt": "Stone brick wall icon, sturdy, pixel art style, transparent background, 16x16",
+        "filename": "icon_reinforcement.png",
+        "width": 16,
+        "height": 16
+    },
+    "icon_evolution": {
+        "prompt": "Green DNA double helix icon, glowing, pixel art style, transparent background, 16x16",
+        "filename": "icon_evolution.png",
+        "width": 16,
+        "height": 16
+    }
+}

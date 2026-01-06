@@ -1,0 +1,73 @@
+{
+    "classes": [
+        {
+            "name": "Warrior",
+            "hp": 100,
+            "attack": 25,
+            "defense": 15
+        },
+        {
+            "name": "Rogue",
+            "hp": 80,
+            "attack": 30,
+            "defense": 10
+        },
+        {
+            "name": "Mage",
+            "hp": 60,
+            "attack": 35,
+            "defense": 5
+        },
+        {
+            "name": "Cleric",
+            "hp": 90,
+            "attack": 20,
+            "defense": 20
+        }
+    ],
+    "names": [
+        "Aiden",
+        "Bella",
+        "Cora",
+        "Derek",
+        "Elena",
+        "Finn",
+        "Grace",
+        "Hugo",
+        "Iris",
+        "Jack",
+        "Kira",
+        "Leo",
+        "Maya",
+        "Nolan",
+        "Olive",
+        "Penn",
+        "Quinn",
+        "Ruby",
+        "Sam",
+        "Tara"
+    ],
+    "quotes": {
+        "victory": [
+            "That was a hard fight!",
+            "Got it!",
+            "Nice teamwork!",
+            "One down!",
+            "Victory is ours!"
+        ],
+        "entry": [
+            "Time to do this again!",
+            "Let's see what treasures await!",
+            "This dungeon looks promising.",
+            "Stay close everyone!",
+            "Ready for adventure!"
+        ],
+        "exit": [
+            "I can't wait to come visit this dungeon again!",
+            "That was quite the adventure!",
+            "We did well today!",
+            "Time to head back to town.",
+            "Great haul everyone!"
+        ]
+    }
+}

@@ -1,0 +1,56 @@
+{
+    "traits": [
+        {
+            "id": "regenerate_minor",
+            "name": "Minor Regeneration",
+            "description": "Restores 5% HP per hour",
+            "trait_type": "Passive",
+            "target_type": "Self",
+            "applies_to": "Hourly",
+            "effect_type": "HealPercent",
+            "scaling_type": "None",
+            "mana_cost": 0,
+            "cooldown": 0,
+            "value": 0.05
+        },
+        {
+            "id": "undead_resilience",
+            "name": "Undead Resilience",
+            "description": "Takes 20% less damage from physical attacks",
+            "trait_type": "Passive",
+            "target_type": "Self",
+            "applies_to": "OnDefense",
+            "effect_type": "DamageReductionMult",
+            "scaling_type": "None",
+            "mana_cost": 0,
+            "cooldown": 0,
+            "value": 0.20
+        },
+        {
+            "id": "fire_breath",
+            "name": "Fire Breath",
+            "description": "Deals 20 damage to all enemies in room",
+            "trait_type": "Active",
+            "target_type": "EnemyParty",
+            "applies_to": "OnCombatStart",
+            "effect_type": "DamageFlat",
+            "scaling_type": "None",
+            "mana_cost": 10,
+            "cooldown": 3,
+            "value": 20.0
+        },
+        {
+            "id": "swarm_tactics",
+            "name": "Swarm Tactics",
+            "description": "+1 Attack for each other ally in room",
+            "trait_type": "Passive",
+            "target_type": "Self",
+            "applies_to": "OnAttack",
+            "effect_type": "AttackBonus",
+            "scaling_type": "PerAlly",
+            "mana_cost": 0,
+            "cooldown": 0,
+            "value": 1.0
+        }
+    ]
+}

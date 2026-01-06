@@ -1,0 +1,106 @@
+{
+    "monsters": [
+        {
+            "name": "Goblin",
+            "base_cost": 10,
+            "hp": 20,
+            "attack": 5,
+            "defense": 2,
+            "species": "Goblinoid",
+            "tier": 1,
+            "emoji": "👹",
+            "description": "A small, mischievous creature.",
+            "traits": [
+                "swarm_tactics"
+            ]
+        },
+        {
+            "name": "Skeleton",
+            "base_cost": 15,
+            "hp": 30,
+            "attack": 8,
+            "defense": 3,
+            "species": "Undead",
+            "tier": 1,
+            "emoji": "💀",
+            "description": "A pile of bones held together by dark magic.",
+            "traits": [
+                "undead_resilience"
+            ]
+        },
+        {
+            "name": "Orc",
+            "base_cost": 25,
+            "hp": 50,
+            "attack": 12,
+            "defense": 5,
+            "species": "Goblinoid",
+            "tier": 2,
+            "emoji": "🧌",
+            "description": "A brutish warrior with immense strength.",
+            "traits": [
+                "swarm_tactics"
+            ]
+        },
+        {
+            "name": "Troll",
+            "base_cost": 40,
+            "hp": 80,
+            "attack": 15,
+            "defense": 8,
+            "species": "Goblinoid",
+            "tier": 2,
+            "emoji": "🧌",
+            "description": "A regenerating giant that hates fire.",
+            "traits": [
+                "regenerate_minor"
+            ]
+        },
+        {
+            "name": "Vampire",
+            "base_cost": 60,
+            "hp": 100,
+            "attack": 20,
+            "defense": 10,
+            "species": "Undead",
+            "tier": 2,
+            "emoji": "🧛",
+            "description": "A blood-sucking aristocrat of the night.",
+            "traits": [
+                "regenerate_minor",
+                "undead_resilience"
+            ]
+        },
+        {
+            "name": "Dragon",
+            "base_cost": 100,
+            "hp": 200,
+            "attack": 30,
+            "defense": 15,
+            "species": "Draconic",
+            "tier": 3,
+            "emoji": "🐉",
+            "description": "A terrifying beast of scales and fire.",
+            "traits": [
+                "fire_breath"
+            ]
+        }
+    ],
+    "species": [
+        {
+            "name": "Goblinoid",
+            "unlock_cost": 0,
+            "description": "Weak but numerous creatures"
+        },
+        {
+            "name": "Undead",
+            "unlock_cost": 100,
+            "description": "Reanimated corpses and spirits"
+        },
+        {
+            "name": "Draconic",
+            "unlock_cost": 500,
+            "description": "Powerful dragon-kin"
+        }
+    ]
+}
