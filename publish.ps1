@@ -85,7 +85,7 @@ if ($buildWindows) {
     Write-Host "[$currentStep/$totalSteps] Packaging Windows build..." -ForegroundColor Yellow
     $WindowsPackageDir = Join-Path $DistDir "windows"
     New-Item -ItemType Directory -Path $WindowsPackageDir -Force | Out-Null
-    $ExePath = Join-Path $ProjectRoot "target\release\$ProjectName.exe"
+    $ExePath = Join-Path $ProjectRoot "..\target\release\$ProjectName.exe"
     if (-not (Test-Path $ExePath)) { Write-Error "Executable not found: $ExePath"; exit 1 }
     Copy-Item $ExePath $WindowsPackageDir
     $AssetsPath = Join-Path $ProjectRoot "assets"
@@ -112,7 +112,7 @@ if ($buildWebGL) {
     Write-Host "[$currentStep/$totalSteps] Packaging WebGL build..." -ForegroundColor Yellow
     $WebGLPackageDir = Join-Path $DistDir "webgl"
     New-Item -ItemType Directory -Path $WebGLPackageDir -Force | Out-Null
-    $WasmPath = Join-Path $ProjectRoot "target\wasm32-unknown-unknown\release\$ProjectName.wasm"
+    $WasmPath = Join-Path $ProjectRoot "..\target\wasm32-unknown-unknown\release\$ProjectName.wasm"
     if (-not (Test-Path $WasmPath)) { Write-Error "WASM not found: $WasmPath"; exit 1 }
     Copy-Item $WasmPath $WebGLPackageDir
     $AssetsPath = Join-Path $ProjectRoot "assets"

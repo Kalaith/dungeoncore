@@ -55,7 +55,7 @@ pub fn add_room(state: &mut GameState, target_floor: Option<i32>) -> Result<(), 
     } else {
         RoomType::Normal
     };
-    let new_room = Room::new(rand::random(), room_type.clone(), next_pos, floor_num);
+    let new_room = Room::new(macroquad_toolkit::rng::gen_range(0u64, u64::MAX), room_type.clone(), next_pos, floor_num);
 
     // Insert before core room
     let floor = &mut state.floors[floor_idx];
@@ -101,15 +101,15 @@ fn create_new_floor(state: &mut GameState) -> Result<(), String> {
     }
 
     // Create new floor
-    let mut new_floor = Floor::new(rand::random(), new_floor_num, true);
+    let mut new_floor = Floor::new(macroquad_toolkit::rng::gen_range(0u64, u64::MAX), new_floor_num, true);
     new_floor
         .rooms
-        .push(Room::new(rand::random(), RoomType::Entrance, 0, new_floor_num));
+        .push(Room::new(macroquad_toolkit::rng::gen_range(0u64, u64::MAX), RoomType::Entrance, 0, new_floor_num));
     new_floor
         .rooms
-        .push(Room::new(rand::random(), RoomType::Normal, 1, new_floor_num));
+        .push(Room::new(macroquad_toolkit::rng::gen_range(0u64, u64::MAX), RoomType::Normal, 1, new_floor_num));
     new_floor.rooms.push(Room::new(
-        rand::random(),
+        macroquad_toolkit::rng::gen_range(0u64, u64::MAX),
         RoomType::Core,
         2,
         new_floor_num,

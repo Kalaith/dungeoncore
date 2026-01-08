@@ -1,7 +1,7 @@
 use crate::data::adventurers::get_victory_quotes;
 use crate::data::constants::RETREAT_THRESHOLD;
 use crate::game_state::{GameState, LogEntry};
-use rand::Rng;
+
 
 /// Resolve combat between adventurers and monsters in a room
 pub fn resolve_combat(
@@ -10,7 +10,7 @@ pub fn resolve_combat(
     floor_idx: usize,
     room_idx: usize,
 ) {
-    let mut rng = rand::thread_rng();
+
 
     // Check if there are alive monsters
     let has_alive_monsters = state.floors[floor_idx].rooms[room_idx]
@@ -143,7 +143,7 @@ pub fn resolve_combat(
     
     monster_death_chance *= total_defense_mult;
 
-    let result = rng.gen::<f32>();
+    let result = macroquad_toolkit::rng::rand();
 
     if result < adventurer_death_chance {
         // Adventurer takes fatal hit
@@ -164,10 +164,10 @@ fn apply_trap_damage(
     room_idx: usize,
     trap_mult: f32,
 ) {
-    let mut rng = rand::thread_rng();
+
     
     // 20% chance per tick for trap to trigger
-    if rng.gen::<f32>() > 0.2 {
+    if macroquad_toolkit::rng::chance(0.2) {
         return;
     }
 
@@ -271,7 +271,7 @@ fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, ro
 }
 
 fn monster_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
-    let mut rng = rand::thread_rng();
+
 
     // Find alive monster
     let monster_idx = match state.floors[floor_idx].rooms[room_idx]
@@ -317,8 +317,8 @@ fn monster_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, room_
 
     // Victory quote
     let victory_quotes = get_victory_quotes();
-    if rng.gen::<f32>() < 0.2 && !victory_quotes.is_empty() {
-        let quote = &victory_quotes[rng.gen_range(0..victory_quotes.len())];
+    if macroquad_toolkit::rng::chance(0.2) && !victory_quotes.is_empty() {
+        let quote = &victory_quotes[macroquad_toolkit::rng::gen_range(0, victory_quotes.len())];
         if let Some(adv) = state.adventurer_parties[party_idx]
             .members
             .iter()

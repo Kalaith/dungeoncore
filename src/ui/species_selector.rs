@@ -44,6 +44,7 @@ pub fn draw_species_selector(
                 pressed: Color::new(0.3, 0.3, 0.3, 1.0),
                 border: Color::new(0.4, 0.4, 0.4, 1.0),
                 text_color: Color::new(0.5, 0.5, 0.5, 1.0),
+                disabled: Color::new(0.1, 0.1, 0.1, 1.0),
             }
         };
 

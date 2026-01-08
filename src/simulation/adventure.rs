@@ -3,7 +3,7 @@ use crate::data::constants::{ADVENTURER_SPAWN_CHANCE, MAX_PARTY_SIZE, MIN_PARTY_
 use crate::game_state::{
     Adventurer, AdventurerParty, DungeonStatus, Equipment, GameState, LogEntry, Stats,
 };
-use rand::Rng;
+
 
 /// Try to spawn a new adventurer party
 pub fn spawn_party(state: &mut GameState) {
@@ -18,8 +18,8 @@ pub fn spawn_party(state: &mut GameState) {
         return;
     }
 
-    let mut rng = rand::thread_rng();
-    if rng.gen::<f32>() >= ADVENTURER_SPAWN_CHANCE {
+
+    if macroquad_toolkit::rng::chance(ADVENTURER_SPAWN_CHANCE) {
         return;
     }
 
@@ -27,17 +27,17 @@ pub fn spawn_party(state: &mut GameState) {
     let names = get_adventurer_names();
     let entry_quotes = get_entry_quotes();
 
-    let party_size = rng.gen_range(MIN_PARTY_SIZE..=MAX_PARTY_SIZE);
+    let party_size = macroquad_toolkit::rng::gen_range(MIN_PARTY_SIZE, MAX_PARTY_SIZE + 1);
     let mut members = Vec::with_capacity(party_size);
 
     for _ in 0..party_size {
-        let class = &classes[rng.gen_range(0..classes.len())];
-        let name = &names[rng.gen_range(0..names.len())];
-        let level = rng.gen_range(1..=3);
+        let class = macroquad_toolkit::rng::choose(&classes).unwrap();
+        let name = macroquad_toolkit::rng::choose(&names).unwrap();
+        let level = macroquad_toolkit::rng::gen_range(1, 4);
         let hp = class.hp + (level - 1) * 10;
 
         members.push(Adventurer {
-            id: rng.gen(),
+            id: macroquad::rand::rand() as u64,
             name: name.clone(),
             class_name: class.name.clone(),
             level,
@@ -59,7 +59,7 @@ pub fn spawn_party(state: &mut GameState) {
     let target_floor = state.floors.len().min(2) as i32;
 
     let party = AdventurerParty {
-        id: rng.gen(),
+        id: macroquad::rand::rand() as u64,
         members,
         current_floor: 1,
         current_room: 0,
@@ -76,8 +76,8 @@ pub fn spawn_party(state: &mut GameState) {
     )));
 
     // Random entry quote
-    if rng.gen::<f32>() < 0.3 && !entry_quotes.is_empty() {
-        let quote = &entry_quotes[rng.gen_range(0..entry_quotes.len())];
+    if macroquad_toolkit::rng::chance(0.3) && !entry_quotes.is_empty() {
+        let quote = macroquad_toolkit::rng::choose(&entry_quotes).unwrap();
         let name = &party.members[0].name;
         state.add_log(LogEntry::adventure(format!("{} says: \"{}\"", name, quote)));
     }
@@ -188,9 +188,8 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
 
             // Exit quote
             let exit_quotes = get_exit_quotes();
-            let mut rng = rand::thread_rng();
-            if rng.gen::<f32>() < 0.4 && !exit_quotes.is_empty() {
-                let quote = &exit_quotes[rng.gen_range(0..exit_quotes.len())];
+            if macroquad_toolkit::rng::chance(0.4) && !exit_quotes.is_empty() {
+                let quote = macroquad_toolkit::rng::choose(&exit_quotes).unwrap();
                 if let Some(adv) = state.adventurer_parties[party_idx]
                     .members
                     .iter()
