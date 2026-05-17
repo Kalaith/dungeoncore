@@ -1,22 +1,15 @@
 use crate::game_state::GameState;
-use macroquad_toolkit::persistence::{get_app_data_path, load_json, save_json};
+use macroquad_toolkit::persistence::{load_json_key, save_json_key};
 
 const SAVE_FILE: &str = "dungeon_core_save.json";
+const GAME_NAME: &str = "dungeon_core";
 
 /// Save game state to JSON file
 pub fn save_game(state: &GameState) -> Result<(), String> {
-    // Attempt to use app data path, fallback to local file
-    let path = get_app_data_path("dungeon_core", SAVE_FILE)
-        .unwrap_or_else(|| std::path::PathBuf::from(SAVE_FILE));
-
-    save_json(path, state)
+    save_json_key(GAME_NAME, SAVE_FILE, state)
 }
 
 /// Load game state from JSON file
 pub fn load_game() -> Result<GameState, String> {
-    // Attempt to use app data path, fallback to local file
-    let path = get_app_data_path("dungeon_core", SAVE_FILE)
-        .unwrap_or_else(|| std::path::PathBuf::from(SAVE_FILE));
-
-    load_json(path)
+    load_json_key(GAME_NAME, SAVE_FILE)
 }

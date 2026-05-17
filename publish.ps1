@@ -15,7 +15,15 @@ $ErrorActionPreference = "Stop"
 $ProjectRoot = $PSScriptRoot
 $DistDir = Join-Path $ProjectRoot "dist"
 $CargoToml = Join-Path $ProjectRoot "Cargo.toml"
-
+$TargetDir = Join-Path $ProjectRoot "target"
+try {
+    $CargoMetadata = cargo metadata --format-version 1 --no-deps | ConvertFrom-Json
+    if ($CargoMetadata.target_directory) {
+        $TargetDir = $CargoMetadata.target_directory
+    }
+} catch {
+    Write-Warning "Could not resolve Cargo target directory from metadata. Falling back to: $TargetDir"
+}
 # Deployment paths
 $PreviewRoot = "H:\xampp\htdocs"
 $ProductionRoot = "F:\WebHatchery"
@@ -88,11 +96,11 @@ if ($buildWindows) {
     Write-Host "[$currentStep/$totalSteps] Packaging Windows build..." -ForegroundColor Yellow
     $WindowsPackageDir = Join-Path $DistDir "windows"
     New-Item -ItemType Directory -Path $WindowsPackageDir -Force | Out-Null
-    $ExePath = Join-Path $ProjectRoot "..\target\release\$ProjectName.exe"
+    $ExePath = Join-Path $TargetDir "release\$ProjectName.exe"
     if (-not (Test-Path $ExePath)) { Write-Error "Executable not found: $ExePath"; exit 1 }
     Copy-Item $ExePath $WindowsPackageDir
     $AssetsPath = Join-Path $ProjectRoot "assets"
-    if (Test-Path $AssetsPath) { Copy-Item $AssetsPath -Destination $WindowsPackageDir -Recurse }
+    if (Test-Path $AssetsPath) { $destAssets = Join-Path $WindowsPackageDir "assets"; if (Test-Path $destAssets) { Remove-Item $destAssets -Recurse -Force }; Copy-Item $AssetsPath -Destination $WindowsPackageDir -Recurse -Force }
     $WindowsZipPath = Join-Path $DistDir "${ProjectName}_windows.zip"
     Compress-Archive -Path "$WindowsPackageDir\*" -DestinationPath $WindowsZipPath -CompressionLevel Optimal
     Write-Host "Windows package created!" -ForegroundColor Green
@@ -115,11 +123,11 @@ if ($buildWebGL) {
     Write-Host "[$currentStep/$totalSteps] Packaging WebGL build..." -ForegroundColor Yellow
     $WebGLPackageDir = Join-Path $DistDir "webgl"
     New-Item -ItemType Directory -Path $WebGLPackageDir -Force | Out-Null
-    $WasmPath = Join-Path $ProjectRoot "..\target\wasm32-unknown-unknown\release\$ProjectName.wasm"
+    $WasmPath = Join-Path $TargetDir "wasm32-unknown-unknown\release\$ProjectName.wasm"
     if (-not (Test-Path $WasmPath)) { Write-Error "WASM not found: $WasmPath"; exit 1 }
     Copy-Item $WasmPath $WebGLPackageDir
     $AssetsPath = Join-Path $ProjectRoot "assets"
-    if (Test-Path $AssetsPath) { Copy-Item $AssetsPath -Destination $WebGLPackageDir -Recurse }
+    if (Test-Path $AssetsPath) { $destAssets = Join-Path $WebGLPackageDir "assets"; if (Test-Path $destAssets) { Remove-Item $destAssets -Recurse -Force }; Copy-Item $AssetsPath -Destination $WebGLPackageDir -Recurse -Force }
     $JsBundlePath = Join-Path $WebGLPackageDir "mq_js_bundle.js"
     try { Invoke-WebRequest -Uri "https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js" -OutFile $JsBundlePath } catch { Write-Warning "Could not download mq_js_bundle.js" }
     $WebGLZipPath = Join-Path $DistDir "${ProjectName}_webgl.zip"
