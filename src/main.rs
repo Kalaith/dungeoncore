@@ -1,4 +1,5 @@
 //! Dungeon Core - A dungeon management game
+#![allow(dead_code)]
 //!
 //! Migrated from React/TypeScript + PHP to Rust using macroquad.
 
@@ -20,7 +21,6 @@ fn is_modal_open(state: &GameState) -> bool {
     state.unlocked_species.is_empty()
 }
 
-
 fn window_conf() -> Conf {
     Conf {
         window_title: "Dungeon Core".to_owned(),
@@ -37,18 +37,20 @@ async fn main() {
     let mut state = persistence::load_game().unwrap_or_else(|_| {
         println!("Starting new game...");
         let mut new_state = GameState::new();
-        
+
         // Automatically unlock the first species (Goblinoid) for new games
         new_state.unlocked_species.push("Goblinoid".to_string());
         new_state.unlocked_monsters.push("Goblin".to_string());
-        
+
         // Place starting Goblin in core room of floor 1
         if let Err(e) = simulation::place_monster(&mut new_state, 1, 1, "Goblin") {
             eprintln!("Error placing starting Goblin: {}", e);
         } else {
-            new_state.add_log(crate::game_state::LogEntry::system("A Goblin has been placed in your core room."));
+            new_state.add_log(crate::game_state::LogEntry::system(
+                "A Goblin has been placed in your core room.",
+            ));
         }
-        
+
         new_state
     });
 
@@ -88,34 +90,34 @@ async fn main() {
             last_save = now;
         }
 
-
-        
         // Modal overlay: Species Selection (Prioritize over everything else)
         if state.unlocked_species.is_empty() {
-             let modal_w = 400.0;
-             let modal_h = 500.0;
-             let modal_x = (sw - modal_w) / 2.0;
-             let modal_y = (sh - modal_h) / 2.0;
+            let modal_w = 400.0;
+            let modal_h = 500.0;
+            let modal_x = (sw - modal_w) / 2.0;
+            let modal_y = (sh - modal_h) / 2.0;
 
-             // Draw a semi-transparent background to dim the game
-             draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.7));
+            // Draw a semi-transparent background to dim the game
+            draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.7));
 
-             if let Some(selected_species_id) = draw_species_selector(&mut state, modal_x, modal_y, modal_w, modal_h) {
-                 // Unlock the selected species
-                 if let Err(e) = simulation::unlock_species(&mut state, &selected_species_id) {
-                     eprintln!("Error unlocking species: {}", e);
-                 } else {
-                     // Species unlocked successfully - player can now place monsters manually
-                     state.add_log(crate::game_state::LogEntry::system(format!(
+            if let Some(selected_species_id) =
+                draw_species_selector(&mut state, modal_x, modal_y, modal_w, modal_h)
+            {
+                // Unlock the selected species
+                if let Err(e) = simulation::unlock_species(&mut state, &selected_species_id) {
+                    eprintln!("Error unlocking species: {}", e);
+                } else {
+                    // Species unlocked successfully - player can now place monsters manually
+                    state.add_log(crate::game_state::LogEntry::system(format!(
                          "Unlocked {} species! Build rooms and place monsters to defend your dungeon.",
                          selected_species_id
                      )));
-                 }
-             }
+                }
+            }
 
-             // Skip drawing other UI if modal is open (optional, but good for focus)
-             next_frame().await;
-             continue;
+            // Skip drawing other UI if modal is open (optional, but good for focus)
+            next_frame().await;
+            continue;
         }
 
         // Top bar: Time display
@@ -128,7 +130,13 @@ async fn main() {
         // Monster selector
         let monster_panel_y = TOP_BAR_HEIGHT + 140.0;
         let monster_panel_h = 220.0;
-        if let Some(monster) = draw_monster_selector(&mut state, sidebar_x, monster_panel_y, SIDEBAR_WIDTH, monster_panel_h) {
+        if let Some(monster) = draw_monster_selector(
+            &mut state,
+            sidebar_x,
+            monster_panel_y,
+            SIDEBAR_WIDTH,
+            monster_panel_h,
+        ) {
             if state.selected_monster.as_ref() == Some(&monster) {
                 state.selected_monster = None; // Deselect if clicking same
             } else {
@@ -167,7 +175,9 @@ async fn main() {
             // Handle room click
             if let Some(ref monster_name) = state.selected_monster.clone() {
                 // Place selected monster
-                if let Err(e) = simulation::place_monster(&mut state, floor_num, room_pos, monster_name) {
+                if let Err(e) =
+                    simulation::place_monster(&mut state, floor_num, room_pos, monster_name)
+                {
                     state.add_log(game_state::LogEntry::system(e));
                 }
                 state.selected_monster = None;
@@ -187,8 +197,14 @@ async fn main() {
             let upgrade_panel_h = 350.0;
             let upgrade_panel_x = sw - upgrade_panel_w - 15.0;
             let upgrade_panel_y = TOP_BAR_HEIGHT + 10.0;
-            
-            let upgrade_action = draw_upgrade_panel(&state, upgrade_panel_x, upgrade_panel_y, upgrade_panel_w, upgrade_panel_h);
+
+            let upgrade_action = draw_upgrade_panel(
+                &state,
+                upgrade_panel_x,
+                upgrade_panel_y,
+                upgrade_panel_w,
+                upgrade_panel_h,
+            );
             match upgrade_action {
                 UpgradeAction::Apply(name) => {
                     if let Some((floor, pos)) = state.selected_room {
@@ -212,8 +228,13 @@ async fn main() {
         }
 
         // Bottom log panel
-        draw_game_log(&state, dungeon_x, sh - LOG_HEIGHT - 10.0, dungeon_w, LOG_HEIGHT);
-
+        draw_game_log(
+            &state,
+            dungeon_x,
+            sh - LOG_HEIGHT - 10.0,
+            dungeon_w,
+            LOG_HEIGHT,
+        );
 
         next_frame().await;
     }

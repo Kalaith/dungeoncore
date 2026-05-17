@@ -66,7 +66,7 @@ pub fn draw_time_display(state: &GameState, x: f32, y: f32) {
         24.0,
         dark::TEXT_BRIGHT,
     );
-    
+
     // Speed indicator
     let speed_text = format!("{}x", state.speed);
     let speed_color = match state.speed {

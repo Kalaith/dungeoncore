@@ -1,9 +1,10 @@
-use crate::data::adventurers::{get_adventurer_classes, get_adventurer_names, get_entry_quotes, get_exit_quotes};
+use crate::data::adventurers::{
+    get_adventurer_classes, get_adventurer_names, get_entry_quotes, get_exit_quotes,
+};
 use crate::data::constants::{ADVENTURER_SPAWN_CHANCE, MAX_PARTY_SIZE, MIN_PARTY_SIZE};
 use crate::game_state::{
     Adventurer, AdventurerParty, DungeonStatus, Equipment, GameState, LogEntry, Stats,
 };
-
 
 /// Try to spawn a new adventurer party
 pub fn spawn_party(state: &mut GameState) {
@@ -17,7 +18,6 @@ pub fn spawn_party(state: &mut GameState) {
     if state.hour < state.next_party_spawn {
         return;
     }
-
 
     if macroquad_toolkit::rng::chance(ADVENTURER_SPAWN_CHANCE) {
         return;

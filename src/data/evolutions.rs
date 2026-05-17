@@ -29,15 +29,15 @@ const EVOLUTION_JSON: &str = include_str!("../../assets/evolution_trees.json");
 
 /// Load all evolution trees from embedded JSON
 pub fn get_evolution_trees() -> HashMap<String, Vec<EvolutionPath>> {
-    let data: EvolutionData = serde_json::from_str(EVOLUTION_JSON)
-        .expect("Failed to parse evolution_trees.json");
+    let data: EvolutionData =
+        serde_json::from_str(EVOLUTION_JSON).expect("Failed to parse evolution_trees.json");
     data.evolution_trees
 }
 
 /// Load starting monsters map
 pub fn get_starting_monsters() -> HashMap<String, String> {
-    let data: EvolutionData = serde_json::from_str(EVOLUTION_JSON)
-        .expect("Failed to parse evolution_trees.json");
+    let data: EvolutionData =
+        serde_json::from_str(EVOLUTION_JSON).expect("Failed to parse evolution_trees.json");
     data.starting_monsters
 }
 

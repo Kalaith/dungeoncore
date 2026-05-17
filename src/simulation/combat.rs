@@ -2,16 +2,8 @@ use crate::data::adventurers::get_victory_quotes;
 use crate::data::constants::RETREAT_THRESHOLD;
 use crate::game_state::{GameState, LogEntry};
 
-
 /// Resolve combat between adventurers and monsters in a room
-pub fn resolve_combat(
-    state: &mut GameState,
-    party_idx: usize,
-    floor_idx: usize,
-    room_idx: usize,
-) {
-
-
+pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
     // Check if there are alive monsters
     let has_alive_monsters = state.floors[floor_idx].rooms[room_idx]
         .monsters
@@ -39,13 +31,12 @@ pub fn resolve_combat(
     // Apply Monster Traits
     // We need to check traits of ALIVE monsters in the room
     // Note: We are iterating again, but doing it inside the combat loop for the specific room is okay
-    
- 
+
     // Phase 1: Ability Activation
     // We need to borrow room and party disjointly to modify both
     // and we need to collect logs to add them to state later (since state is split borrowed)
     let mut combat_logs: Vec<LogEntry> = Vec::new();
-    
+
     {
         // Disjoint borrows
         let floor = &mut state.floors[floor_idx];
@@ -54,43 +45,47 @@ pub fn resolve_combat(
         let monsters = &mut room.monsters;
 
         for monster in monsters.iter_mut().filter(|m| m.alive) {
-             for trait_data in &mut monster.active_traits {
-                 // Check cooldown
-                 if trait_data.cooldown_timer <= 0 {
-                      if let Some(trait_def) = crate::data::traits::get_trait(&trait_data.id) {
-                           // Generic Active Ability Logic
-                           if trait_def.trait_type == "Active" && trait_def.applies_to == "OnCombatStart" {
-                                // Check effect type
-                                if trait_def.effect_type == "DamageFlat" && trait_def.target_type == "EnemyParty" {
-                                    let damage = trait_def.value as i32;
-                                    trait_data.cooldown_timer = trait_def.cooldown;
-                                    
-                                    // Deal damage to ALL adventurers in party
-                                    let mut total_hits = 0;
-                                    for adv in &mut party.members {
-                                        if adv.alive {
-                                            adv.hp -= damage;
-                                            total_hits += 1;
-                                            if adv.hp <= 0 {
-                                                adv.alive = false;
-                                                party.casualties += 1;
-                                            }
+            for trait_data in &mut monster.active_traits {
+                // Check cooldown
+                if trait_data.cooldown_timer <= 0 {
+                    if let Some(trait_def) = crate::data::traits::get_trait(&trait_data.id) {
+                        // Generic Active Ability Logic
+                        if trait_def.trait_type == "Active"
+                            && trait_def.applies_to == "OnCombatStart"
+                        {
+                            // Check effect type
+                            if trait_def.effect_type == "DamageFlat"
+                                && trait_def.target_type == "EnemyParty"
+                            {
+                                let damage = trait_def.value as i32;
+                                trait_data.cooldown_timer = trait_def.cooldown;
+
+                                // Deal damage to ALL adventurers in party
+                                let mut total_hits = 0;
+                                for adv in &mut party.members {
+                                    if adv.alive {
+                                        adv.hp -= damage;
+                                        total_hits += 1;
+                                        if adv.hp <= 0 {
+                                            adv.alive = false;
+                                            party.casualties += 1;
                                         }
                                     }
-                                    
-                                    if total_hits > 0 {
-                                        combat_logs.push(LogEntry::combat(format!(
-                                            "{} uses {}! Dealt {} damage to {} adventurers.",
-                                            monster.type_name, trait_def.name, damage, total_hits
-                                        )));
-                                    }
                                 }
-                           }
-                      }
-                 } else {
-                     trait_data.cooldown_timer -= 1;
-                 }
-             }
+
+                                if total_hits > 0 {
+                                    combat_logs.push(LogEntry::combat(format!(
+                                        "{} uses {}! Dealt {} damage to {} adventurers.",
+                                        monster.type_name, trait_def.name, damage, total_hits
+                                    )));
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    trait_data.cooldown_timer -= 1;
+                }
+            }
         }
     }
 
@@ -101,16 +96,16 @@ pub fn resolve_combat(
 
     // Phase 2: Standard Combat Attacks
     // Recalculate chances (traits might have changed stats, or adventurers might have died)
-    
-    // We iterate again to collect passive bonuses. 
+
+    // We iterate again to collect passive bonuses.
     // This is read-only on monsters, so we can hold state?
     // Actually we mutate state later if someone dies (adventurer_dies / monster_dies).
     // So let's calculate the stats based on the Room immutable borrow?
     // But `resolve_combat` calls `monster_dies` which takes `&mut GameState`.
     // So we must finish all borrows before calling those.
-    
+
     let mut swarm_bonus = 0.0;
-    let mut total_defense_mult = 1.0; 
+    let mut total_defense_mult = 1.0;
     let mut monster_count = 0;
 
     // Scope for read-only monster analysis
@@ -119,28 +114,33 @@ pub fn resolve_combat(
         for monster in room.monsters.iter().filter(|m| m.alive) {
             monster_count += 1;
             for trait_data in &monster.active_traits {
-                 if let Some(trait_def) = crate::data::traits::get_trait(&trait_data.id) {
-                     if trait_def.trait_type == "Passive" {
-                         if trait_def.effect_type == "DamageReductionMult" && trait_def.applies_to == "OnDefense" {
-                             total_defense_mult *= 1.0 - trait_def.value; 
-                         }
-                         if trait_def.effect_type == "AttackBonus" && trait_def.applies_to == "OnAttack" && trait_def.target_type == "Self" {
+                if let Some(trait_def) = crate::data::traits::get_trait(&trait_data.id) {
+                    if trait_def.trait_type == "Passive" {
+                        if trait_def.effect_type == "DamageReductionMult"
+                            && trait_def.applies_to == "OnDefense"
+                        {
+                            total_defense_mult *= 1.0 - trait_def.value;
+                        }
+                        if trait_def.effect_type == "AttackBonus"
+                            && trait_def.applies_to == "OnAttack"
+                            && trait_def.target_type == "Self"
+                        {
                             // Scaling Logic
                             if trait_def.scaling_type == "PerAlly" {
                                 swarm_bonus += 0.01 * trait_def.value;
                             }
-                         }
-                     }
-                 }
+                        }
+                    }
+                }
             }
         }
     }
-    
+
     // Apply swarm bonus
     if monster_count > 1 {
         adventurer_death_chance += swarm_bonus * (monster_count - 1) as f32;
     }
-    
+
     monster_death_chance *= total_defense_mult;
 
     let result = macroquad_toolkit::rng::rand();
@@ -153,8 +153,6 @@ pub fn resolve_combat(
         monster_dies(state, party_idx, floor_idx, room_idx);
     }
     // else: stalemate, continue combat next tick
-    
-
 }
 
 fn apply_trap_damage(
@@ -164,8 +162,6 @@ fn apply_trap_damage(
     room_idx: usize,
     trap_mult: f32,
 ) {
-
-    
     // 20% chance per tick for trap to trigger
     if macroquad_toolkit::rng::chance(0.2) {
         return;
@@ -185,11 +181,11 @@ fn apply_trap_damage(
         if let Some(victim) = party.members.iter_mut().find(|a| a.alive) {
             let damage = (10.0 * trap_mult) as i32;
             victim.hp -= damage;
-            
+
             if victim.hp <= 0 {
                 victim.alive = false;
                 party.casualties += 1;
-                
+
                 let mana_gain = victim.level * 10;
                 Some((true, victim.name.clone(), mana_gain, damage))
             } else {
@@ -216,29 +212,28 @@ fn apply_trap_damage(
     }
 }
 
-
 fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
     let floor_num = state.floors[floor_idx].number;
 
     // Find alive adventurer and kill them
     let death_info = {
-         let party = &mut state.adventurer_parties[party_idx];
-         if let Some(victim_idx) = party.members.iter().position(|a| a.alive) {
-             let victim = &mut party.members[victim_idx];
-             let victim_name = victim.name.clone();
-             let victim_level = victim.level;
-             victim.alive = false;
-             party.casualties += 1;
+        let party = &mut state.adventurer_parties[party_idx];
+        if let Some(victim_idx) = party.members.iter().position(|a| a.alive) {
+            let victim = &mut party.members[victim_idx];
+            let victim_name = victim.name.clone();
+            let victim_level = victim.level;
+            victim.alive = false;
+            party.casualties += 1;
 
-             let retreating = party.casualties >= RETREAT_THRESHOLD;
-             if retreating {
-                 party.retreating = true;
-             }
+            let retreating = party.casualties >= RETREAT_THRESHOLD;
+            if retreating {
+                party.retreating = true;
+            }
 
-             Some((victim_name, victim_level, retreating))
-         } else {
-             None
-         }
+            Some((victim_name, victim_level, retreating))
+        } else {
+            None
+        }
     };
 
     if let Some((victim_name, victim_level, retreating)) = death_info {
@@ -271,8 +266,6 @@ fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, ro
 }
 
 fn monster_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
-
-
     // Find alive monster
     let monster_idx = match state.floors[floor_idx].rooms[room_idx]
         .monsters

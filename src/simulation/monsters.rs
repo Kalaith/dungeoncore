@@ -10,8 +10,8 @@ pub fn place_monster(
     monster_name: &str,
 ) -> Result<(), String> {
     // Find monster template
-    let template =
-        get_monster_template(monster_name).ok_or_else(|| format!("Unknown monster: {}", monster_name))?;
+    let template = get_monster_template(monster_name)
+        .ok_or_else(|| format!("Unknown monster: {}", monster_name))?;
 
     // Check if species is unlocked
     if !state.unlocked_species.contains(&template.species) {
@@ -20,7 +20,10 @@ pub fn place_monster(
 
     // Check if this specific monster type is unlocked
     if !state.unlocked_monsters.contains(&template.name) {
-        return Err(format!("Monster '{}' is not unlocked! Evolve to unlock higher tiers.", template.name));
+        return Err(format!(
+            "Monster '{}' is not unlocked! Evolve to unlock higher tiers.",
+            template.name
+        ));
     }
 
     // Find floor and room
@@ -59,17 +62,21 @@ pub fn place_monster(
     let scaled = crate::data::get_scaled_stats(base_stats, floor_num, is_boss);
 
     // Initialize traits
-    let active_traits = template.traits.iter().map(|trait_id| {
-        // Look up trait name (optional, but good for display without full lookup)
-        // For now we just store ID and initial cooldown 0
-        crate::game_state::ActiveTrait {
-            id: trait_id.clone(),
-            name: crate::data::traits::get_trait(trait_id)
-                .map(|t| t.name)
-                .unwrap_or_else(|| trait_id.clone()),
-            cooldown_timer: 0,
-        }
-    }).collect();
+    let active_traits = template
+        .traits
+        .iter()
+        .map(|trait_id| {
+            // Look up trait name (optional, but good for display without full lookup)
+            // For now we just store ID and initial cooldown 0
+            crate::game_state::ActiveTrait {
+                id: trait_id.clone(),
+                name: crate::data::traits::get_trait(trait_id)
+                    .map(|t| t.name)
+                    .unwrap_or_else(|| trait_id.clone()),
+                cooldown_timer: 0,
+            }
+        })
+        .collect();
 
     let monster = Monster {
         id: macroquad::rand::rand() as u64,
@@ -139,16 +146,18 @@ pub fn unlock_species(state: &mut GameState, species_name: &str) -> Result<(), S
         }
         state.gold -= unlock_cost;
     }
-    
+
     state.unlocked_species.push(species_name.to_string());
-    
+
     // Also unlock the starting monster for this species
-    if let Some(starting_monster) = crate::data::evolutions::get_starting_monsters().get(species_name) {
+    if let Some(starting_monster) =
+        crate::data::evolutions::get_starting_monsters().get(species_name)
+    {
         if !state.unlocked_monsters.contains(starting_monster) {
             state.unlocked_monsters.push(starting_monster.clone());
         }
     }
-    
+
     state.add_log(LogEntry::system(format!(
         "Unlocked new species: {} for {} gold!",
         species_name, unlock_cost
@@ -209,12 +218,7 @@ pub fn process_evolutions(state: &mut GameState) {
                     floor_num,
                     state.gold,
                 ) {
-                    evolutions_performed.push((
-                        floor_idx,
-                        room_idx,
-                        monster_idx,
-                        evolution_path,
-                    ));
+                    evolutions_performed.push((floor_idx, room_idx, monster_idx, evolution_path));
                 }
             }
         }
@@ -244,22 +248,25 @@ pub fn process_evolutions(state: &mut GameState) {
                 attack: new_template.attack,
                 defense: new_template.defense,
             };
-            let scaled = crate::data::get_scaled_stats(base_stats, room.floor_number, monster.is_boss);
+            let scaled =
+                crate::data::get_scaled_stats(base_stats, room.floor_number, monster.is_boss);
 
             monster.hp = scaled.hp;
             monster.max_hp = scaled.hp;
             monster.scaled_stats = scaled;
 
             // Update traits
-            monster.active_traits = new_template.traits.iter().map(|trait_id| {
-                crate::game_state::ActiveTrait {
+            monster.active_traits = new_template
+                .traits
+                .iter()
+                .map(|trait_id| crate::game_state::ActiveTrait {
                     id: trait_id.clone(),
                     name: crate::data::traits::get_trait(trait_id)
                         .map(|t| t.name)
                         .unwrap_or_else(|| trait_id.clone()),
                     cooldown_timer: 0,
-                }
-            }).collect();
+                })
+                .collect();
 
             // Reset experience for new form
             monster.experience = 0;

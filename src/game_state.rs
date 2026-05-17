@@ -119,7 +119,6 @@ impl Room {
     }
 }
 
-
 /// Floor in the dungeon
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Floor {
@@ -303,7 +302,9 @@ impl GameState {
             unlocked_monsters: vec![],
             selected_room: None,
             selected_monster: None,
-            log: vec![LogEntry::system("Welcome to Dungeon Core! Your dungeon has a Goblin ready to defend it.")],
+            log: vec![LogEntry::system(
+                "Welcome to Dungeon Core! Your dungeon has a Goblin ready to defend it.",
+            )],
         }
     }
 

@@ -7,13 +7,7 @@ const ROOM_SIZE: f32 = 90.0;
 const ROOM_GAP: f32 = 30.0;
 
 /// Draw the dungeon view and return clicked room if any
-pub fn draw_dungeon(
-    state: &GameState,
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-) -> Option<(i32, usize)> {
+pub fn draw_dungeon(state: &GameState, x: f32, y: f32, w: f32, h: f32) -> Option<(i32, usize)> {
     let mut clicked_room = None;
 
     panel(x, y, w, h, Some("Dungeon Layout"));
@@ -37,7 +31,13 @@ pub fn draw_dungeon(
         } else {
             format!("Floor {}", floor.number)
         };
-        draw_text(&floor_label, x + 15.0, floor_y + 15.0, 16.0, dark::TEXT_BRIGHT);
+        draw_text(
+            &floor_label,
+            x + 15.0,
+            floor_y + 15.0,
+            16.0,
+            dark::TEXT_BRIGHT,
+        );
 
         floor_y += 25.0;
         let mut room_x = x + 20.0;
@@ -96,7 +96,13 @@ pub fn draw_dungeon(
             let dead = room.monsters.iter().filter(|m| !m.alive).count();
             if alive > 0 || dead > 0 {
                 let monster_text = format!("🐲{} 💀{}", alive, dead);
-                draw_text(&monster_text, room_x + 5.0, floor_y + ROOM_SIZE - 8.0, 11.0, WHITE);
+                draw_text(
+                    &monster_text,
+                    room_x + 5.0,
+                    floor_y + ROOM_SIZE - 8.0,
+                    11.0,
+                    WHITE,
+                );
             }
 
             // Check for adventurer party in this room

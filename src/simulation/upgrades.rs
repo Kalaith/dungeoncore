@@ -1,7 +1,6 @@
 use crate::data::upgrades::{get_upgrade_template, UpgradeTemplate};
 use crate::game_state::{GameState, LogEntry, RoomType, RoomUpgradeType};
 
-
 /// Apply an upgrade to a room
 pub fn apply_upgrade(
     state: &mut GameState,
@@ -43,10 +42,16 @@ pub fn apply_upgrade(
 
     // Check costs
     if state.gold < template.gold_cost {
-        return Err(format!("Not enough gold! Need {} gold.", template.gold_cost));
+        return Err(format!(
+            "Not enough gold! Need {} gold.",
+            template.gold_cost
+        ));
     }
     if state.souls < template.souls_cost {
-        return Err(format!("Not enough souls! Need {} souls.", template.souls_cost));
+        return Err(format!(
+            "Not enough souls! Need {} souls.",
+            template.souls_cost
+        ));
     }
 
     // Deduct costs

@@ -26,7 +26,7 @@ pub fn advance_time(state: &mut GameState) {
         state.status = DungeonStatus::Closed;
         state.add_log(LogEntry::system("Dungeon is now closed."));
     }
-    
+
     // Process hourly monster traits
     crate::simulation::monsters::process_hourly_traits(state);
 

@@ -1,7 +1,7 @@
-use macroquad::prelude::*;
-use macroquad_toolkit::{colors::dark, ui::{ButtonStyle, button_styled, panel}};
-use crate::data::monsters::{get_all_species, get_species_unlock_cost};
+use crate::data::monsters::get_all_species;
 use crate::game_state::GameState;
+use macroquad::prelude::*;
+use macroquad_toolkit::ui::{button_styled, panel, ButtonStyle};
 
 pub fn draw_species_selector(
     state: &mut GameState,
@@ -10,7 +10,6 @@ pub fn draw_species_selector(
     w: f32,
     h: f32,
 ) -> Option<String> {
-    
     // Draw background panel
     panel(x, y, w, h, Some("Select Starter Species"));
 
@@ -18,12 +17,12 @@ pub fn draw_species_selector(
     // to match the style of other panels and fix the import issues
     let mut selected = None;
     let mut current_y = y + 40.0;
-    
+
     let species_list = get_all_species();
 
     for species in species_list {
         if current_y + 30.0 > y + h {
-            break; 
+            break;
         }
 
         let cost = crate::data::monsters::get_species_unlock_cost(&species.name).unwrap_or(0);
@@ -49,14 +48,14 @@ pub fn draw_species_selector(
         };
 
         if can_afford && button_styled(x + 10.0, current_y, w - 20.0, 30.0, &label, button_color) {
-             selected = Some(species.name.clone());
+            selected = Some(species.name.clone());
         } else if !can_afford {
             // Draw disabled button
             button_styled(x + 10.0, current_y, w - 20.0, 30.0, &label, button_color);
         }
-        
+
         current_y += 35.0;
     }
-    
+
     selected
 }

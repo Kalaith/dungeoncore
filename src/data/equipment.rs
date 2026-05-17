@@ -45,8 +45,8 @@ const EQUIPMENT_JSON: &str = include_str!("../../assets/equipment.json");
 
 /// Load all equipment templates from embedded JSON
 pub fn get_all_equipment() -> Vec<EquipmentTemplate> {
-    let data: EquipmentData = serde_json::from_str(EQUIPMENT_JSON)
-        .expect("Failed to parse equipment.json");
+    let data: EquipmentData =
+        serde_json::from_str(EQUIPMENT_JSON).expect("Failed to parse equipment.json");
     data.equipment
 }
 

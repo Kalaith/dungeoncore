@@ -60,7 +60,14 @@ pub fn draw_controls(state: &GameState, x: f32, y: f32, w: f32) -> ControlAction
         normal: status_color,
         ..ButtonStyle::default_dark()
     };
-    if button_styled(x + 10.0 + btn_w, row1_y, btn_w, btn_h, status_label, &status_style) {
+    if button_styled(
+        x + 10.0 + btn_w,
+        row1_y,
+        btn_w,
+        btn_h,
+        status_label,
+        &status_style,
+    ) {
         action = ControlAction::ToggleDungeon;
     }
 
@@ -71,7 +78,8 @@ pub fn draw_controls(state: &GameState, x: f32, y: f32, w: f32) -> ControlAction
             action = ControlAction::RespawnMonsters;
         }
     } else {
-        draw_rectangle(x + 5.0, row2_y, btn_w, btn_h, dark::PANEL);
+        let surface = SurfaceStyle::new(dark::PANEL);
+        draw_surface(Rect::new(x + 5.0, row2_y, btn_w, btn_h), &surface);
         draw_text("Respawn All", x + 15.0, row2_y + 18.0, 13.0, dark::TEXT_DIM);
     }
 

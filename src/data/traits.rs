@@ -5,9 +5,9 @@ pub struct MonsterTrait {
     pub id: String,
     pub name: String,
     pub description: String,
-    pub trait_type: String, // "Passive", "Active"
+    pub trait_type: String,  // "Passive", "Active"
     pub target_type: String, // "Self", "Enemy", "EnemyParty", "Ally"
-    pub applies_to: String, // "Hourly", "OnDefense", "OnAttack", "OnCombatStart"
+    pub applies_to: String,  // "Hourly", "OnDefense", "OnAttack", "OnCombatStart"
     #[serde(default)]
     pub effect_type: String, // "HealPercent", "DamageFlat", "DamageReductionMult", "AttackBonus"
     #[serde(default)]
@@ -27,8 +27,7 @@ const TRAITS_JSON: &str = include_str!("../../assets/traits.json");
 
 /// Load all traits
 pub fn get_all_traits() -> Vec<MonsterTrait> {
-    let data: TraitsData = serde_json::from_str(TRAITS_JSON)
-        .expect("Failed to parse traits.json");
+    let data: TraitsData = serde_json::from_str(TRAITS_JSON).expect("Failed to parse traits.json");
     data.traits
 }
 

@@ -36,8 +36,8 @@ const MONSTERS_JSON: &str = include_str!("../../assets/monsters.json");
 
 /// Load all monster templates from embedded JSON
 pub fn get_monster_templates() -> Vec<MonsterTemplate> {
-    let data: MonstersData = serde_json::from_str(MONSTERS_JSON)
-        .expect("Failed to parse monsters.json");
+    let data: MonstersData =
+        serde_json::from_str(MONSTERS_JSON).expect("Failed to parse monsters.json");
     data.monsters
 }
 
@@ -48,8 +48,8 @@ pub fn get_monster_template(name: &str) -> Option<MonsterTemplate> {
 
 /// Get all species data
 pub fn get_all_species() -> Vec<SpeciesData> {
-    let data: MonstersData = serde_json::from_str(MONSTERS_JSON)
-        .expect("Failed to parse monsters.json");
+    let data: MonstersData =
+        serde_json::from_str(MONSTERS_JSON).expect("Failed to parse monsters.json");
     data.species
 }
 

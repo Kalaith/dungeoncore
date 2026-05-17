@@ -1,27 +1,21 @@
 use macroquad::prelude::*;
-use macroquad_toolkit::{colors::dark, input::*, ui::*};
+use macroquad_toolkit::{colors::dark, ui::*};
 
-use crate::data::upgrades::{get_all_upgrades, UpgradeTemplate};
-use crate::game_state::{GameState, RoomUpgradeType};
+use crate::data::upgrades::get_all_upgrades;
+use crate::game_state::GameState;
 use crate::simulation::upgrades::upgrade_type_icon;
 
 /// Upgrade action returned from the UI
 #[derive(Debug, Clone)]
 pub enum UpgradeAction {
     None,
-    Apply(String),   // Upgrade name to apply
-    Remove,          // Remove current upgrade
-    Close,           // Close the panel
+    Apply(String), // Upgrade name to apply
+    Remove,        // Remove current upgrade
+    Close,         // Close the panel
 }
 
 /// Draw the upgrade selector panel for a selected room
-pub fn draw_upgrade_panel(
-    state: &GameState,
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-) -> UpgradeAction {
+pub fn draw_upgrade_panel(state: &GameState, x: f32, y: f32, w: f32, h: f32) -> UpgradeAction {
     let mut action = UpgradeAction::None;
 
     // Only show if a room is selected
@@ -58,7 +52,11 @@ pub fn draw_upgrade_panel(
     // Show current upgrade if any
     if let Some(ref upgrade) = room.upgrade {
         draw_text(
-            &format!("Current: {} {}", upgrade_type_icon(&upgrade.upgrade_type), upgrade.name),
+            &format!(
+                "Current: {} {}",
+                upgrade_type_icon(&upgrade.upgrade_type),
+                upgrade.name
+            ),
             inner_x,
             current_y,
             14.0,
@@ -72,9 +70,14 @@ pub fn draw_upgrade_panel(
         if button(inner_x, current_y, inner_w, 25.0, "Remove Upgrade") {
             action = UpgradeAction::Remove;
         }
-        current_y += 35.0;
     } else {
-        draw_text("No upgrade installed", inner_x, current_y, 13.0, dark::TEXT_DIM);
+        draw_text(
+            "No upgrade installed",
+            inner_x,
+            current_y,
+            13.0,
+            dark::TEXT_DIM,
+        );
         current_y += 25.0;
 
         // List available upgrades
@@ -112,9 +115,16 @@ pub fn draw_upgrade_panel(
                     action = UpgradeAction::Apply(upgrade.name.clone());
                 }
             } else {
-                draw_rectangle(inner_x, current_y, inner_w, btn_h, dark::PANEL);
-                draw_rectangle_lines(inner_x, current_y, inner_w, btn_h, 1.0, Color::from_hex(0x444444));
-                draw_text(&label, inner_x + 5.0, current_y + 18.0, 12.0, dark::TEXT_DIM);
+                let surface =
+                    SurfaceStyle::new(dark::PANEL).with_border(1.0, Color::from_hex(0x444444));
+                draw_surface(Rect::new(inner_x, current_y, inner_w, btn_h), &surface);
+                draw_text(
+                    &label,
+                    inner_x + 5.0,
+                    current_y + 18.0,
+                    12.0,
+                    dark::TEXT_DIM,
+                );
             }
 
             current_y += btn_h + 3.0;

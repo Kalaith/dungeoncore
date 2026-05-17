@@ -23,8 +23,8 @@ const UPGRADES_JSON: &str = include_str!("../../assets/upgrades.json");
 
 /// Load all upgrade templates from embedded JSON
 pub fn get_all_upgrades() -> Vec<UpgradeTemplate> {
-    let data: UpgradesData = serde_json::from_str(UPGRADES_JSON)
-        .expect("Failed to parse upgrades.json");
+    let data: UpgradesData =
+        serde_json::from_str(UPGRADES_JSON).expect("Failed to parse upgrades.json");
     data.upgrades
 }
 

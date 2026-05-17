@@ -1,13 +1,12 @@
-pub mod time;
-pub mod rooms;
-pub mod monsters;
 pub mod adventure;
 pub mod combat;
+pub mod monsters;
+pub mod rooms;
+pub mod time;
 pub mod upgrades;
 
-pub use time::*;
-pub use rooms::*;
-pub use monsters::*;
 pub use adventure::*;
-pub use combat::*;
+pub use monsters::*;
+pub use rooms::*;
+pub use time::*;
 pub use upgrades::*;

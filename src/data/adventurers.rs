@@ -28,8 +28,7 @@ struct AdventurersData {
 const ADVENTURERS_JSON: &str = include_str!("../../assets/adventurers.json");
 
 fn load_data() -> AdventurersData {
-    serde_json::from_str(ADVENTURERS_JSON)
-        .expect("Failed to parse adventurers.json")
+    serde_json::from_str(ADVENTURERS_JSON).expect("Failed to parse adventurers.json")
 }
 
 /// Get all adventurer classes
@@ -39,7 +38,9 @@ pub fn get_adventurer_classes() -> Vec<AdventurerClass> {
 
 /// Get adventurer class by name
 pub fn get_adventurer_class(name: &str) -> Option<AdventurerClass> {
-    get_adventurer_classes().into_iter().find(|c| c.name == name)
+    get_adventurer_classes()
+        .into_iter()
+        .find(|c| c.name == name)
 }
 
 /// Get all adventurer names
