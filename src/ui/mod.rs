@@ -1,17 +1,21 @@
 pub mod controls;
 pub mod dungeon_view;
+pub mod event_toast;
 pub mod game_log;
-pub mod monster_selector;
 pub mod resource_panel;
+pub mod shell;
+pub mod side_drawer;
 pub mod species_selector;
+pub mod theme;
 pub mod upgrade_panel;
 
 pub use controls::*;
 pub use dungeon_view::*;
-pub use game_log::*;
-pub use monster_selector::*;
-pub use resource_panel::*;
+pub use event_toast::*;
+pub use shell::*;
+pub use side_drawer::*;
 pub use species_selector::*;
+pub use theme::*;
 pub use upgrade_panel::*;
 
 // Layout constants

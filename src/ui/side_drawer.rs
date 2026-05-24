@@ -1,0 +1,476 @@
+use macroquad::prelude::*;
+use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
+
+use crate::data::constants::{get_room_cost, MAX_ROOMS_PER_FLOOR};
+use crate::data::monsters::{get_monster_templates, MonsterTemplate};
+use crate::game_state::{GameState, RoomType};
+
+use super::theme::*;
+
+pub const DRAWER_OPEN_WIDTH: f32 = 274.0;
+pub const DRAWER_COLLAPSED_WIDTH: f32 = 64.0;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DrawerTab {
+    Build,
+    Monsters,
+    Evolution,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum DrawerAction {
+    None,
+    BuildRoom,
+    SelectMonster(String),
+    ProcessEvolutions,
+}
+
+pub fn draw_side_drawer(
+    state: &GameState,
+    rect: Rect,
+    active_tab: &mut DrawerTab,
+    open: &mut bool,
+) -> DrawerAction {
+    let mut action = DrawerAction::None;
+    draw_panel(rect, None, ARCANE);
+
+    let rail_w = DRAWER_COLLAPSED_WIDTH.min(rect.w);
+    draw_tab_rail(state, rect, rail_w, active_tab, open);
+
+    if !*open || rect.w <= rail_w + 24.0 {
+        return action;
+    }
+
+    let content = Rect::new(
+        rect.x + rail_w + 12.0,
+        rect.y + 16.0,
+        rect.w - rail_w - 24.0,
+        rect.h - 32.0,
+    );
+
+    match active_tab {
+        DrawerTab::Build => {
+            if draw_build_tab(state, content) {
+                action = DrawerAction::BuildRoom;
+            }
+        }
+        DrawerTab::Monsters => {
+            if let Some(monster) = draw_monster_tab(state, content) {
+                action = DrawerAction::SelectMonster(monster);
+            }
+        }
+        DrawerTab::Evolution => {
+            if draw_evolution_tab(state, content) {
+                action = DrawerAction::ProcessEvolutions;
+            }
+        }
+    }
+
+    action
+}
+
+fn draw_tab_rail(
+    state: &GameState,
+    rect: Rect,
+    rail_w: f32,
+    active_tab: &mut DrawerTab,
+    open: &mut bool,
+) {
+    let toggle = Rect::new(rect.x + 9.0, rect.y + 12.0, rail_w - 18.0, 34.0);
+    if draw_small_tab(toggle, if *open { "<" } else { ">" }, ARCANE, true) {
+        *open = !*open;
+    }
+
+    let mut y = rect.y + 58.0;
+    for (tab, icon, label, color) in [
+        (DrawerTab::Monsters, "M", "MONSTERS", SOUL),
+        (DrawerTab::Build, "B", "BUILD", TREASURE),
+        (DrawerTab::Evolution, "E", "EVOLUTION", MANA),
+    ] {
+        let tab_rect = Rect::new(rect.x + 7.0, y, rail_w - 14.0, 78.0);
+        if draw_rail_tab(tab_rect, icon, label, color, *active_tab == tab) {
+            *active_tab = tab;
+            *open = true;
+        }
+        y += 86.0;
+    }
+
+    let chip_rect = Rect::new(rect.x + 9.0, rect.y + rect.h - 50.0, rail_w - 18.0, 34.0);
+    let color = if state.adventurer_parties.is_empty() {
+        EMERALD
+    } else {
+        WARNING
+    };
+    draw_card(
+        chip_rect,
+        Color::new(color.r, color.g, color.b, 0.09),
+        Color::new(color.r, color.g, color.b, 0.26),
+    );
+    draw_centered_text(
+        if state.adventurer_parties.is_empty() {
+            "Safe"
+        } else {
+            "Alert"
+        },
+        chip_rect,
+        10.0,
+        color,
+    );
+}
+
+fn draw_build_tab(state: &GameState, rect: Rect) -> bool {
+    draw_section_title(rect, "BUILD", "Shape the dungeon path.");
+
+    let (label, detail, cost) = next_build_summary(state);
+    let can_build = state.adventurer_parties.is_empty() && state.mana >= cost;
+
+    let card = Rect::new(rect.x, rect.y + 70.0, rect.w, 126.0);
+    draw_card(
+        card,
+        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.075),
+        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.24),
+    );
+    draw_text_fit(
+        &label,
+        card.x + 12.0,
+        card.y + 27.0,
+        card.w - 24.0,
+        17.0,
+        TEXT,
+    );
+    draw_text_fit(
+        &detail,
+        card.x + 12.0,
+        card.y + 56.0,
+        card.w - 24.0,
+        12.0,
+        TEXT_MUTED,
+    );
+    draw_text_fit(
+        &format!("{cost} mana"),
+        card.x + 12.0,
+        card.y + 86.0,
+        card.w - 24.0,
+        14.0,
+        if state.mana >= cost { MANA } else { DANGER },
+    );
+    draw_text_fit(
+        if can_build {
+            "Click the glowing room or build here."
+        } else if state.adventurer_parties.is_empty() {
+            "Gather more mana."
+        } else {
+            "Wait until the dungeon is safe."
+        },
+        card.x + 12.0,
+        card.y + 112.0,
+        card.w - 24.0,
+        12.0,
+        if can_build { EMERALD } else { TEXT_DIM },
+    );
+
+    draw_command_button(
+        Rect::new(rect.x, card.y + card.h + 16.0, rect.w, 42.0),
+        "Build",
+        ButtonTone::Arcane,
+        can_build,
+    )
+}
+
+fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> {
+    let mut selected = None;
+    draw_section_title(rect, "MONSTERS", "Choose a defender.");
+
+    let templates = get_monster_templates();
+    let mut y = rect.y + 72.0;
+    for template in templates.iter().take(4) {
+        let row = Rect::new(rect.x, y, rect.w, 72.0);
+        if draw_monster_option(state, template, row) {
+            selected = Some(template.name.clone());
+        }
+        y += 84.0;
+    }
+
+    if let Some(monster) = &state.selected_monster {
+        let hint = Rect::new(rect.x, rect.y + rect.h - 62.0, rect.w, 52.0);
+        draw_card(
+            hint,
+            Color::new(SOUL.r, SOUL.g, SOUL.b, 0.10),
+            Color::new(SOUL.r, SOUL.g, SOUL.b, 0.30),
+        );
+        draw_text_fit(
+            monster,
+            hint.x + 10.0,
+            hint.y + 20.0,
+            hint.w - 20.0,
+            13.0,
+            TEXT,
+        );
+        draw_text_fit(
+            "Select a combat room.",
+            hint.x + 10.0,
+            hint.y + 39.0,
+            hint.w - 20.0,
+            11.0,
+            SOUL,
+        );
+    }
+
+    selected
+}
+
+fn draw_evolution_tab(state: &GameState, rect: Rect) -> bool {
+    draw_section_title(rect, "EVOLUTION", "Advance unlocked species.");
+
+    let card = Rect::new(rect.x, rect.y + 70.0, rect.w, 136.0);
+    draw_card(card, CARD, BORDER_MUTED);
+    draw_text_fit(
+        &format!("Species: {}", state.unlocked_species.len()),
+        card.x + 12.0,
+        card.y + 28.0,
+        card.w - 24.0,
+        15.0,
+        TEXT,
+    );
+    draw_text_fit(
+        &format!("Monsters: {}", state.unlocked_monsters.len()),
+        card.x + 12.0,
+        card.y + 55.0,
+        card.w - 24.0,
+        13.0,
+        TEXT_MUTED,
+    );
+    draw_text_fit(
+        &format!("Souls: {}", state.souls),
+        card.x + 12.0,
+        card.y + 82.0,
+        card.w - 24.0,
+        13.0,
+        SOUL,
+    );
+    draw_text_fit(
+        "Processes any ready evolutions.",
+        card.x + 12.0,
+        card.y + 108.0,
+        card.w - 24.0,
+        11.0,
+        TEXT_DIM,
+    );
+
+    draw_command_button(
+        Rect::new(rect.x, card.y + card.h + 16.0, rect.w, 42.0),
+        "Evolve",
+        ButtonTone::Arcane,
+        true,
+    )
+}
+
+fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect) -> bool {
+    let unlocked = state.unlocked_species.contains(&template.species)
+        && state.unlocked_monsters.contains(&template.name);
+    let can_afford = state.mana >= template.base_cost;
+    let enabled = unlocked && can_afford;
+    let selected = state.selected_monster.as_ref() == Some(&template.name);
+    let hovered = enabled && is_hovered_rect(rect);
+    let fill = if selected {
+        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.13)
+    } else if hovered {
+        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.10)
+    } else {
+        CARD
+    };
+    let border = if selected {
+        TREASURE
+    } else if unlocked {
+        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.24)
+    } else {
+        BORDER_MUTED
+    };
+
+    draw_card(rect, fill, border);
+    let portrait = Rect::new(rect.x + 9.0, rect.y + 9.0, 54.0, rect.h - 18.0);
+    draw_monster_portrait(portrait, unlocked, selected);
+    draw_text_fit(
+        if unlocked {
+            &template.name
+        } else {
+            &template.species
+        },
+        rect.x + 74.0,
+        rect.y + 26.0,
+        rect.w - 126.0,
+        15.0,
+        if unlocked { TEXT } else { TEXT_DIM },
+    );
+    draw_text_fit(
+        if unlocked { "Defender" } else { "Locked" },
+        rect.x + 74.0,
+        rect.y + 49.0,
+        rect.w - 126.0,
+        11.0,
+        TEXT_MUTED,
+    );
+    draw_text_fit_right(
+        &format!("{}M", template.base_cost),
+        rect.x + rect.w - 10.0,
+        rect.y + 40.0,
+        54.0,
+        13.0,
+        if can_afford { MANA } else { DANGER },
+    );
+
+    enabled && was_clicked_rect(rect)
+}
+
+fn draw_section_title(rect: Rect, title: &str, subtitle: &str) {
+    draw_text_fit(
+        title,
+        rect.x + 24.0,
+        rect.y + 28.0,
+        rect.w - 24.0,
+        20.0,
+        TEXT,
+    );
+    draw_poly_lines(rect.x + 10.0, rect.y + 22.0, 6, 8.0, 30.0, 1.5, SOUL);
+    draw_text_fit(subtitle, rect.x, rect.y + 54.0, rect.w, 12.0, TEXT_MUTED);
+}
+
+fn draw_small_tab(rect: Rect, text: &str, color: Color, active: bool) -> bool {
+    let hovered = is_hovered_rect(rect);
+    draw_card(
+        rect,
+        if active {
+            Color::new(color.r, color.g, color.b, 0.16)
+        } else if hovered {
+            Color::new(color.r, color.g, color.b, 0.10)
+        } else {
+            Color::new(0.0, 0.0, 0.0, 0.10)
+        },
+        Color::new(color.r, color.g, color.b, if active { 0.42 } else { 0.18 }),
+    );
+    draw_centered_text(text, rect, 10.0, if active { color } else { TEXT_MUTED });
+    was_clicked_rect(rect)
+}
+
+fn draw_rail_tab(rect: Rect, icon: &str, label: &str, color: Color, active: bool) -> bool {
+    let hovered = is_hovered_rect(rect);
+    draw_card(
+        rect,
+        if active {
+            Color::new(color.r, color.g, color.b, 0.14)
+        } else if hovered {
+            Color::new(color.r, color.g, color.b, 0.08)
+        } else {
+            Color::new(0.0, 0.0, 0.0, 0.10)
+        },
+        Color::new(color.r, color.g, color.b, if active { 0.48 } else { 0.16 }),
+    );
+    draw_centered_text(
+        icon,
+        Rect::new(rect.x, rect.y + 10.0, rect.w, 24.0),
+        22.0,
+        if active { color } else { TEXT_DIM },
+    );
+    draw_centered_text(
+        label,
+        Rect::new(rect.x + 2.0, rect.y + 43.0, rect.w - 4.0, 20.0),
+        8.0,
+        if active { TEXT } else { TEXT_MUTED },
+    );
+    was_clicked_rect(rect)
+}
+
+fn draw_monster_portrait(rect: Rect, unlocked: bool, selected: bool) {
+    let color = if unlocked { EMERALD } else { TEXT_DIM };
+    draw_card(
+        rect,
+        Color::new(0.0, 0.0, 0.0, 0.30),
+        Color::new(
+            color.r,
+            color.g,
+            color.b,
+            if selected { 0.55 } else { 0.20 },
+        ),
+    );
+    if unlocked {
+        draw_circle(
+            rect.x + rect.w * 0.50,
+            rect.y + rect.h * 0.42,
+            rect.w * 0.22,
+            Color::new(color.r, color.g, color.b, 0.42),
+        );
+        draw_triangle(
+            vec2(rect.x + rect.w * 0.21, rect.y + rect.h * 0.30),
+            vec2(rect.x + rect.w * 0.38, rect.y + rect.h * 0.38),
+            vec2(rect.x + rect.w * 0.30, rect.y + rect.h * 0.55),
+            color,
+        );
+        draw_triangle(
+            vec2(rect.x + rect.w * 0.79, rect.y + rect.h * 0.30),
+            vec2(rect.x + rect.w * 0.62, rect.y + rect.h * 0.38),
+            vec2(rect.x + rect.w * 0.70, rect.y + rect.h * 0.55),
+            color,
+        );
+        draw_circle(rect.x + rect.w * 0.42, rect.y + rect.h * 0.40, 2.0, BG_DEEP);
+        draw_circle(rect.x + rect.w * 0.58, rect.y + rect.h * 0.40, 2.0, BG_DEEP);
+    } else {
+        draw_rectangle(
+            rect.x + rect.w * 0.30,
+            rect.y + rect.h * 0.38,
+            rect.w * 0.40,
+            rect.h * 0.34,
+            Color::new(0.0, 0.0, 0.0, 0.34),
+        );
+        draw_rectangle_lines(
+            rect.x + rect.w * 0.34,
+            rect.y + rect.h * 0.45,
+            rect.w * 0.32,
+            rect.h * 0.22,
+            2.0,
+            TEXT_DIM,
+        );
+        draw_circle_lines(
+            rect.x + rect.w * 0.50,
+            rect.y + rect.h * 0.43,
+            rect.w * 0.16,
+            2.0,
+            TEXT_DIM,
+        );
+    }
+}
+
+fn next_build_summary(state: &GameState) -> (String, String, i32) {
+    let Some(deepest) = state.deepest_floor() else {
+        return (
+            "Entrance".to_string(),
+            "No floor mapped yet.".to_string(),
+            0,
+        );
+    };
+
+    let non_core_count = deepest
+        .rooms
+        .iter()
+        .filter(|room| room.room_type != RoomType::Core)
+        .count();
+    let total_rooms = state.total_room_count();
+
+    if non_core_count >= MAX_ROOMS_PER_FLOOR + 1 {
+        return (
+            format!("Open floor {}", state.total_floors + 1),
+            "Move the core deeper.".to_string(),
+            get_room_cost(total_rooms, false),
+        );
+    }
+
+    let is_boss = non_core_count == MAX_ROOMS_PER_FLOOR;
+    (
+        if is_boss {
+            "Boss chamber".to_string()
+        } else {
+            "Combat room".to_string()
+        },
+        format!("Floor {}", deepest.number),
+        get_room_cost(total_rooms, is_boss),
+    )
+}

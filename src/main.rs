@@ -10,7 +10,6 @@ mod simulation;
 mod ui;
 
 use macroquad::prelude::*;
-use macroquad_toolkit::colors::dark;
 
 use game_state::GameState;
 use ui::*;
@@ -58,13 +57,15 @@ async fn main() {
     let mut last_time_advance = get_time();
     let mut last_adventure_tick = get_time();
     let mut last_save = get_time();
+    let mut drawer_tab = DrawerTab::Monsters;
+    let mut drawer_open = true;
+    let mut log_expanded = false;
 
     loop {
-        clear_background(dark::BACKGROUND);
-
         let now = get_time();
         let sw = screen_width();
         let sh = screen_height();
+        draw_game_background(sw, sh);
 
         // === Time-based Updates ===
 
@@ -120,83 +121,95 @@ async fn main() {
             continue;
         }
 
-        // Top bar: Time display
-        draw_time_display(&state, 15.0, 35.0);
+        let hud_rect = Rect::new(
+            OUTER_MARGIN,
+            OUTER_MARGIN,
+            sw - OUTER_MARGIN * 2.0,
+            HUD_HEIGHT,
+        );
+        draw_top_hud(&state, hud_rect);
 
-        // Left sidebar
-        let sidebar_x = 10.0;
-        draw_resource_panel(&state, sidebar_x, TOP_BAR_HEIGHT, SIDEBAR_WIDTH);
+        let command_rect = Rect::new(
+            OUTER_MARGIN,
+            sh - OUTER_MARGIN - COMMAND_BAR_HEIGHT,
+            sw - OUTER_MARGIN * 2.0,
+            COMMAND_BAR_HEIGHT,
+        );
 
-        // Monster selector
-        let monster_panel_y = TOP_BAR_HEIGHT + 140.0;
-        let monster_panel_h = 220.0;
-        if let Some(monster) = draw_monster_selector(
-            &mut state,
-            sidebar_x,
-            monster_panel_y,
-            SIDEBAR_WIDTH,
-            monster_panel_h,
-        ) {
-            if state.selected_monster.as_ref() == Some(&monster) {
-                state.selected_monster = None; // Deselect if clicking same
-            } else {
-                state.selected_monster = Some(monster);
+        let body_top = hud_rect.y + hud_rect.h + PANEL_GAP;
+        let body_bottom = command_rect.y - PANEL_GAP;
+        let body_h = (body_bottom - body_top).max(220.0);
+
+        let drawer_w = if drawer_open {
+            SIDE_PANEL_WIDTH.min((sw * 0.22).clamp(250.0, DRAWER_OPEN_WIDTH))
+        } else {
+            DRAWER_COLLAPSED_WIDTH
+        };
+        let drawer_rect = Rect::new(OUTER_MARGIN, body_top, drawer_w, body_h);
+        match draw_side_drawer(&state, drawer_rect, &mut drawer_tab, &mut drawer_open) {
+            DrawerAction::SelectMonster(monster) => {
+                if state.selected_monster.as_ref() == Some(&monster) {
+                    state.selected_monster = None;
+                } else {
+                    state.selected_room = None;
+                    state.selected_monster = Some(monster);
+                }
             }
-        }
-
-        // Controls panel
-        let controls_y = monster_panel_y + monster_panel_h + 10.0;
-        let control_action = draw_controls(&state, sidebar_x, controls_y, SIDEBAR_WIDTH);
-        match control_action {
-            ControlAction::ToggleSpeed => simulation::toggle_speed(&mut state),
-            ControlAction::ToggleDungeon => simulation::toggle_dungeon_status(&mut state),
-            ControlAction::RespawnMonsters => simulation::respawn_monsters(&mut state),
-            ControlAction::AddRoom => {
+            DrawerAction::BuildRoom => {
                 if let Err(e) = simulation::add_room(&mut state, None) {
                     state.add_log(game_state::LogEntry::system(e));
                 }
             }
-            ControlAction::ResetGame => {
-                state = GameState::new();
-                let _ = persistence::save_game(&state);
-            }
-            ControlAction::ProcessEvolutions => simulation::process_evolutions(&mut state),
-            ControlAction::None => {}
+            DrawerAction::ProcessEvolutions => simulation::process_evolutions(&mut state),
+            DrawerAction::None => {}
         }
 
-        // Main dungeon view
-        let dungeon_x = SIDEBAR_WIDTH + 20.0;
-        let dungeon_w = sw - dungeon_x - 10.0;
-        let dungeon_h = sh - TOP_BAR_HEIGHT - LOG_HEIGHT - 20.0;
+        let has_inspector = state.selected_room.is_some() || state.selected_monster.is_some();
+        let right_panel_w = if has_inspector {
+            (sw * 0.21).clamp(270.0, 330.0)
+        } else {
+            0.0
+        };
+        let right_gap = if right_panel_w > 0.0 { PANEL_GAP } else { 0.0 };
+        let dungeon_x = drawer_rect.x + drawer_rect.w + PANEL_GAP;
+        let dungeon_w = sw - dungeon_x - right_panel_w - right_gap - OUTER_MARGIN;
+        let dungeon_h = body_h;
+        let dungeon_rect = Rect::new(
+            dungeon_x,
+            body_top,
+            dungeon_w.max(320.0),
+            dungeon_h.max(220.0),
+        );
 
-        if let Some((floor_num, room_pos)) =
-            draw_dungeon(&state, dungeon_x, TOP_BAR_HEIGHT, dungeon_w, dungeon_h)
-        {
-            // Handle room click
-            if let Some(ref monster_name) = state.selected_monster.clone() {
-                // Place selected monster
-                if let Err(e) =
-                    simulation::place_monster(&mut state, floor_num, room_pos, monster_name)
-                {
-                    state.add_log(game_state::LogEntry::system(e));
-                }
-                state.selected_monster = None;
-            } else {
-                // Toggle room selection
-                if state.selected_room == Some((floor_num, room_pos)) {
+        match draw_dungeon_board(&state, dungeon_rect) {
+            DungeonAction::RoomSelected(floor_num, room_pos) => {
+                if let Some(ref monster_name) = state.selected_monster.clone() {
+                    if let Err(e) =
+                        simulation::place_monster(&mut state, floor_num, room_pos, monster_name)
+                    {
+                        state.add_log(game_state::LogEntry::system(e));
+                    }
+                    state.selected_monster = None;
+                } else if state.selected_room == Some((floor_num, room_pos)) {
                     state.selected_room = None;
                 } else {
                     state.selected_room = Some((floor_num, room_pos));
                 }
             }
+            DungeonAction::BuildRoom => {
+                if let Err(e) = simulation::add_room(&mut state, None) {
+                    state.add_log(game_state::LogEntry::system(e));
+                }
+            }
+            DungeonAction::None => {}
         }
 
-        // Upgrade panel (when room is selected)
-        if state.selected_room.is_some() {
-            let upgrade_panel_w = 220.0;
-            let upgrade_panel_h = 350.0;
-            let upgrade_panel_x = sw - upgrade_panel_w - 15.0;
-            let upgrade_panel_y = TOP_BAR_HEIGHT + 10.0;
+        // Inspector panel (room, monster, and upgrade context)
+        if has_inspector {
+            let upgrade_panel_w = right_panel_w;
+            let upgrade_panel_h = dungeon_h;
+            let upgrade_panel_x = sw - upgrade_panel_w - OUTER_MARGIN;
+            let upgrade_panel_y = body_top;
 
             let upgrade_action = draw_upgrade_panel(
                 &state,
@@ -222,19 +235,55 @@ async fn main() {
                 }
                 UpgradeAction::Close => {
                     state.selected_room = None;
+                    state.selected_monster = None;
                 }
                 UpgradeAction::None => {}
             }
         }
 
-        // Bottom log panel
-        draw_game_log(
+        let chip_w = if state.adventurer_parties.is_empty() {
+            132.0
+        } else {
+            184.0
+        };
+        draw_adventurer_status_chip(
             &state,
-            dungeon_x,
-            sh - LOG_HEIGHT - 10.0,
-            dungeon_w,
-            LOG_HEIGHT,
+            Rect::new(
+                dungeon_rect.x + dungeon_rect.w - chip_w - 24.0,
+                dungeon_rect.y + 24.0,
+                chip_w,
+                36.0,
+            ),
         );
+
+        let toast_w = (dungeon_rect.w * 0.66).clamp(420.0, 680.0);
+        let toast_rect = Rect::new(
+            dungeon_rect.x + (dungeon_rect.w - toast_w) * 0.5 - 28.0,
+            dungeon_rect.y + dungeon_rect.h - 56.0,
+            toast_w.min(dungeon_rect.w - 92.0),
+            44.0,
+        );
+        if draw_event_toast(&state, toast_rect, log_expanded) == EventToastAction::ToggleLog {
+            log_expanded = !log_expanded;
+        }
+
+        let control_action = draw_command_bar(&state, command_rect);
+        match control_action {
+            ControlAction::ToggleSpeed => simulation::toggle_speed(&mut state),
+            ControlAction::ToggleDungeon => simulation::toggle_dungeon_status(&mut state),
+            ControlAction::RespawnMonsters => simulation::respawn_monsters(&mut state),
+            ControlAction::AddRoom => {
+                if let Err(e) = simulation::add_room(&mut state, None) {
+                    state.add_log(game_state::LogEntry::system(e));
+                }
+            }
+            ControlAction::ResetGame => {
+                state = GameState::new();
+                let _ = persistence::save_game(&state);
+            }
+            ControlAction::ProcessEvolutions => simulation::process_evolutions(&mut state),
+            ControlAction::None => {}
+        }
 
         next_frame().await;
     }
