@@ -7,6 +7,7 @@ pub mod shell;
 pub mod side_drawer;
 pub mod species_selector;
 pub mod theme;
+pub mod title_screen;
 pub mod upgrade_panel;
 
 pub use controls::*;
@@ -16,6 +17,7 @@ pub use shell::*;
 pub use side_drawer::*;
 pub use species_selector::*;
 pub use theme::*;
+pub use title_screen::*;
 pub use upgrade_panel::*;
 
 // Layout constants

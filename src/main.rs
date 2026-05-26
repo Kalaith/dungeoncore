@@ -9,10 +9,19 @@ mod persistence;
 mod simulation;
 mod ui;
 
+use macroquad::miniquad::window::quit;
 use macroquad::prelude::*;
+use macroquad_toolkit::assets::AssetManager;
 
 use game_state::GameState;
 use ui::*;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AppScreen {
+    Title,
+    Settings,
+    Playing,
+}
 
 // Helper to check if any modal is open
 fn is_modal_open(state: &GameState) -> bool {
@@ -30,28 +39,49 @@ fn window_conf() -> Conf {
     }
 }
 
+fn create_new_game() -> GameState {
+    let mut new_state = GameState::new();
+
+    // Automatically unlock the first species (Goblinoid) for new games.
+    new_state.unlocked_species.push("Goblinoid".to_string());
+    new_state.unlocked_monsters.push("Goblin".to_string());
+
+    if let Err(e) = simulation::place_monster(&mut new_state, 1, 1, "Goblin") {
+        eprintln!("Error placing starting Goblin: {}", e);
+    } else {
+        new_state.add_log(crate::game_state::LogEntry::system(
+            "A Goblin has been placed in your core room.",
+        ));
+    }
+
+    new_state
+}
+
+fn reset_timers(last_time_advance: &mut f64, last_adventure_tick: &mut f64, last_save: &mut f64) {
+    let now = get_time();
+    *last_time_advance = now;
+    *last_adventure_tick = now;
+    *last_save = now;
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
-    // Load or create new game
-    let mut state = persistence::load_game().unwrap_or_else(|_| {
-        println!("Starting new game...");
-        let mut new_state = GameState::new();
+    let mut assets = AssetManager::new();
+    if let Err(e) = assets
+        .load_texture_with_filter(
+            TITLE_BACKGROUND_KEY,
+            TITLE_BACKGROUND_PATH,
+            FilterMode::Linear,
+        )
+        .await
+    {
+        eprintln!("Failed to load title background: {}", e);
+    }
 
-        // Automatically unlock the first species (Goblinoid) for new games
-        new_state.unlocked_species.push("Goblinoid".to_string());
-        new_state.unlocked_monsters.push("Goblin".to_string());
-
-        // Place starting Goblin in core room of floor 1
-        if let Err(e) = simulation::place_monster(&mut new_state, 1, 1, "Goblin") {
-            eprintln!("Error placing starting Goblin: {}", e);
-        } else {
-            new_state.add_log(crate::game_state::LogEntry::system(
-                "A Goblin has been placed in your core room.",
-            ));
-        }
-
-        new_state
-    });
+    let mut state = persistence::load_game().unwrap_or_else(|_| create_new_game());
+    let mut screen = AppScreen::Title;
+    let mut title_notice: Option<String> = None;
+    let mut fullscreen_enabled = false;
 
     // Timing variables
     let mut last_time_advance = get_time();
@@ -62,6 +92,81 @@ async fn main() {
     let mut log_expanded = false;
 
     loop {
+        match screen {
+            AppScreen::Title => {
+                match draw_title_screen(
+                    &assets,
+                    persistence::save_exists(),
+                    title_notice.as_deref(),
+                ) {
+                    TitleAction::NewGame => {
+                        state = create_new_game();
+                        if let Err(e) = persistence::save_game(&state) {
+                            eprintln!("Failed to save new game: {}", e);
+                        }
+                        reset_timers(
+                            &mut last_time_advance,
+                            &mut last_adventure_tick,
+                            &mut last_save,
+                        );
+                        title_notice = None;
+                        screen = AppScreen::Playing;
+                    }
+                    TitleAction::LoadGame => match persistence::load_game() {
+                        Ok(loaded_state) => {
+                            state = loaded_state;
+                            reset_timers(
+                                &mut last_time_advance,
+                                &mut last_adventure_tick,
+                                &mut last_save,
+                            );
+                            title_notice = None;
+                            screen = AppScreen::Playing;
+                        }
+                        Err(e) => {
+                            title_notice = Some(format!("Load failed: {}", e));
+                        }
+                    },
+                    TitleAction::Settings => {
+                        title_notice = None;
+                        screen = AppScreen::Settings;
+                    }
+                    TitleAction::Exit => {
+                        quit();
+                        return;
+                    }
+                    TitleAction::None => {}
+                }
+                next_frame().await;
+                continue;
+            }
+            AppScreen::Settings => {
+                match draw_title_settings_screen(
+                    &assets,
+                    fullscreen_enabled,
+                    title_notice.as_deref(),
+                ) {
+                    TitleSettingsAction::ToggleFullscreen => {
+                        fullscreen_enabled = !fullscreen_enabled;
+                        set_fullscreen(fullscreen_enabled);
+                        title_notice = Some(if fullscreen_enabled {
+                            "Fullscreen enabled.".to_string()
+                        } else {
+                            "Fullscreen disabled.".to_string()
+                        });
+                    }
+                    TitleSettingsAction::Back => {
+                        title_notice = None;
+                        screen = AppScreen::Title;
+                    }
+                    TitleSettingsAction::None => {}
+                }
+                next_frame().await;
+                continue;
+            }
+            AppScreen::Playing => {}
+        }
+
         let now = get_time();
         let sw = screen_width();
         let sh = screen_height();
@@ -278,8 +383,13 @@ async fn main() {
                 }
             }
             ControlAction::ResetGame => {
-                state = GameState::new();
+                state = create_new_game();
                 let _ = persistence::save_game(&state);
+                reset_timers(
+                    &mut last_time_advance,
+                    &mut last_adventure_tick,
+                    &mut last_save,
+                );
             }
             ControlAction::ProcessEvolutions => simulation::process_evolutions(&mut state),
             ControlAction::None => {}
