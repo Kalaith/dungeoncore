@@ -90,6 +90,7 @@ async fn main() {
     let mut drawer_tab = DrawerTab::Monsters;
     let mut drawer_open = true;
     let mut log_expanded = false;
+    let mut upgrade_scroll = 0.0;
 
     loop {
         match screen {
@@ -297,8 +298,10 @@ async fn main() {
                     state.selected_monster = None;
                 } else if state.selected_room == Some((floor_num, room_pos)) {
                     state.selected_room = None;
+                    upgrade_scroll = 0.0;
                 } else {
                     state.selected_room = Some((floor_num, room_pos));
+                    upgrade_scroll = 0.0;
                 }
             }
             DungeonAction::BuildRoom => {
@@ -322,6 +325,7 @@ async fn main() {
                 upgrade_panel_y,
                 upgrade_panel_w,
                 upgrade_panel_h,
+                &mut upgrade_scroll,
             );
             match upgrade_action {
                 UpgradeAction::Apply(name) => {
@@ -341,6 +345,7 @@ async fn main() {
                 UpgradeAction::Close => {
                     state.selected_room = None;
                     state.selected_monster = None;
+                    upgrade_scroll = 0.0;
                 }
                 UpgradeAction::None => {}
             }

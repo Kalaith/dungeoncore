@@ -150,9 +150,9 @@ pub struct Equipment {
 impl Default for Equipment {
     fn default() -> Self {
         Self {
-            weapon: "Basic Sword".into(),
-            armor: "Leather Armor".into(),
-            accessory: "None".into(),
+            weapon: "Rusty Sword".into(),
+            armor: "Cloth Robe".into(),
+            accessory: "Worn Ring".into(),
         }
     }
 }

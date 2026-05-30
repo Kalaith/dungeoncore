@@ -2,9 +2,7 @@ use crate::data::adventurers::{
     get_adventurer_classes, get_adventurer_names, get_entry_quotes, get_exit_quotes,
 };
 use crate::data::constants::{ADVENTURER_SPAWN_CHANCE, MAX_PARTY_SIZE, MIN_PARTY_SIZE};
-use crate::game_state::{
-    Adventurer, AdventurerParty, DungeonStatus, Equipment, GameState, LogEntry, Stats,
-};
+use crate::game_state::{Adventurer, AdventurerParty, DungeonStatus, GameState, LogEntry, Stats};
 
 /// Try to spawn a new adventurer party
 pub fn spawn_party(state: &mut GameState) {
@@ -34,7 +32,10 @@ pub fn spawn_party(state: &mut GameState) {
         let class = macroquad_toolkit::rng::choose(&classes).unwrap();
         let name = macroquad_toolkit::rng::choose(&names).unwrap();
         let level = macroquad_toolkit::rng::gen_range(1, 4);
-        let hp = class.hp + (level - 1) * 10;
+        let base_hp = class.hp + (level - 1) * 10;
+        let equipment = crate::data::equipment::recommended_loadout(&class.name, level);
+        let equipment_bonus = crate::data::equipment::equipment_stat_bonus(&equipment, &class.name);
+        let hp = base_hp + equipment_bonus.hp;
 
         members.push(Adventurer {
             id: macroquad::rand::rand() as u64,
@@ -46,12 +47,12 @@ pub fn spawn_party(state: &mut GameState) {
             alive: true,
             experience: 0,
             gold: 0,
-            equipment: Equipment::default(),
+            equipment,
             conditions: Vec::new(),
             scaled_stats: Stats {
                 hp,
-                attack: class.attack + (level - 1) * 2,
-                defense: class.defense + (level - 1),
+                attack: class.attack + (level - 1) * 2 + equipment_bonus.attack,
+                defense: class.defense + (level - 1) + equipment_bonus.defense,
             },
         });
     }
@@ -136,6 +137,8 @@ fn process_single_party(state: &mut GameState, party_id: u64) {
         None => return,
     };
 
+    mark_room_explored(state, floor_idx, room_idx);
+
     // Check for combat
     let has_alive_monsters = state.floors[floor_idx].rooms[room_idx]
         .monsters
@@ -148,6 +151,16 @@ fn process_single_party(state: &mut GameState, party_id: u64) {
     } else {
         // Room cleared, advance
         advance_party(state, party_idx);
+    }
+}
+
+fn mark_room_explored(state: &mut GameState, floor_idx: usize, room_idx: usize) {
+    if let Some(room) = state
+        .floors
+        .get_mut(floor_idx)
+        .and_then(|floor| floor.rooms.get_mut(room_idx))
+    {
+        room.explored = true;
     }
 }
 

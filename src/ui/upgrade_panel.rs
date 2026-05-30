@@ -1,9 +1,11 @@
 use macroquad::prelude::*;
 use macroquad_toolkit::input::was_clicked_rect;
 
+use crate::data::evolutions::get_evolution_for_monster;
 use crate::data::monsters::get_monster_template;
+use crate::data::traits::get_trait;
 use crate::data::upgrades::{get_all_upgrades, UpgradeTemplate};
-use crate::game_state::{GameState, Room, RoomType};
+use crate::game_state::{GameState, Monster, Room, RoomType};
 
 use super::theme::*;
 
@@ -15,7 +17,14 @@ pub enum UpgradeAction {
     Close,
 }
 
-pub fn draw_upgrade_panel(state: &GameState, x: f32, y: f32, w: f32, h: f32) -> UpgradeAction {
+pub fn draw_upgrade_panel(
+    state: &GameState,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    upgrade_scroll: &mut f32,
+) -> UpgradeAction {
     let mut action = UpgradeAction::None;
     let rect = Rect::new(x, y, w, h);
     draw_panel(rect, None, SOUL);
@@ -42,7 +51,14 @@ pub fn draw_upgrade_panel(state: &GameState, x: f32, y: f32, w: f32, h: f32) -> 
     if let Some(room) = selected_room(state) {
         y_cursor = draw_selected_room(state, room, inner, y_cursor + 10.0);
         if room.room_type == RoomType::Normal || room.room_type == RoomType::Boss {
-            draw_upgrade_choices(state, room, inner, y_cursor + 12.0, &mut action);
+            draw_upgrade_choices(
+                state,
+                room,
+                inner,
+                y_cursor + 12.0,
+                upgrade_scroll,
+                &mut action,
+            );
         } else {
             draw_hint(
                 Rect::new(inner.x, y_cursor + 12.0, inner.w, 54.0),
@@ -77,7 +93,7 @@ fn selected_room(state: &GameState) -> Option<&Room> {
 }
 
 fn draw_selected_monster(state: &GameState, monster_name: &str, bounds: Rect, y: f32) -> f32 {
-    let rect = Rect::new(bounds.x, y, bounds.w, 98.0);
+    let rect = Rect::new(bounds.x, y, bounds.w, 136.0);
     draw_card(
         rect,
         Color::new(SOUL.r, SOUL.g, SOUL.b, 0.085),
@@ -102,16 +118,35 @@ fn draw_selected_monster(state: &GameState, monster_name: &str, bounds: Rect, y:
             TEXT_MUTED,
         );
         draw_text_fit(
-            &format!("Cost starts at {} mana", template.base_cost),
+            &format!(
+                "HP {}  ATK {}  DEF {}  Cost {} mana",
+                template.hp, template.attack, template.defense, template.base_cost
+            ),
             rect.x + 12.0,
             rect.y + 75.0,
             rect.w - 24.0,
-            13.0,
+            12.0,
             if state.mana >= template.base_cost {
                 MANA
             } else {
                 DANGER
             },
+        );
+        draw_text_fit(
+            &format!("Traits: {}", template_trait_summary(&template.traits)),
+            rect.x + 12.0,
+            rect.y + 100.0,
+            rect.w - 24.0,
+            11.0,
+            TEXT_MUTED,
+        );
+        draw_text_fit(
+            &template_evolution_hint(monster_name),
+            rect.x + 12.0,
+            rect.y + 122.0,
+            rect.w - 24.0,
+            11.0,
+            SOUL,
         );
     } else {
         draw_text_fit(
@@ -128,7 +163,7 @@ fn draw_selected_monster(state: &GameState, monster_name: &str, bounds: Rect, y:
 }
 
 fn draw_selected_room(state: &GameState, room: &Room, bounds: Rect, y: f32) -> f32 {
-    let rect = Rect::new(bounds.x, y, bounds.w, 248.0);
+    let rect = Rect::new(bounds.x, y, bounds.w, 238.0);
     let tone = room_color(room);
     draw_card(
         rect,
@@ -157,19 +192,21 @@ fn draw_selected_room(state: &GameState, room: &Room, bounds: Rect, y: f32) -> f
         13.0,
         TEXT_MUTED,
     );
-    draw_wrapped(
+    draw_text_fit(
         room_role(room),
-        Rect::new(rect.x + 12.0, rect.y + 74.0, rect.w - 24.0, 64.0),
+        rect.x + 12.0,
+        rect.y + 76.0,
+        rect.w - 24.0,
         12.0,
         TEXT_MUTED,
     );
 
     let alive = room.monsters.iter().filter(|monster| monster.alive).count();
     let adventurers = adventurers_in_room(state, room);
-    draw_section_rule(rect.x + 12.0, rect.y + 152.0, rect.w - 24.0, "ROOM STATS");
+    draw_section_rule(rect.x + 12.0, rect.y + 102.0, rect.w - 24.0, "ROOM STATS");
     draw_stat_line(
         rect.x + 12.0,
-        rect.y + 182.0,
+        rect.y + 130.0,
         rect.w - 24.0,
         "Defenders",
         &format!("{alive}/{}", room.monsters.len()),
@@ -177,19 +214,38 @@ fn draw_selected_room(state: &GameState, room: &Room, bounds: Rect, y: f32) -> f
     );
     draw_stat_line(
         rect.x + 12.0,
-        rect.y + 207.0,
+        rect.y + 153.0,
         rect.w - 24.0,
-        "Capacity",
-        "3",
-        TEXT,
+        "Upgrade",
+        room.upgrade
+            .as_ref()
+            .map(|upgrade| upgrade.name.as_str())
+            .unwrap_or("None"),
+        if room.upgrade.is_some() {
+            TREASURE
+        } else {
+            TEXT_DIM
+        },
     );
     draw_stat_line(
         rect.x + 12.0,
-        rect.y + 232.0,
+        rect.y + 176.0,
         rect.w - 24.0,
         "Threat",
         &adventurers.to_string(),
         if adventurers > 0 { WARNING } else { EMERALD },
+    );
+
+    draw_section_rule(
+        rect.x + 12.0,
+        rect.y + 202.0,
+        rect.w - 24.0,
+        "DEFENDER PROGRESSION",
+    );
+    draw_monster_progress_rows(
+        state,
+        room,
+        Rect::new(rect.x + 12.0, rect.y + 212.0, rect.w - 24.0, 24.0),
     );
 
     y + rect.h
@@ -200,6 +256,7 @@ fn draw_upgrade_choices(
     room: &Room,
     bounds: Rect,
     y: f32,
+    upgrade_scroll: &mut f32,
     action: &mut UpgradeAction,
 ) {
     let max_h = bounds.y + bounds.h - y;
@@ -213,7 +270,7 @@ fn draw_upgrade_choices(
     if let Some(upgrade) = &room.upgrade {
         draw_hint(
             Rect::new(bounds.x, row_y, bounds.w, 58.0),
-            &format!("{}: {}", upgrade.name, upgrade.effect),
+            &format!("{}: {}", upgrade.name, room_upgrade_preview(upgrade)),
             TREASURE,
         );
         row_y += 70.0;
@@ -228,32 +285,100 @@ fn draw_upgrade_choices(
         return;
     }
 
-    if draw_command_button(
-        Rect::new(bounds.x, row_y, bounds.w, 44.0),
-        "Manage Defenders",
-        ButtonTone::Primary,
-        true,
-    ) {
-        // Existing monster placement flow is handled by the left drawer.
+    let upgrades = get_all_upgrades();
+    let list_rect = Rect::new(
+        bounds.x,
+        row_y,
+        bounds.w,
+        (bounds.y + bounds.h - row_y).max(0.0),
+    );
+    draw_upgrade_catalog(state, &upgrades, list_rect, upgrade_scroll, action);
+}
+
+fn draw_upgrade_catalog(
+    state: &GameState,
+    upgrades: &[UpgradeTemplate],
+    rect: Rect,
+    upgrade_scroll: &mut f32,
+    action: &mut UpgradeAction,
+) {
+    if rect.h < 48.0 {
+        return;
     }
 
-    row_y += 58.0;
-    let upgrades = get_all_upgrades();
-    if let Some(upgrade) = upgrades.first() {
-        if draw_upgrade_button(state, upgrade, Rect::new(bounds.x, row_y, bounds.w, 44.0)) {
+    let row_h = 58.0;
+    let total_h = upgrades.len() as f32 * row_h;
+    let max_scroll = (total_h - rect.h).max(0.0);
+    let mouse = vec2(mouse_position().0, mouse_position().1);
+    if rect.contains(mouse) {
+        let (_, wheel_y) = mouse_wheel();
+        if wheel_y.abs() > 0.0 {
+            *upgrade_scroll = (*upgrade_scroll - wheel_y * row_h).clamp(0.0, max_scroll);
+        }
+    }
+    *upgrade_scroll = (*upgrade_scroll).clamp(0.0, max_scroll);
+
+    draw_card(
+        rect,
+        Color::new(0.0, 0.0, 0.0, 0.10),
+        Color::new(BORDER.r, BORDER.g, BORDER.b, 0.18),
+    );
+
+    for (idx, upgrade) in upgrades.iter().enumerate() {
+        let row_y = rect.y + idx as f32 * row_h - *upgrade_scroll + 5.0;
+        if row_y < rect.y + 4.0 || row_y + row_h - 8.0 > rect.y + rect.h - 12.0 {
+            continue;
+        }
+
+        let row = Rect::new(rect.x + 6.0, row_y, rect.w - 12.0, row_h - 8.0);
+        if draw_upgrade_row(state, upgrade, row) {
             *action = UpgradeAction::Apply(upgrade.name.clone());
         }
     }
+
+    if max_scroll > 0.0 {
+        draw_text_fit_right(
+            &format!(
+                "{} / {}",
+                ((*upgrade_scroll / row_h).floor() as usize + 1).min(upgrades.len()),
+                upgrades.len()
+            ),
+            rect.x + rect.w - 8.0,
+            rect.y + rect.h - 8.0,
+            72.0,
+            10.0,
+            TEXT_DIM,
+        );
+    }
 }
 
-fn draw_upgrade_button(state: &GameState, upgrade: &UpgradeTemplate, rect: Rect) -> bool {
-    let can_afford = state.gold >= upgrade.gold_cost && state.souls >= upgrade.souls_cost;
-    let enabled = can_afford && state.adventurer_parties.is_empty();
-    let label = format!(
-        "Upgrade Room        {}g {}s",
-        upgrade.gold_cost, upgrade.souls_cost
-    );
-    draw_command_button(rect, &label, ButtonTone::Ghost, enabled)
+fn draw_monster_progress_rows(state: &GameState, room: &Room, rect: Rect) {
+    if room.monsters.is_empty() {
+        draw_text_fit(
+            "No defenders placed.",
+            rect.x,
+            rect.y + 14.0,
+            rect.w,
+            11.0,
+            TEXT_DIM,
+        );
+        return;
+    }
+
+    let row_w = rect.w / room.monsters.len().min(3) as f32;
+    for (idx, monster) in room.monsters.iter().take(3).enumerate() {
+        let row = Rect::new(rect.x + idx as f32 * row_w, rect.y, row_w - 5.0, rect.h);
+        let (status, color) = monster_evolution_status(state, room, monster);
+        draw_text_fit(
+            &monster.type_name,
+            row.x,
+            row.y + 10.0,
+            row.w,
+            10.0,
+            if monster.alive { TEXT } else { TEXT_DIM },
+        );
+        draw_text_fit(&status, row.x, row.y + 23.0, row.w, 9.0, color);
+    }
 }
 
 fn draw_upgrade_row(state: &GameState, upgrade: &UpgradeTemplate, rect: Rect) -> bool {
@@ -274,28 +399,120 @@ fn draw_upgrade_row(state: &GameState, upgrade: &UpgradeTemplate, rect: Rect) ->
         &upgrade.name,
         rect.x + 10.0,
         rect.y + 17.0,
-        rect.w - 82.0,
+        rect.w - 92.0,
         13.0,
         if enabled { TEXT } else { TEXT_DIM },
     );
     draw_text_fit(
-        &format!("{}g {}s", upgrade.gold_cost, upgrade.souls_cost),
+        &upgrade_preview(upgrade),
         rect.x + 10.0,
-        rect.y + 32.0,
-        rect.w - 82.0,
+        rect.y + 34.0,
+        rect.w - 92.0,
+        10.0,
+        TEXT_MUTED,
+    );
+    draw_text_fit_right(
+        &format!("{}g {}s", upgrade.gold_cost, upgrade.souls_cost),
+        rect.x + rect.w - 10.0,
+        rect.y + 16.0,
+        78.0,
         10.0,
         if can_afford { TREASURE } else { TEXT_DIM },
     );
     draw_text_fit_right(
         if enabled { "Apply" } else { "Locked" },
         rect.x + rect.w - 10.0,
-        rect.y + 24.0,
+        rect.y + 37.0,
         64.0,
         11.0,
         if enabled { EMERALD } else { TEXT_DIM },
     );
 
     enabled && was_clicked_rect(rect)
+}
+
+fn upgrade_preview(upgrade: &UpgradeTemplate) -> String {
+    match upgrade.upgrade_type.as_str() {
+        "trap" => format!("Trap damage x{:.2}", upgrade.multiplier),
+        "treasure" => format!("Gold drops x{:.2}", upgrade.multiplier),
+        "reinforcement" => format!("Monster survival x{:.2}", upgrade.multiplier),
+        "evolution" => format!("Monster XP x{:.2}", upgrade.multiplier),
+        _ => upgrade.effect.clone(),
+    }
+}
+
+fn room_upgrade_preview(upgrade: &crate::game_state::RoomUpgrade) -> String {
+    match &upgrade.upgrade_type {
+        crate::game_state::RoomUpgradeType::Trap => {
+            format!("{} Trap damage x{:.2}", upgrade.effect, upgrade.multiplier)
+        }
+        crate::game_state::RoomUpgradeType::Treasure => {
+            format!("{} Gold drops x{:.2}", upgrade.effect, upgrade.multiplier)
+        }
+        crate::game_state::RoomUpgradeType::Reinforcement => {
+            format!(
+                "{} Monster survival x{:.2}",
+                upgrade.effect, upgrade.multiplier
+            )
+        }
+        crate::game_state::RoomUpgradeType::Evolution => {
+            format!("{} Monster XP x{:.2}", upgrade.effect, upgrade.multiplier)
+        }
+    }
+}
+
+fn monster_evolution_status(state: &GameState, room: &Room, monster: &Monster) -> (String, Color) {
+    if let Some(path) = get_evolution_for_monster(&monster.type_name) {
+        if monster.experience < path.experience_required {
+            return (
+                format!(
+                    "{}/{} XP -> {}",
+                    monster.experience, path.experience_required, path.to_monster
+                ),
+                MANA,
+            );
+        }
+        if room.floor_number < path.conditions.min_floor {
+            return (format!("floor {}", path.conditions.min_floor), WARNING);
+        }
+        if state.gold < path.conditions.gold_cost {
+            return (format!("{}g", path.conditions.gold_cost), TREASURE);
+        }
+        return (format!("Ready -> {}", path.to_monster), EMERALD);
+    }
+
+    ("Final".to_string(), TEXT_DIM)
+}
+
+fn template_trait_summary(trait_ids: &[String]) -> String {
+    if trait_ids.is_empty() {
+        return "None".to_string();
+    }
+
+    trait_ids
+        .iter()
+        .take(3)
+        .map(|trait_id| {
+            get_trait(trait_id)
+                .map(|trait_def| trait_def.name)
+                .unwrap_or_else(|| trait_id.clone())
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn template_evolution_hint(monster_name: &str) -> String {
+    get_evolution_for_monster(monster_name)
+        .map(|path| {
+            format!(
+                "Evolution: {} XP, floor {}, {}g -> {}",
+                path.experience_required,
+                path.conditions.min_floor,
+                path.conditions.gold_cost,
+                path.to_monster
+            )
+        })
+        .unwrap_or_else(|| "Evolution: final form".to_string())
 }
 
 fn draw_hint(rect: Rect, text: &str, color: Color) {

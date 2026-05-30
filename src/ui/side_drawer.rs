@@ -2,7 +2,9 @@ use macroquad::prelude::*;
 use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
 
 use crate::data::constants::{get_room_cost, MAX_ROOMS_PER_FLOOR};
+use crate::data::evolutions::get_evolution_for_monster;
 use crate::data::monsters::{get_monster_templates, MonsterTemplate};
+use crate::data::traits::get_trait;
 use crate::game_state::{GameState, RoomType};
 
 use super::theme::*;
@@ -182,13 +184,19 @@ fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> {
     draw_section_title(rect, "MONSTERS", "Choose a defender.");
 
     let templates = get_monster_templates();
+    let available_h = (rect.h - 138.0).max(0.0);
+    let row_h = (available_h / templates.len().max(1) as f32).clamp(46.0, 72.0);
+    let row_gap = 6.0;
     let mut y = rect.y + 72.0;
-    for template in templates.iter().take(4) {
-        let row = Rect::new(rect.x, y, rect.w, 72.0);
+    for template in &templates {
+        if y + row_h > rect.y + rect.h - 68.0 {
+            break;
+        }
+        let row = Rect::new(rect.x, y, rect.w, row_h);
         if draw_monster_option(state, template, row) {
             selected = Some(template.name.clone());
         }
-        y += 84.0;
+        y += row_h + row_gap;
     }
 
     if let Some(monster) = &state.selected_monster {
@@ -222,10 +230,15 @@ fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> {
 fn draw_evolution_tab(state: &GameState, rect: Rect) -> bool {
     draw_section_title(rect, "EVOLUTION", "Advance unlocked species.");
 
-    let card = Rect::new(rect.x, rect.y + 70.0, rect.w, 136.0);
+    let rows = collect_evolution_rows(state);
+    let ready_count = rows.iter().filter(|row| row.ready).count();
+    let waiting_count = rows.iter().filter(|row| !row.ready && row.has_path).count();
+    let final_count = rows.iter().filter(|row| !row.has_path).count();
+
+    let card = Rect::new(rect.x, rect.y + 70.0, rect.w, 126.0);
     draw_card(card, CARD, BORDER_MUTED);
     draw_text_fit(
-        &format!("Species: {}", state.unlocked_species.len()),
+        &format!("Ready: {}  Waiting: {}", ready_count, waiting_count),
         card.x + 12.0,
         card.y + 28.0,
         card.w - 24.0,
@@ -233,7 +246,7 @@ fn draw_evolution_tab(state: &GameState, rect: Rect) -> bool {
         TEXT,
     );
     draw_text_fit(
-        &format!("Monsters: {}", state.unlocked_monsters.len()),
+        &format!("Final forms: {}", final_count),
         card.x + 12.0,
         card.y + 55.0,
         card.w - 24.0,
@@ -241,7 +254,11 @@ fn draw_evolution_tab(state: &GameState, rect: Rect) -> bool {
         TEXT_MUTED,
     );
     draw_text_fit(
-        &format!("Souls: {}", state.souls),
+        &format!(
+            "Species: {}  Souls: {}",
+            state.unlocked_species.len(),
+            state.souls
+        ),
         card.x + 12.0,
         card.y + 82.0,
         card.w - 24.0,
@@ -249,7 +266,7 @@ fn draw_evolution_tab(state: &GameState, rect: Rect) -> bool {
         SOUL,
     );
     draw_text_fit(
-        "Processes any ready evolutions.",
+        "Current defenders and their next forms.",
         card.x + 12.0,
         card.y + 108.0,
         card.w - 24.0,
@@ -257,11 +274,21 @@ fn draw_evolution_tab(state: &GameState, rect: Rect) -> bool {
         TEXT_DIM,
     );
 
+    let mut row_y = card.y + card.h + 12.0;
+    let row_h = 46.0;
+    for row in rows
+        .iter()
+        .take(((rect.y + rect.h - row_y - 58.0) / row_h).max(0.0) as usize)
+    {
+        draw_evolution_row(row, Rect::new(rect.x, row_y, rect.w, row_h - 6.0));
+        row_y += row_h;
+    }
+
     draw_command_button(
-        Rect::new(rect.x, card.y + card.h + 16.0, rect.w, 42.0),
+        Rect::new(rect.x, rect.y + rect.h - 46.0, rect.w, 42.0),
         "Evolve",
         ButtonTone::Arcane,
-        true,
+        ready_count > 0,
     )
 }
 
@@ -290,22 +317,29 @@ fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect
     draw_card(rect, fill, border);
     let portrait = Rect::new(rect.x + 9.0, rect.y + 9.0, 54.0, rect.h - 18.0);
     draw_monster_portrait(portrait, unlocked, selected);
+    let title = if unlocked {
+        template.name.as_str()
+    } else {
+        template.species.as_str()
+    };
     draw_text_fit(
-        if unlocked {
-            &template.name
-        } else {
-            &template.species
-        },
+        title,
         rect.x + 74.0,
-        rect.y + 26.0,
+        rect.y + rect.h * 0.38,
         rect.w - 126.0,
-        15.0,
+        14.0,
         if unlocked { TEXT } else { TEXT_DIM },
     );
+    let traits = trait_summary(&template.traits);
+    let detail = if unlocked {
+        format!("T{} {}  {}", template.tier, template.species, traits)
+    } else {
+        "Locked".to_string()
+    };
     draw_text_fit(
-        if unlocked { "Defender" } else { "Locked" },
+        &detail,
         rect.x + 74.0,
-        rect.y + 49.0,
+        rect.y + rect.h * 0.70,
         rect.w - 126.0,
         11.0,
         TEXT_MUTED,
@@ -313,7 +347,7 @@ fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect
     draw_text_fit_right(
         &format!("{}M", template.base_cost),
         rect.x + rect.w - 10.0,
-        rect.y + 40.0,
+        rect.y + rect.h * 0.58,
         54.0,
         13.0,
         if can_afford { MANA } else { DANGER },
@@ -437,6 +471,129 @@ fn draw_monster_portrait(rect: Rect, unlocked: bool, selected: bool) {
             TEXT_DIM,
         );
     }
+}
+
+#[derive(Debug)]
+struct EvolutionUiRow {
+    monster: String,
+    location: String,
+    xp_label: String,
+    status: String,
+    color: Color,
+    ready: bool,
+    has_path: bool,
+}
+
+fn collect_evolution_rows(state: &GameState) -> Vec<EvolutionUiRow> {
+    let mut rows = Vec::new();
+
+    for floor in &state.floors {
+        for room in &floor.rooms {
+            for monster in &room.monsters {
+                let location = format!("F{} R{}", room.floor_number, room.position);
+                if let Some(path) = get_evolution_for_monster(&monster.type_name) {
+                    let ready_xp = monster.experience >= path.experience_required;
+                    let ready_floor = room.floor_number >= path.conditions.min_floor;
+                    let ready_gold = state.gold >= path.conditions.gold_cost;
+                    let ready = ready_xp && ready_floor && ready_gold;
+                    let (status, color) = if ready {
+                        (format!("Ready -> {}", path.to_monster), EMERALD)
+                    } else if !ready_xp {
+                        (
+                            format!("Needs {} XP", path.experience_required - monster.experience),
+                            MANA,
+                        )
+                    } else if !ready_floor {
+                        (
+                            format!("Needs floor {}", path.conditions.min_floor),
+                            WARNING,
+                        )
+                    } else {
+                        (
+                            format!("Needs {} gold", path.conditions.gold_cost),
+                            TREASURE,
+                        )
+                    };
+
+                    rows.push(EvolutionUiRow {
+                        monster: monster.type_name.clone(),
+                        location,
+                        xp_label: format!("{}/{} XP", monster.experience, path.experience_required),
+                        status,
+                        color,
+                        ready,
+                        has_path: true,
+                    });
+                } else {
+                    rows.push(EvolutionUiRow {
+                        monster: monster.type_name.clone(),
+                        location,
+                        xp_label: format!("{} XP", monster.experience),
+                        status: "Final form".to_string(),
+                        color: TEXT_DIM,
+                        ready: false,
+                        has_path: false,
+                    });
+                }
+            }
+        }
+    }
+
+    rows.sort_by(|a, b| {
+        b.ready
+            .cmp(&a.ready)
+            .then_with(|| a.monster.cmp(&b.monster))
+    });
+    rows
+}
+
+fn draw_evolution_row(row: &EvolutionUiRow, rect: Rect) {
+    draw_card(
+        rect,
+        Color::new(row.color.r, row.color.g, row.color.b, 0.075),
+        Color::new(row.color.r, row.color.g, row.color.b, 0.26),
+    );
+    draw_text_fit(
+        &row.monster,
+        rect.x + 9.0,
+        rect.y + 16.0,
+        rect.w - 82.0,
+        12.0,
+        TEXT,
+    );
+    draw_text_fit(
+        &format!("{}  {}", row.location, row.xp_label),
+        rect.x + 9.0,
+        rect.y + 32.0,
+        rect.w - 82.0,
+        10.0,
+        TEXT_MUTED,
+    );
+    draw_text_fit_right(
+        &row.status,
+        rect.x + rect.w - 8.0,
+        rect.y + 25.0,
+        92.0,
+        10.0,
+        row.color,
+    );
+}
+
+fn trait_summary(trait_ids: &[String]) -> String {
+    if trait_ids.is_empty() {
+        return "No traits".to_string();
+    }
+
+    trait_ids
+        .iter()
+        .take(2)
+        .map(|trait_id| {
+            get_trait(trait_id)
+                .map(|trait_def| trait_def.name)
+                .unwrap_or_else(|| trait_id.clone())
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn next_build_summary(state: &GameState) -> (String, String, i32) {
