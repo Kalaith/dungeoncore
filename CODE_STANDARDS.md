@@ -1,22 +1,22 @@
-# Rust Coding Standards for Dungeon Core
+# Rust Coding Standards for Macroquad Games
 
 **Engine**: Macroquad + macroquad-toolkit  
 **Language**: Rust  
-**Genre**: Dungeon Management RPG
+**Platform**: WebGL (WASM) + Native
 
-This document defines the coding standards for the Dungeon Core project. Its goal is to maintain long-term sanity for a dungeon management game with complex adventurer behaviors, monster spawning, and upgrade systems. The dungeon may be treacherous, but the code should be orderly.
+This document defines the centrally maintained coding standards for Macroquad game projects. Keep project-local copies identical to the canonical `docs/CODE_STANDARDS.md`; put project-specific guidance in the project's README or another local documentation file instead.
 
 These standards prioritize:  
 - Readability over cleverness  
 - Data-driven design over hardcoded values  
-- Clean state management for dungeon operations  
+- Clean state management  
 - Modular services for game logic  
 - A clear mental model for game phases and transitions  
 
 ## 1. Core Philosophy
 
 ### 1.1 Write for Maintainability
-This is a dungeon management game with complex adventurer AI, monster behaviors, and procedural room generation. Code should be easy to debug and extend.  
+Code should be easy to debug and extend.  
 - Prefer obvious, straightforward code  
 - Avoid hidden state or side effects  
 - If a junior Rust developer can understand the flow, you are doing it right.
@@ -25,7 +25,7 @@ This is a dungeon management game with complex adventurer AI, monster behaviors,
 If a pattern already exists in the codebase, follow it even if you dislike it. A consistent codebase is more valuable than a perfect one.
 
 ### 1.3 Data-Driven Design
-All game constants, balance values, adventurer data, monster stats, room layouts, traits, and upgrades should be defined in JSON files under `assets/`. Load this data at startup using Serde for easy balancing and iteration without recompiling code. Avoid hardcoding values in Rust code; reference loaded data structures instead.
+All game constants, balance values, and static data should be defined in JSON files under `assets/`. Load this data at startup using Serde for easy balancing and iteration without recompiling code. Avoid hardcoding values in Rust code; reference loaded data structures instead.
 
 ### 1.4 No Unused Code
 - Remove unused variables, fields, and functions immediately
@@ -40,89 +40,75 @@ Each module/subdirectory owns a single conceptual domain:
 
 **Root Level:**
 - `main.rs` – Entry point, game loop, phase transitions, and high-level coordination
-- `game_state.rs` – Core game state structures
-- `persistence.rs` – Save/load functionality
 
 **Subdirectories:**
 - `data/` – Data structures and JSON loading
-  - Type definitions for adventurers, monsters, rooms, traits, upgrades
+  - Type definitions for game entities
   - Constants and configuration structures
 
-- `simulation/` – Game logic services (stateless where possible)
-  - `adventure.rs` – Adventurer behavior and pathfinding
-  - `combat.rs` – Combat resolution and damage calculations
-  - `monsters.rs` – Monster spawning and AI
-  - `rooms.rs` – Room generation and layout
-  - `time.rs` – Time progression and scheduling
-  - `upgrades.rs` – Upgrade application and effects
+- `engine/` – Game logic services (stateless where possible)
+  - Core game calculations
+  - Entity management and state machines
+  - Visual effects (particles, transitions)
+
+- `state/` – Game state management
+  - Current game state
+  - Persistent player progression
+  - Save/load functionality
 
 - `ui/` – User interface components
-  - `controls.rs` – Input handling and controls
-  - `dungeon_view.rs` – Dungeon visualization
-  - `game_log.rs` – Event logging and display
-  - `monster_selector.rs` – Monster selection interface
-  - `resource_panel.rs` – Resource display
-  - `species_selector.rs` – Species selection
-  - `upgrade_panel.rs` – Upgrade management UI
+  - Base UI utilities and styling
+  - Reusable UI widgets
   - Uses macroquad-toolkit for buttons and interactions
+
+- `screens/` – Screen-specific rendering (if separated from main.rs)
 
 **Cross-Domain Rules:**
 - ❌ UI must never mutate game state directly
-- ❌ Simulation services should be stateless - receive state, return results
-- ❌ Data module has no knowledge of simulation or UI
+- ❌ Engine services should be stateless - receive state, return results
+- ❌ Data module has no knowledge of engine or UI
 - ✅ All domains can read from `data/` types
 - ✅ State mutations happen only in main.rs via clearly defined actions
 
 ### 2.2 File Size Guideline
 - Target: 200–400 lines per file
 - Soft limit: 600 lines
-- Hard limit: 800 lines (main.rs excepted for game loop complexity)
+- Hard limit: 800 lines for every `.rs` file
 - If a file grows beyond this, split by responsibility.
 
-### 2.3 Folder Structure
+### 2.3 Module Source Filenames
+- Use Rust's named module source filenames: `foo.rs` for `mod foo;`, and `foo/bar.rs` for `mod bar;` inside `foo.rs`.
+- Do not create new `mod.rs` files.
+- When restructuring existing modules, prefer migrating `foo/mod.rs` to `foo.rs` and keeping child modules under `foo/`.
+- Do not keep both `foo.rs` and `foo/mod.rs`; Rust treats that as an ambiguous module source.
+
+### 2.4 Folder Structure
 
 ```
-dungeon_core/
+game_name/
 ├── Cargo.toml              # Project manifest
 ├── CODE_STANDARDS.md       # This file
-├── index.html              # WebGL host page
-├── publish.ps1             # Build and deploy script
-├── assets/                 # Game data
-│   ├── adventurers.json    # Adventurer definitions
-│   ├── constants.json      # Balance values
-│   ├── image_prompts.json  # Image generation prompts
-│   ├── monsters.json       # Monster definitions
-│   ├── traits.json         # Trait definitions
-│   └── upgrades.json       # Upgrade definitions
 ├── src/
 │   ├── main.rs             # Entry point, game loop, screen rendering
-│   ├── game_state.rs       # Core game state
-│   ├── persistence.rs      # Save/load functionality
-│   ├── data/               # Data types and loading
-│   │   ├── mod.rs          # Re-exports all data types
-│   │   ├── adventurers.rs  # Adventurer types
-│   │   ├── constants.rs    # Game constants
-│   │   ├── monsters.rs     # Monster types
-│   │   ├── rooms.rs        # Room types
-│   │   ├── traits.rs       # Trait types
-│   │   └── upgrades.rs     # Upgrade types
-│   ├── simulation/         # Game logic services
-│   │   ├── mod.rs          # Re-exports
-│   │   ├── adventure.rs    # Adventurer simulation
-│   │   ├── combat.rs       # Combat simulation
-│   │   ├── monsters.rs     # Monster simulation
-│   │   ├── rooms.rs        # Room simulation
-│   │   ├── time.rs         # Time management
-│   │   └── upgrades.rs     # Upgrade simulation
-│   └── ui/                 # UI components
-│       ├── mod.rs
-│       ├── controls.rs
-│       ├── dungeon_view.rs
-│       ├── game_log.rs
-│       ├── monster_selector.rs
-│       ├── resource_panel.rs
-│       ├── species_selector.rs
-│       └── upgrade_panel.rs
+│   ├── data.rs             # Data module root and re-exports
+│   ├── data/               # Data child modules
+│   │   ├── loader.rs       # JSON deserialization
+│   │   └── constants.rs    # Game constants structures
+│   ├── engine.rs           # Engine module root and re-exports
+│   ├── engine/             # Engine child modules
+│   │   └── game_engine.rs  # Core calculations
+│   ├── state.rs            # State module root and re-exports
+│   ├── state/              # State child modules
+│   │   ├── game_state.rs   # Current game state
+│   │   └── persistence.rs  # Save/load
+│   ├── ui.rs               # UI module root and re-exports
+│   ├── ui/                 # UI child modules
+│   │   ├── core.rs
+│   │   └── components.rs
+│   └── screens.rs          # Screen renderers module root (optional)
+├── assets/                 # Game data
+│   ├── constants.json      # Balance values
+│   └── localization/       # Text strings
 └── .gitignore
 ```
 
@@ -136,37 +122,21 @@ dungeon_core/
 
 Names should describe what the thing is, not how it works.
 
-Good examples:  
-```rust
-Adventurer  
-MonsterType  
-calculate_damage  
-spawn_monster  
-generate_room  
-```
-
-Bad examples:  
-```rust
-do_thing  
-temp2  
-handle_stuff  
-m  // use monster instead
-```
-
 ### 3.2 Boolean Naming
 Booleans should read like facts:  
 ```rust
-is_hostile  
-can_enter_room  
-has_upgrade_unlocked  
-should_spawn_boss  
+is_active  
+can_interact  
+has_unlocked  
+should_update  
 ```  
 Avoid `flag`, `value`, or `state` in names.
 
 ### 3.3 Service Naming
-Simulation services follow a naming pattern:
-- `*Service` for stateless helpers (if any)
-- Direct module names for simulation logic (`Adventure`, `Combat`, etc.)
+Engine services follow a naming pattern:
+- `*Service` for stateless helpers
+- `*Engine` for complex stateless processors
+- `*StateMachine` for state progressions
 
 ## 4. Functions & Methods
 
@@ -178,36 +148,23 @@ Simulation services follow a naming pattern:
 ### 4.2 Single Responsibility
 Each function should answer one question or perform one action.
 
-Bad:  
-```rust
-// Calculates damage, updates health, drops loot, checks achievements  
-fn resolve_combat() { ... }  
-```
-
-Good:  
-```rust
-fn calculate_damage() -> u32 { ... }  
-fn update_health() { ... }  
-fn drop_loot() -> Option<Item> { ... }  
-fn check_achievements() { ... }  
-```
-
 ### 4.3 Argument Count
 - Prefer ≤ 3 parameters  
 - If more are needed, use a struct or reference to state  
-- Services should take `&GameState` or `&ConstantsData` rather than many individual fields
+- Services should take `&GameState` or `&Config` rather than many individual fields
 
 ### 4.4 Return Types
 - Use `Option<T>` for potentially missing values  
-- Use custom result structs for complex outcomes (e.g., `CombatResult`)
+- Use custom result structs for complex outcomes
 - Avoid returning multiple values via tuple; create a named struct instead
 
 ## 5. Data & State Management
 
 ### 5.1 Game State Ownership
-- `GameState` owns the current dungeon state  
-- Mutation happens through methods in main.rs or game_state.rs  
-- Simulation modules return results; they don't mutate state directly  
+- `GameState` owns the current game state  
+- `PlayerStats` owns persistent progression  
+- Mutation happens through methods on `Game` struct in main.rs  
+- Services return results; they don't mutate state directly  
 
 ### 5.2 Prefer Plain Data
 Use structs with clear fields. Avoid overly clever enums with embedded logic unless they model a real state machine.  
@@ -218,7 +175,7 @@ Game data should be:
 - Immutable after loading from JSON  
 
 ### 5.3 Data-Driven Design
-- All game balance, adventurer stats, monster data, room layouts, traits, and upgrades in JSON under `assets/`
+- All game balance and configuration in JSON under `assets/`
 - Load data at application startup; data is embedded at compile time
 - Use structs that mirror JSON structure for type safety
 - Never hardcode magic numbers; reference loaded config data
@@ -229,13 +186,10 @@ Use enums to model distinct game states:
 pub enum GamePhase {
     Loading,
     MainMenu,
-    DungeonSetup,
-    AdventurerArrival,
-    Simulation,
-    Combat,
-    UpgradePhase,
+    Playing,
+    Paused,
     GameOver,
-    Victory,
+    // Add game-specific phases
 }
 ```
 
@@ -243,7 +197,7 @@ pub enum GamePhase {
 
 ### 6.1 Prefer Option Over Panics
 - `panic!` is acceptable only for truly unrecoverable states  
-- Missing monsters or items should return `None`, not panic  
+- Missing entities or items should return `None`, not panic  
 - Use:  
   - `Option<T>` for potentially missing values  
   - `Result<T, E>` for fallible I/O operations (save/load)  
@@ -260,53 +214,40 @@ UI code:
 - Returns actions/intents  
 - It should never contain game logic.  
 
-Bad:  
-```rust
-// Calculating damage inside a button handler  
-fn on_attack_button() { calculate_damage(); }  
-```
-
-Good:  
-```rust
-// Button returns UiAction::Attack
-// main.rs handles the action and calculations
-fn draw_attack_button() -> Option<UiAction> { ... }
-```
-
 ### 7.2 Action Pattern
 UI components return `Option<UiAction>` to signal user intent:
 ```rust
 pub enum UiAction {
     StartGame,
-    SelectMonster(MonsterType),
-    UpgradeTrait(TraitId),
-    PauseSimulation,
-    // etc.
+    Pause,
+    Resume,
+    // Add game-specific actions
 }
 ```
 
 ### 7.3 Component Organization
-- Each UI module handles a specific panel or view
-- Components are pure functions: `fn draw_panel(state: &State) -> Option<UiAction>`
+- `core.rs` – Color schemes, fonts, base styling  
+- `components.rs` – Reusable widgets  
+- Each component is a pure function: `fn draw_thing(state: &State) -> Option<UiAction>`
 
 ### 7.4 Macroquad-Toolkit Usage
 
-This project uses `macroquad-toolkit` for common UI patterns. Import via `use ui::*;` which re-exports all toolkit modules.
+Use `macroquad-toolkit` for common UI patterns. Prefer `use macroquad_toolkit::prelude::*;` for common helpers, or explicit `macroquad_toolkit::ui::*` imports.
 
-**Available Modules:** (same as before)
-- `ui::button()` – Standard clickable button (fires on release)
-- `ui::button_on_press()` – Button that fires on mouse down
-- `ui::button_styled()` – Button with custom styling
-- `ui::panel()` – Draws a panel with optional title
-- `ui::progress_bar()` – Progress indicator
-- `ui::colors::dark::*` – Standard dark theme colors
-- `ui::input::*` – Mouse/keyboard input helpers
+**Available Modules:**
+- `macroquad_toolkit::ui::button()` - Standard clickable button (fires on release)
+- `macroquad_toolkit::ui::button_on_press()` - Button that fires on mouse down
+- `macroquad_toolkit::ui::button_styled()` - Button with custom styling
+- `macroquad_toolkit::ui::panel()` - Draws a panel with optional title
+- `macroquad_toolkit::ui::progress_bar()` - Progress indicator
+- `macroquad_toolkit::colors::dark::*` - Standard dark theme colors
+- `macroquad_toolkit::input::*` - Mouse/keyboard input helpers
 
-**Button Click Semantics:** (same)
+**Button Click Semantics:**
 ```rust
 // Standard button - fires on mouse RELEASE (safer, allows cancel)
-if button(x, y, w, h, "Attack") {
-    return UiAction::Attack;
+if button(x, y, w, h, "Click Me") {
+    return UiAction::DoThing;
 }
 
 // Press button - fires on mouse DOWN (instant feedback)
@@ -315,7 +256,7 @@ if button_on_press(x, y, w, h, "Emergency", &style) {
 }
 ```
 
-**Color Palette:** (same)
+**Color Palette:**
 ```rust
 use macroquad_toolkit::colors::dark;
 
@@ -325,9 +266,9 @@ draw_text("Hello", x, y, 20.0, dark::TEXT);  // Text color
 // Also: dark::ACCENT, dark::POSITIVE, dark::WARNING, dark::NEGATIVE
 ```
 
-**Input Helpers:** (same)
+**Input Helpers:**
 ```rust
-use ui::input::*;
+use macroquad_toolkit::input::*;
 
 if is_hovered(x, y, w, h) { /* Mouse over area */ }
 if was_clicked(x, y, w, h) { /* Left click released on area */ }
@@ -346,94 +287,62 @@ The game must build for:
 - **Windows**: `cargo build --release`
 - **Web/WASM**: `cargo build --release --target wasm32-unknown-unknown`
 
-### 8.3 WebGL Requirements
+### 8.3 Validation
+After meaningful changes, run `.\publish.ps1` with no parameters from the affected project directory.
+
+### 8.4 WebGL Requirements
 The `index.html` must:
 - Load `mq_js_bundle.js` (Miniquad loader)
-- Call `load("dungeon_core.wasm")`
+- Call `load("game_name.wasm")`
 - Include canvas with `id="glcanvas"`
 - Use `image-rendering: pixelated` for pixel art
 
-## 9. Game Phases & Transitions
+## 9. Comments & Documentation
 
-### 9.1 Clear Phase Model
-The game uses explicit phases:
-1. **MainMenu** → Start game
-2. **DungeonSetup** → Configure dungeon
-3. **AdventurerArrival** → Adventurers enter
-4. **Simulation** → Real-time dungeon simulation
-5. **Combat** → Combat resolution
-6. **UpgradePhase** → Spend resources on upgrades
-7. **GameOver/Victory** → End conditions
-
-### 9.2 Transition Clarity
-Phase transitions should be explicit and obvious in code:
-```rust
-// Clear: one function, one transition
-fn start_simulation(&mut self) {
-    self.game_state.game_phase = GamePhase::Simulation;
-}
-```
-
-## 10. Comments & Documentation
-
-### 10.1 Comment Why, Not What
+### 9.1 Comment Why, Not What
 Code already explains what it does. Comments should explain why it exists.
 
-Good:  
-```rust
-// Elite monsters have increased spawn rates during boss waves  
-fn spawn_monster() { ... }  
-```
-
-Bad:  
-```rust
-// Spawn a monster  
-fn spawn_monster() { ... }  
-```
-
-### 10.2 Module-Level Docs
+### 9.2 Module-Level Docs
 Each module should contain a short `//!` comment explaining its purpose:
 ```rust
-//! Adventurer behavior simulation and pathfinding.
+//! Player inventory and item effects.
 ```
 
-## 11. Formatting & Tooling
+## 10. Formatting & Tooling
 
-### 11.1 rustfmt
+### 10.1 rustfmt
 - Always use `cargo fmt`  
 - Never fight the formatter  
 
-### 11.2 Clippy
+### 10.2 Clippy
 - Run `cargo clippy` regularly  
 - Fix warnings unless intentionally ignored  
 - Document any `#[allow]` with a comment
 
-### 11.3 Variable Shadowing
+### 10.3 Variable Shadowing
 - Avoid variable shadowing (hiding)
 - Do not declare a new variable with the same name as an existing one in the same scope
 
-### 11.4 Unused Code
+### 10.4 Unused Code
 - Remove unused variables immediately
 - Remove unused struct fields immediately  
 - Never use `_` prefix on struct fields to suppress warnings
 - `_` prefix on function parameters is acceptable when required by API
 
-## 12. Testing Guidelines
+## 11. Testing Guidelines
 
-### 12.1 What to Test
+### 11.1 What to Test
 Focus tests on:  
-- Damage calculations  
-- Monster spawn logic  
-- Adventurer pathfinding  
-- State transitions  
+- Core game calculations  
+- State machine transitions  
 - JSON data loading  
 - UI and rendering generally do not need unit tests.
 
-### 12.2 Test Style
+### 11.2 Test Style
 - Tests should read like rules  
 - Avoid complex setups  
 - If a test is hard to write, the code is probably too tangled.
 
-## 13. Final Rule
+## 12. Final Rule
 
-If a piece of code feels fragile, confusing, or brittle, it probably is. Refactor early. Leave the dungeon code more fortified than you found it.
+If a piece of code feels fragile, confusing, or brittle, it probably is. Refactor early. Leave the code calmer than you found it.
