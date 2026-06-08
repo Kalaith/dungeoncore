@@ -67,6 +67,7 @@ fn reset_timers(last_time_advance: &mut f64, last_adventure_tick: &mut f64, last
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut assets = AssetManager::new();
+    let _ = assets.load_asset_pack("assets.zip").await;
     if let Err(e) = assets
         .load_texture_with_filter(
             TITLE_BACKGROUND_KEY,
