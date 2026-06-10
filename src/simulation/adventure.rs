@@ -38,7 +38,7 @@ pub fn spawn_party(state: &mut GameState) {
         let hp = base_hp + equipment_bonus.hp;
 
         members.push(Adventurer {
-            id: macroquad::rand::rand() as u64,
+            id: macroquad_toolkit::rng::random_u64(),
             name: name.clone(),
             class_name: class.name.clone(),
             level,
@@ -60,7 +60,7 @@ pub fn spawn_party(state: &mut GameState) {
     let target_floor = state.floors.len().min(2) as i32;
 
     let party = AdventurerParty {
-        id: macroquad::rand::rand() as u64,
+        id: macroquad_toolkit::rng::random_u64(),
         members,
         current_floor: 1,
         current_room: 0,

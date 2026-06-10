@@ -79,7 +79,7 @@ pub fn place_monster(
         .collect();
 
     let monster = Monster {
-        id: macroquad::rand::rand() as u64,
+        id: macroquad_toolkit::rng::random_u64(),
         type_name: monster_name.into(),
         hp: scaled.hp,
         max_hp: scaled.hp,
