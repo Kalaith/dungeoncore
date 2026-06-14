@@ -2,6 +2,7 @@ use macroquad::prelude::*;
 use macroquad_toolkit::{colors::dark, ui::*};
 
 use crate::game_state::GameState;
+use macroquad_toolkit::ui::draw_ui_text;
 
 /// Draw the resource panel showing mana, gold, souls
 pub fn draw_resource_panel(state: &GameState, x: f32, y: f32, w: f32) {
@@ -13,7 +14,7 @@ pub fn draw_resource_panel(state: &GameState, x: f32, y: f32, w: f32) {
     let text_size = 16.0;
 
     // Mana bar
-    draw_text("Mana", inner_x, y + 38.0, text_size, dark::TEXT);
+    draw_ui_text("Mana", inner_x, y + 38.0, text_size, dark::TEXT);
     progress_bar(
         inner_x,
         y + 45.0,
@@ -23,14 +24,14 @@ pub fn draw_resource_panel(state: &GameState, x: f32, y: f32, w: f32) {
         state.max_mana as f32,
         Color::from_hex(0x2E86AB),
     );
-    draw_text(
+    draw_ui_text(
         &format!("{}/{}", state.mana, state.max_mana),
         inner_x + inner_w - 60.0,
         y + 60.0,
         14.0,
         dark::TEXT_BRIGHT,
     );
-    draw_text(
+    draw_ui_text(
         &format!("(+{:.1}/tick)", state.mana_regen),
         inner_x,
         y + 72.0,
@@ -39,7 +40,7 @@ pub fn draw_resource_panel(state: &GameState, x: f32, y: f32, w: f32) {
     );
 
     // Gold
-    draw_text(
+    draw_ui_text(
         &format!("💰 Gold: {}", state.gold),
         inner_x,
         y + 95.0,
@@ -48,7 +49,7 @@ pub fn draw_resource_panel(state: &GameState, x: f32, y: f32, w: f32) {
     );
 
     // Souls
-    draw_text(
+    draw_ui_text(
         &format!("👻 Souls: {}", state.souls),
         inner_x,
         y + 118.0,
@@ -59,7 +60,7 @@ pub fn draw_resource_panel(state: &GameState, x: f32, y: f32, w: f32) {
 
 /// Draw time display
 pub fn draw_time_display(state: &GameState, x: f32, y: f32) {
-    draw_text(
+    draw_ui_text(
         &format!("Day {} - {:02}:00", state.day, state.hour),
         x,
         y,
@@ -74,5 +75,5 @@ pub fn draw_time_display(state: &GameState, x: f32, y: f32) {
         2 => Color::from_hex(0xF39C12),
         _ => Color::from_hex(0xE74C3C),
     };
-    draw_text(&speed_text, x + 180.0, y, 24.0, speed_color);
+    draw_ui_text(&speed_text, x + 180.0, y, 24.0, speed_color);
 }

@@ -2,6 +2,7 @@ use macroquad::prelude::*;
 use macroquad_toolkit::{colors::dark, ui::panel};
 
 use crate::game_state::GameState;
+use macroquad_toolkit::ui::draw_ui_text;
 
 /// Draw the game log panel
 pub fn draw_game_log(state: &GameState, x: f32, y: f32, w: f32, h: f32) {
@@ -26,7 +27,7 @@ pub fn draw_game_log(state: &GameState, x: f32, y: f32, w: f32, h: f32) {
             entry.message.clone()
         };
 
-        draw_text(&msg, x + 10.0, log_y, 13.0, color);
+        draw_ui_text(&msg, x + 10.0, log_y, 13.0, color);
         log_y += 16.0;
     }
 }

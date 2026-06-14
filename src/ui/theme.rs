@@ -3,6 +3,7 @@ use macroquad_toolkit::input::is_hovered_rect;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_centered_in_box, truncate_text_to_width, SurfaceStyle,
 };
+use macroquad_toolkit::ui::{draw_ui_text, measure_ui_text};
 
 pub const BG: Color = Color::new(0.010, 0.014, 0.022, 1.0);
 pub const BG_DEEP: Color = Color::new(0.004, 0.006, 0.011, 1.0);
@@ -96,7 +97,7 @@ pub fn draw_card(rect: Rect, fill: Color, border: Color) {
 
 pub fn draw_text_fit(text: &str, x: f32, baseline_y: f32, max_width: f32, size: f32, color: Color) {
     let clipped = truncate_text_to_width(text, max_width.max(8.0), size);
-    draw_text(&clipped, x, baseline_y, size, color);
+    draw_ui_text(&clipped, x, baseline_y, size, color);
 }
 
 pub fn draw_text_fit_right(
@@ -108,8 +109,8 @@ pub fn draw_text_fit_right(
     color: Color,
 ) {
     let clipped = truncate_text_to_width(text, max_width.max(8.0), size);
-    let dims = measure_text(&clipped, None, size as u16, 1.0);
-    draw_text(&clipped, right_x - dims.width, baseline_y, size, color);
+    let dims = measure_ui_text(&clipped, None, size as u16, 1.0);
+    draw_ui_text(&clipped, right_x - dims.width, baseline_y, size, color);
 }
 
 pub fn draw_centered_text(text: &str, rect: Rect, size: f32, color: Color) {

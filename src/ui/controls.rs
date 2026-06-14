@@ -2,6 +2,7 @@ use macroquad::prelude::*;
 use macroquad_toolkit::{colors::dark, ui::*};
 
 use crate::game_state::{DungeonStatus, GameState};
+use macroquad_toolkit::ui::draw_ui_text;
 
 /// Control action returned from the controls panel
 #[derive(Debug, Clone, PartialEq)]
@@ -80,7 +81,7 @@ pub fn draw_controls(state: &GameState, x: f32, y: f32, w: f32) -> ControlAction
     } else {
         let surface = SurfaceStyle::new(dark::PANEL);
         draw_surface(Rect::new(x + 5.0, row2_y, btn_w, btn_h), &surface);
-        draw_text("Respawn All", x + 15.0, row2_y + 18.0, 13.0, dark::TEXT_DIM);
+        draw_ui_text("Respawn All", x + 15.0, row2_y + 18.0, 13.0, dark::TEXT_DIM);
     }
 
     // Process evolutions button
@@ -98,7 +99,7 @@ pub fn draw_controls(state: &GameState, x: f32, y: f32, w: f32) -> ControlAction
     }
 
     // Active parties indicator
-    draw_text(
+    draw_ui_text(
         &format!("Parties: {}", state.adventurer_parties.len()),
         x + w - 80.0,
         y + 20.0,
