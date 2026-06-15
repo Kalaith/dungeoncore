@@ -12,6 +12,8 @@ pub struct MonsterTemplate {
     pub tier: i32,
     pub emoji: String,
     #[serde(default)]
+    pub element: Option<String>,
+    #[serde(default)]
     pub description: String,
     #[serde(default)]
     pub traits: Vec<String>,
@@ -21,6 +23,10 @@ pub struct MonsterTemplate {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SpeciesData {
     pub name: String,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub starter: bool,
     pub unlock_cost: i32,
     pub description: String,
 }
@@ -53,12 +59,33 @@ pub fn get_all_species() -> Vec<SpeciesData> {
     data.species
 }
 
-/// Get species unlock cost
-pub fn get_species_unlock_cost(species_name: &str) -> Option<i32> {
+/// Get one species record by internal ID.
+pub fn get_species(species_name: &str) -> Option<SpeciesData> {
     get_all_species()
         .into_iter()
         .find(|s| s.name == species_name)
-        .map(|s| s.unlock_cost)
+}
+
+/// Get species unlock cost
+pub fn get_species_unlock_cost(species_name: &str) -> Option<i32> {
+    get_species(species_name).map(|s| s.unlock_cost)
+}
+
+/// Human-facing species name; keeps save/internal IDs stable.
+pub fn get_species_display_name(species_name: &str) -> String {
+    get_all_species()
+        .into_iter()
+        .find(|s| s.name == species_name)
+        .and_then(|s| s.display_name)
+        .unwrap_or_else(|| species_name.to_string())
+}
+
+/// Starter roster for a race/species. Higher tiers remain progression unlocks.
+pub fn get_starter_monsters_for_species(species_name: &str) -> Vec<MonsterTemplate> {
+    get_monster_templates()
+        .into_iter()
+        .filter(|template| template.species == species_name && template.tier == 1)
+        .collect()
 }
 
 /// Get all unique species names

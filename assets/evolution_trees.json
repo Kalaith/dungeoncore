@@ -11,9 +11,56 @@
                 }
             },
             {
+                "from_monster": "Goblin Archer",
+                "to_monster": "Orc",
+                "experience_required": 60,
+                "conditions": {
+                    "min_floor": 1,
+                    "gold_cost": 10
+                }
+            },
+            {
+                "from_monster": "Goblin Shaman",
+                "to_monster": "Goblin Mage",
+                "experience_required": 70,
+                "conditions": {
+                    "min_floor": 2,
+                    "gold_cost": 25
+                }
+            },
+            {
                 "from_monster": "Orc",
                 "to_monster": "Troll",
                 "experience_required": 100,
+                "conditions": {
+                    "min_floor": 2,
+                    "gold_cost": 25
+                }
+            }
+        ],
+        "Slime": [
+            {
+                "from_monster": "Red Slime",
+                "to_monster": "Monster Slime",
+                "experience_required": 60,
+                "conditions": {
+                    "min_floor": 1,
+                    "gold_cost": 10
+                }
+            },
+            {
+                "from_monster": "Green Slime",
+                "to_monster": "Monster Slime",
+                "experience_required": 60,
+                "conditions": {
+                    "min_floor": 1,
+                    "gold_cost": 10
+                }
+            },
+            {
+                "from_monster": "Blue Slime",
+                "to_monster": "Magic Slime",
+                "experience_required": 70,
                 "conditions": {
                     "min_floor": 2,
                     "gold_cost": 25
@@ -35,6 +82,7 @@
     },
     "starting_monsters": {
         "Goblinoid": "Goblin",
+        "Slime": "Red Slime",
         "Undead": "Skeleton",
         "Draconic": "Dragon"
     }

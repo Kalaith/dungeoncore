@@ -3,7 +3,9 @@ use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
 
 use crate::data::constants::{get_room_cost, MAX_ROOMS_PER_FLOOR};
 use crate::data::evolutions::get_evolution_for_monster;
-use crate::data::monsters::{get_monster_templates, MonsterTemplate};
+use crate::data::monsters::{
+    get_all_species, get_monster_templates, get_species_display_name, MonsterTemplate,
+};
 use crate::data::traits::get_trait;
 use crate::game_state::{GameState, RoomType};
 
@@ -25,6 +27,7 @@ pub enum DrawerAction {
     BuildRoom,
     SelectMonster(String),
     ProcessEvolutions,
+    UnlockSpecies(String),
 }
 
 pub fn draw_side_drawer(
@@ -62,9 +65,7 @@ pub fn draw_side_drawer(
             }
         }
         DrawerTab::Evolution => {
-            if draw_evolution_tab(state, content) {
-                action = DrawerAction::ProcessEvolutions;
-            }
+            action = draw_evolution_tab(state, content);
         }
     }
 
@@ -227,8 +228,9 @@ fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> {
     selected
 }
 
-fn draw_evolution_tab(state: &GameState, rect: Rect) -> bool {
+fn draw_evolution_tab(state: &GameState, rect: Rect) -> DrawerAction {
     draw_section_title(rect, "EVOLUTION", "Advance unlocked species.");
+    let mut action = DrawerAction::None;
 
     let rows = collect_evolution_rows(state);
     let ready_count = rows.iter().filter(|row| row.ready).count();
@@ -278,18 +280,63 @@ fn draw_evolution_tab(state: &GameState, rect: Rect) -> bool {
     let row_h = 46.0;
     for row in rows
         .iter()
-        .take(((rect.y + rect.h - row_y - 58.0) / row_h).max(0.0) as usize)
+        .take(((rect.y + rect.h - row_y - 106.0) / row_h).max(0.0) as usize)
     {
         draw_evolution_row(row, Rect::new(rect.x, row_y, rect.w, row_h - 6.0));
         row_y += row_h;
     }
 
-    draw_command_button(
+    if let Some(species) = next_locked_species(state) {
+        let unlock_cost = species.unlock_cost;
+        let can_afford = state.gold >= unlock_cost;
+        let species_name = species.name.clone();
+        let unlock_rect = Rect::new(rect.x, rect.y + rect.h - 94.0, rect.w, 40.0);
+        draw_card(
+            unlock_rect,
+            Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.075),
+            Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.24),
+        );
+        draw_text_fit(
+            &format!("Next race: {}", get_species_display_name(&species_name)),
+            unlock_rect.x + 10.0,
+            unlock_rect.y + 16.0,
+            unlock_rect.w - 96.0,
+            11.0,
+            TEXT,
+        );
+        draw_text_fit(
+            &format!("{} gold", unlock_cost),
+            unlock_rect.x + 10.0,
+            unlock_rect.y + 32.0,
+            unlock_rect.w - 96.0,
+            10.0,
+            if can_afford { TREASURE } else { TEXT_DIM },
+        );
+        if draw_command_button(
+            Rect::new(
+                unlock_rect.x + unlock_rect.w - 78.0,
+                unlock_rect.y + 7.0,
+                68.0,
+                26.0,
+            ),
+            "Unlock",
+            ButtonTone::Ghost,
+            can_afford,
+        ) {
+            action = DrawerAction::UnlockSpecies(species_name);
+        }
+    }
+
+    if draw_command_button(
         Rect::new(rect.x, rect.y + rect.h - 46.0, rect.w, 42.0),
         "Evolve",
         ButtonTone::Arcane,
         ready_count > 0,
-    )
+    ) {
+        action = DrawerAction::ProcessEvolutions;
+    }
+
+    action
 }
 
 fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect) -> bool {
@@ -332,7 +379,13 @@ fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect
     );
     let traits = trait_summary(&template.traits);
     let detail = if unlocked {
-        format!("T{} {}  {}", template.tier, template.species, traits)
+        format!(
+            "T{} {} {}  {}",
+            template.tier,
+            get_species_display_name(&template.species),
+            template.element.as_deref().unwrap_or("Neutral"),
+            traits
+        )
     } else {
         "Locked".to_string()
     };
@@ -594,6 +647,15 @@ fn trait_summary(trait_ids: &[String]) -> String {
         })
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+fn next_locked_species(state: &GameState) -> Option<crate::data::monsters::SpeciesData> {
+    let mut locked = get_all_species()
+        .into_iter()
+        .filter(|species| !state.unlocked_species.contains(&species.name))
+        .collect::<Vec<_>>();
+    locked.sort_by_key(|species| species.unlock_cost);
+    locked.into_iter().next()
 }
 
 fn next_build_summary(state: &GameState) -> (String, String, i32) {

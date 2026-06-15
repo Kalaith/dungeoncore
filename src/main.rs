@@ -40,21 +40,7 @@ fn window_conf() -> Conf {
 }
 
 fn create_new_game() -> GameState {
-    let mut new_state = GameState::new();
-
-    // Automatically unlock the first species (Goblinoid) for new games.
-    new_state.unlocked_species.push("Goblinoid".to_string());
-    new_state.unlocked_monsters.push("Goblin".to_string());
-
-    if let Err(e) = simulation::place_monster(&mut new_state, 1, 1, "Goblin") {
-        eprintln!("Error placing starting Goblin: {}", e);
-    } else {
-        new_state.add_log(crate::game_state::LogEntry::system(
-            "A Goblin has been placed in your core room.",
-        ));
-    }
-
-    new_state
+    GameState::new()
 }
 
 fn reset_timers(last_time_advance: &mut f64, last_adventure_tick: &mut f64, last_save: &mut f64) {
@@ -217,8 +203,8 @@ async fn main() {
                 } else {
                     // Species unlocked successfully - player can now place monsters manually
                     state.add_log(crate::game_state::LogEntry::system(format!(
-                         "Unlocked {} species! Build rooms and place monsters to defend your dungeon.",
-                         selected_species_id
+                         "Chosen starter race: {}. Build rooms and place its units to defend your dungeon.",
+                         crate::data::monsters::get_species_display_name(&selected_species_id)
                      )));
                 }
             }
@@ -268,6 +254,11 @@ async fn main() {
                 }
             }
             DrawerAction::ProcessEvolutions => simulation::process_evolutions(&mut state),
+            DrawerAction::UnlockSpecies(species) => {
+                if let Err(e) = simulation::unlock_species(&mut state, &species) {
+                    state.add_log(game_state::LogEntry::system(e));
+                }
+            }
             DrawerAction::None => {}
         }
 

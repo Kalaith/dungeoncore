@@ -303,7 +303,7 @@ impl GameState {
             selected_room: None,
             selected_monster: None,
             log: vec![LogEntry::system(
-                "Welcome to Dungeon Core! Your dungeon has a Goblin ready to defend it.",
+                "Welcome to Dungeon Core! Choose a starter race to awaken your first defenders.",
             )],
         }
     }

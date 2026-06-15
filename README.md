@@ -24,3 +24,10 @@ Protect the dungeon core while expanding into a stronger and more dangerous lair
 ## Current Scope
 
 Playable dungeon-building and wave-defense loop with rooms, monsters, adventurer parties, resources, unlocks, and upgrades.
+# Practical Future Improvements
+
+- Add input-state tests for pause, focus, tooltip blocking, resource panel updates, and log message ordering.
+- Move resource panel calculations into pure helpers with fixtures for edge cases such as zero income and capped resources.
+- Add small dungeon-run scenarios that verify controls, game-log output, and theme-driven UI states together.
+- Extract repeated drawing constants into toolkit-backed theme helpers shared by controls, logs, and resource panels.
+

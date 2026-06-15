@@ -9,23 +9,40 @@
             "species": "Goblinoid",
             "tier": 1,
             "emoji": "👹",
-            "description": "A small, mischievous creature.",
+            "element": "Earth",
+            "description": "A small, fast raider from a goblin clan.",
             "traits": [
                 "swarm_tactics"
             ]
         },
         {
-            "name": "Skeleton",
-            "base_cost": 15,
-            "hp": 30,
-            "attack": 8,
-            "defense": 3,
-            "species": "Undead",
+            "name": "Goblin Archer",
+            "base_cost": 12,
+            "hp": 18,
+            "attack": 7,
+            "defense": 1,
+            "species": "Goblinoid",
             "tier": 1,
-            "emoji": "💀",
-            "description": "A pile of bones held together by dark magic.",
+            "emoji": "🏹",
+            "element": "Air",
+            "description": "A back-line goblin that fights best with allies in front.",
             "traits": [
-                "undead_resilience"
+                "swarm_tactics"
+            ]
+        },
+        {
+            "name": "Goblin Shaman",
+            "base_cost": 16,
+            "hp": 16,
+            "attack": 9,
+            "defense": 1,
+            "species": "Goblinoid",
+            "tier": 1,
+            "emoji": "🔮",
+            "element": "Spirit",
+            "description": "A fragile goblin mystic that hints at future elemental summons.",
+            "traits": [
+                "swarm_tactics"
             ]
         },
         {
@@ -37,9 +54,25 @@
             "species": "Goblinoid",
             "tier": 2,
             "emoji": "🧌",
+            "element": "Earth",
             "description": "A brutish warrior with immense strength.",
             "traits": [
                 "swarm_tactics"
+            ]
+        },
+        {
+            "name": "Goblin Mage",
+            "base_cost": 35,
+            "hp": 34,
+            "attack": 16,
+            "defense": 3,
+            "species": "Goblinoid",
+            "tier": 2,
+            "emoji": "🔥",
+            "element": "Fire",
+            "description": "A fire-touched goblin caster reserved for future elemental unlocks.",
+            "traits": [
+                "fire_breath"
             ]
         },
         {
@@ -49,11 +82,102 @@
             "attack": 15,
             "defense": 8,
             "species": "Goblinoid",
-            "tier": 2,
+            "tier": 3,
             "emoji": "🧌",
+            "element": "Nature",
             "description": "A regenerating giant that hates fire.",
             "traits": [
                 "regenerate_minor"
+            ]
+        },
+        {
+            "name": "Red Slime",
+            "base_cost": 10,
+            "hp": 24,
+            "attack": 6,
+            "defense": 1,
+            "species": "Slime",
+            "tier": 1,
+            "emoji": "🔴",
+            "element": "Fire",
+            "description": "A warm, aggressive slime with a volatile core.",
+            "traits": [
+                "regenerate_minor"
+            ]
+        },
+        {
+            "name": "Green Slime",
+            "base_cost": 10,
+            "hp": 28,
+            "attack": 4,
+            "defense": 2,
+            "species": "Slime",
+            "tier": 1,
+            "emoji": "🟢",
+            "element": "Nature",
+            "description": "A hardy slime that slowly knits itself back together.",
+            "traits": [
+                "regenerate_minor"
+            ]
+        },
+        {
+            "name": "Blue Slime",
+            "base_cost": 10,
+            "hp": 22,
+            "attack": 5,
+            "defense": 3,
+            "species": "Slime",
+            "tier": 1,
+            "emoji": "🔵",
+            "element": "Water",
+            "description": "A defensive slime that absorbs blows with a watery shell.",
+            "traits": [
+                "regenerate_minor"
+            ]
+        },
+        {
+            "name": "Monster Slime",
+            "base_cost": 28,
+            "hp": 70,
+            "attack": 12,
+            "defense": 6,
+            "species": "Slime",
+            "tier": 2,
+            "emoji": "🟣",
+            "element": "Body",
+            "description": "A dense predatory slime grown large enough to engulf intruders.",
+            "traits": [
+                "regenerate_minor"
+            ]
+        },
+        {
+            "name": "Magic Slime",
+            "base_cost": 34,
+            "hp": 52,
+            "attack": 17,
+            "defense": 4,
+            "species": "Slime",
+            "tier": 2,
+            "emoji": "✨",
+            "element": "Arcane",
+            "description": "A mana-rich slime that channels wild dungeon magic.",
+            "traits": [
+                "fire_breath"
+            ]
+        },
+        {
+            "name": "Skeleton",
+            "base_cost": 15,
+            "hp": 30,
+            "attack": 8,
+            "defense": 3,
+            "species": "Undead",
+            "tier": 1,
+            "emoji": "💀",
+            "element": "Bone",
+            "description": "A pile of bones held together by dark magic.",
+            "traits": [
+                "undead_resilience"
             ]
         },
         {
@@ -65,6 +189,7 @@
             "species": "Undead",
             "tier": 2,
             "emoji": "🧛",
+            "element": "Blood",
             "description": "A blood-sucking aristocrat of the night.",
             "traits": [
                 "regenerate_minor",
@@ -80,6 +205,7 @@
             "species": "Undead",
             "tier": 3,
             "emoji": "💀",
+            "element": "Death",
             "description": "An undead sorcerer with immense magical power.",
             "traits": [
                 "regenerate_minor",
@@ -95,6 +221,7 @@
             "species": "Draconic",
             "tier": 3,
             "emoji": "🐉",
+            "element": "Fire",
             "description": "A terrifying beast of scales and fire.",
             "traits": [
                 "fire_breath"
@@ -104,16 +231,29 @@
     "species": [
         {
             "name": "Goblinoid",
-            "unlock_cost": 0,
-            "description": "Weak but numerous creatures"
+            "display_name": "Goblins",
+            "starter": true,
+            "unlock_cost": 150,
+            "description": "A cunning clan with fighters, archers, shamans, and future elemental casters."
+        },
+        {
+            "name": "Slime",
+            "display_name": "Slimes",
+            "starter": true,
+            "unlock_cost": 150,
+            "description": "Adaptive cores with red, green, and blue starter forms."
         },
         {
             "name": "Undead",
+            "display_name": "Undead",
+            "starter": false,
             "unlock_cost": 100,
             "description": "Reanimated corpses and spirits"
         },
         {
             "name": "Draconic",
+            "display_name": "Draconic",
+            "starter": false,
             "unlock_cost": 500,
             "description": "Powerful dragon-kin"
         }

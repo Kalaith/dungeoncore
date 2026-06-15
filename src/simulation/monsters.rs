@@ -134,9 +134,15 @@ pub fn unlock_species(state: &mut GameState, species_name: &str) -> Result<(), S
         return Err(format!("Species '{}' is already unlocked!", species_name));
     }
 
-    // Get unlock cost from JSON data
-    let unlock_cost = crate::data::monsters::get_species_unlock_cost(species_name)
+    // Get unlock cost from JSON data. Starter races are free only for the first pick.
+    let species_data = crate::data::monsters::get_species(species_name)
         .ok_or_else(|| format!("Unknown species: {}", species_name))?;
+    let is_first_species = state.unlocked_species.is_empty();
+    let unlock_cost = if is_first_species && species_data.starter {
+        0
+    } else {
+        species_data.unlock_cost
+    };
 
     if unlock_cost == 0 {
         // Free unlock - still unlock the starting monster
@@ -149,18 +155,34 @@ pub fn unlock_species(state: &mut GameState, species_name: &str) -> Result<(), S
 
     state.unlocked_species.push(species_name.to_string());
 
-    // Also unlock the starting monster for this species
-    if let Some(starting_monster) =
-        crate::data::evolutions::get_starting_monsters().get(species_name)
-    {
-        if !state.unlocked_monsters.contains(starting_monster) {
-            state.unlocked_monsters.push(starting_monster.clone());
+    let mut unlocked_now = Vec::new();
+    for template in crate::data::monsters::get_starter_monsters_for_species(species_name) {
+        if !state.unlocked_monsters.contains(&template.name) {
+            state.unlocked_monsters.push(template.name.clone());
+            unlocked_now.push(template.name);
+        }
+    }
+
+    if unlocked_now.is_empty() {
+        if let Some(starting_monster) =
+            crate::data::evolutions::get_starting_monsters().get(species_name)
+        {
+            if !state.unlocked_monsters.contains(starting_monster) {
+                state.unlocked_monsters.push(starting_monster.clone());
+                unlocked_now.push(starting_monster.clone());
+            }
         }
     }
 
     state.add_log(LogEntry::system(format!(
-        "Unlocked new species: {} for {} gold!",
-        species_name, unlock_cost
+        "Unlocked {} for {} gold. Available summons: {}.",
+        crate::data::monsters::get_species_display_name(species_name),
+        unlock_cost,
+        if unlocked_now.is_empty() {
+            "none".to_string()
+        } else {
+            unlocked_now.join(", ")
+        }
     )));
 
     Ok(())

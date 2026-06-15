@@ -2,7 +2,7 @@ use macroquad::prelude::*;
 use macroquad_toolkit::input::was_clicked_rect;
 
 use crate::data::evolutions::get_evolution_for_monster;
-use crate::data::monsters::get_monster_template;
+use crate::data::monsters::{get_monster_template, get_species_display_name};
 use crate::data::traits::get_trait;
 use crate::data::upgrades::{get_all_upgrades, UpgradeTemplate};
 use crate::game_state::{GameState, Monster, Room, RoomType};
@@ -110,7 +110,12 @@ fn draw_selected_monster(state: &GameState, monster_name: &str, bounds: Rect, y:
 
     if let Some(template) = get_monster_template(monster_name) {
         draw_text_fit(
-            &format!("Tier {} {} defender", template.tier, template.species),
+            &format!(
+                "Tier {} {} defender, {}",
+                template.tier,
+                get_species_display_name(&template.species),
+                template.element.as_deref().unwrap_or("Neutral")
+            ),
             rect.x + 12.0,
             rect.y + 50.0,
             rect.w - 24.0,
