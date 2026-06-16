@@ -46,9 +46,7 @@ pub fn draw_species_selector(
         } else {
             starters.join(", ")
         };
-        let label = if cost == 0 {
-            format!("Choose {}", display_name)
-        } else if choosing_starter && species.starter {
+        let label = if cost == 0 || (choosing_starter && species.starter) {
             format!("Choose {}", display_name)
         } else if choosing_starter {
             format!("Future unlock: {}", display_name)

@@ -674,7 +674,7 @@ fn next_build_summary(state: &GameState) -> (String, String, i32) {
         .count();
     let total_rooms = state.total_room_count();
 
-    if non_core_count >= MAX_ROOMS_PER_FLOOR + 1 {
+    if non_core_count > MAX_ROOMS_PER_FLOOR {
         return (
             format!("Open floor {}", state.total_floors + 1),
             "Move the core deeper.".to_string(),

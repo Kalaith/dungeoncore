@@ -1050,7 +1050,7 @@ fn next_build_preview(state: &GameState) -> Option<BuildPreview> {
         .count();
     let total_rooms = state.total_room_count();
 
-    if non_core_count >= MAX_ROOMS_PER_FLOOR + 1 {
+    if non_core_count > MAX_ROOMS_PER_FLOOR {
         let floor = state.total_floors + 1;
         return Some(BuildPreview {
             floor: deepest.number,

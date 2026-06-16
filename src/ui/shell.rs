@@ -446,7 +446,7 @@ fn adventurer_status(state: &GameState) -> (&'static str, Color, &'static str) {
     } else if state
         .adventurer_parties
         .iter()
-        .any(|party| party.current_room <= 0)
+        .any(|party| party.current_room == 0)
     {
         ("ADVENTURERS APPROACHING", WARNING, "!")
     } else {

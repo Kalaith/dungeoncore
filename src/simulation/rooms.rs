@@ -32,7 +32,7 @@ pub fn add_room(state: &mut GameState, target_floor: Option<i32>) -> Result<(), 
         .count();
 
     // Check if floor is full (entrance + 5 normal/boss rooms)
-    if non_core_count >= MAX_ROOMS_PER_FLOOR + 1 {
+    if non_core_count > MAX_ROOMS_PER_FLOOR {
         // Create a new floor
         return create_new_floor(state);
     }
