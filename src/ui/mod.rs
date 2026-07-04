@@ -8,6 +8,7 @@ pub mod side_drawer;
 pub mod species_selector;
 pub mod theme;
 pub mod title_screen;
+pub mod tutorial;
 pub mod upgrade_panel;
 
 pub use controls::*;

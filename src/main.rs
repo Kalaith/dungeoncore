@@ -12,9 +12,13 @@ mod ui;
 use macroquad::miniquad::window::quit;
 use macroquad::prelude::*;
 use macroquad_toolkit::assets::AssetManager;
+use macroquad_toolkit::capture;
 
 use game_state::GameState;
 use ui::*;
+
+/// Env-var prefix for the screenshot capture harness (DUNGEON_CORE_CAPTURE_*).
+const CAPTURE_PREFIX: &str = "DUNGEON_CORE";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum AppScreen {
@@ -30,13 +34,7 @@ fn is_modal_open(state: &GameState) -> bool {
 }
 
 fn window_conf() -> Conf {
-    Conf {
-        window_title: "Dungeon Core".to_owned(),
-        window_width: 1280,
-        window_height: 720,
-        window_resizable: true,
-        ..Default::default()
-    }
+    capture::capture_window_conf(CAPTURE_PREFIX, "Dungeon Core", 1280, 720)
 }
 
 fn create_new_game() -> GameState {
@@ -63,6 +61,34 @@ async fn main() {
         .await
     {
         eprintln!("Failed to load title background: {}", e);
+    }
+
+    // Screenshot capture harness: when DUNGEON_CORE_CAPTURE_PATH is set, seed a
+    // scene, render a fixed number of frames, write a PNG, and exit. No input,
+    // no simulation drift, and the player's save file is left untouched.
+    if let Some(config) = capture::CaptureConfig::from_env(CAPTURE_PREFIX) {
+        let mut cap_state = create_new_game();
+        seed_capture_scene(&mut cap_state, &config.scene);
+        let mut drawer_tab = DrawerTab::Monsters;
+        let mut drawer_open = true;
+        let mut upgrade_scroll = 0.0;
+        let mut t0 = get_time();
+        let mut t1 = t0;
+        let mut t2 = t0;
+        capture::run_capture(&config, |_dt| {
+            render_playing_frame(
+                &mut cap_state,
+                &mut drawer_tab,
+                &mut drawer_open,
+                &mut upgrade_scroll,
+                &mut t0,
+                &mut t1,
+                &mut t2,
+                false,
+            );
+        })
+        .await;
+        return;
     }
 
     let mut state = persistence::load_game().unwrap_or_else(|_| create_new_game());
@@ -154,11 +180,42 @@ async fn main() {
             AppScreen::Playing => {}
         }
 
-        let now = get_time();
-        let sw = screen_width();
-        let sh = screen_height();
-        draw_game_background(sw, sh);
+        render_playing_frame(
+            &mut state,
+            &mut drawer_tab,
+            &mut drawer_open,
+            &mut upgrade_scroll,
+            &mut last_time_advance,
+            &mut last_adventure_tick,
+            &mut last_save,
+            true,
+        );
 
+        next_frame().await;
+    }
+}
+
+/// Render (and, when `simulate` is true, step) one frame of the Playing screen.
+/// Shared by the interactive loop and the screenshot capture harness; the
+/// capture path passes `simulate = false` so the seeded scene stays frozen and
+/// the save file is never touched.
+#[allow(clippy::too_many_arguments)]
+fn render_playing_frame(
+    state: &mut GameState,
+    drawer_tab: &mut DrawerTab,
+    drawer_open: &mut bool,
+    upgrade_scroll: &mut f32,
+    last_time_advance: &mut f64,
+    last_adventure_tick: &mut f64,
+    last_save: &mut f64,
+    simulate: bool,
+) {
+    let now = get_time();
+    let sw = screen_width();
+    let sh = screen_height();
+    draw_game_background(sw, sh);
+
+    if simulate {
         // Age transient combat effects each frame.
         state.decay_effects(get_frame_time());
 
@@ -166,215 +223,339 @@ async fn main() {
 
         // Advance game time based on speed
         let time_interval = 5.0 / state.speed as f64;
-        if now - last_time_advance > time_interval {
-            simulation::advance_time(&mut state);
-            last_time_advance = now;
+        if now - *last_time_advance > time_interval {
+            simulation::advance_time(state);
+            *last_time_advance = now;
         }
 
         // Process adventurer system
-        if now - last_adventure_tick > 2.0 {
-            simulation::spawn_party(&mut state);
-            simulation::process_parties(&mut state);
-            last_adventure_tick = now;
+        if now - *last_adventure_tick > 2.0 {
+            simulation::spawn_party(state);
+            simulation::process_parties(state);
+            *last_adventure_tick = now;
         }
 
         // Auto-save every 30 seconds
-        if now - last_save > 30.0 {
-            if let Err(e) = persistence::save_game(&state) {
+        if now - *last_save > 30.0 {
+            if let Err(e) = persistence::save_game(state) {
                 eprintln!("Failed to save: {}", e);
             }
-            last_save = now;
+            *last_save = now;
         }
+    }
 
-        // Modal overlay: Species Selection (Prioritize over everything else)
-        if state.unlocked_species.is_empty() {
-            let modal_w = 460.0;
-            let modal_h = 540.0;
-            let modal_x = (sw - modal_w) / 2.0;
-            let modal_y = (sh - modal_h) / 2.0;
+    // Modal overlay: Species Selection (Prioritize over everything else)
+    if state.unlocked_species.is_empty() {
+        let modal_w = 460.0;
+        let modal_h = 540.0;
+        let modal_x = (sw - modal_w) / 2.0;
+        let modal_y = (sh - modal_h) / 2.0;
 
-            // Draw a semi-transparent background to dim the game
-            draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.7));
+        // Draw a semi-transparent background to dim the game
+        draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.7));
 
-            if let Some(selected_species_id) =
-                draw_species_selector(&mut state, modal_x, modal_y, modal_w, modal_h)
-            {
-                // Unlock the selected species
-                if let Err(e) = simulation::unlock_species(&mut state, &selected_species_id) {
-                    eprintln!("Error unlocking species: {}", e);
-                } else {
-                    // Species unlocked successfully - player can now place monsters manually
-                    state.add_log(crate::game_state::LogEntry::system(format!(
-                         "Chosen starter race: {}. Build rooms and place its units to defend your dungeon.",
-                         crate::data::monsters::get_species_display_name(&selected_species_id)
-                     )));
-                }
+        if let Some(selected_species_id) =
+            draw_species_selector(state, modal_x, modal_y, modal_w, modal_h)
+        {
+            // Unlock the selected species
+            if let Err(e) = simulation::unlock_species(state, &selected_species_id) {
+                eprintln!("Error unlocking species: {}", e);
+            } else {
+                // Species unlocked successfully - player can now place monsters manually
+                state.add_log(crate::game_state::LogEntry::system(format!(
+                     "Chosen starter race: {}. Build rooms and place its units to defend your dungeon.",
+                     crate::data::monsters::get_species_display_name(&selected_species_id)
+                 )));
             }
-
-            // Skip drawing other UI if modal is open (optional, but good for focus)
-            next_frame().await;
-            continue;
         }
 
-        let hud_rect = Rect::new(
-            OUTER_MARGIN,
-            OUTER_MARGIN,
-            sw - OUTER_MARGIN * 2.0,
-            HUD_HEIGHT,
-        );
-        match draw_top_hud(&state, hud_rect) {
-            ControlAction::ToggleSpeed => simulation::toggle_speed(&mut state),
-            ControlAction::ToggleDungeon => simulation::toggle_dungeon_status(&mut state),
-            _ => {}
-        }
+        return;
+    }
 
-        let log_rect = Rect::new(
-            OUTER_MARGIN,
-            sh - OUTER_MARGIN - LOG_BAR_HEIGHT,
-            sw - OUTER_MARGIN * 2.0,
-            LOG_BAR_HEIGHT,
-        );
+    let hud_rect = Rect::new(
+        OUTER_MARGIN,
+        OUTER_MARGIN,
+        sw - OUTER_MARGIN * 2.0,
+        HUD_HEIGHT,
+    );
+    match draw_top_hud(state, hud_rect) {
+        ControlAction::ToggleSpeed => simulation::toggle_speed(state),
+        ControlAction::ToggleDungeon => simulation::toggle_dungeon_status(state),
+        _ => {}
+    }
 
-        let body_top = hud_rect.y + hud_rect.h + PANEL_GAP;
-        let body_bottom = log_rect.y - PANEL_GAP;
-        let body_h = (body_bottom - body_top).max(220.0);
+    let log_rect = Rect::new(
+        OUTER_MARGIN,
+        sh - OUTER_MARGIN - LOG_BAR_HEIGHT,
+        sw - OUTER_MARGIN * 2.0,
+        LOG_BAR_HEIGHT,
+    );
 
-        let drawer_w = if drawer_open {
-            SIDE_PANEL_WIDTH.min((sw * 0.22).clamp(250.0, DRAWER_OPEN_WIDTH))
-        } else {
-            DRAWER_COLLAPSED_WIDTH
-        };
-        let drawer_rect = Rect::new(OUTER_MARGIN, body_top, drawer_w, body_h);
-        match draw_side_drawer(&state, drawer_rect, &mut drawer_tab, &mut drawer_open) {
-            DrawerAction::SelectMonster(monster) => {
-                if state.selected_monster.as_ref() == Some(&monster) {
-                    state.selected_monster = None;
-                } else {
-                    state.selected_room = None;
-                    state.selected_monster = Some(monster);
-                }
+    let body_top = hud_rect.y + hud_rect.h + PANEL_GAP;
+    let body_bottom = log_rect.y - PANEL_GAP;
+    let body_h = (body_bottom - body_top).max(220.0);
+
+    let drawer_w = if *drawer_open {
+        SIDE_PANEL_WIDTH.min((sw * 0.22).clamp(250.0, DRAWER_OPEN_WIDTH))
+    } else {
+        DRAWER_COLLAPSED_WIDTH
+    };
+    let drawer_rect = Rect::new(OUTER_MARGIN, body_top, drawer_w, body_h);
+    match draw_side_drawer(state, drawer_rect, drawer_tab, drawer_open) {
+        DrawerAction::SelectMonster(monster) => {
+            if state.selected_monster.as_ref() == Some(&monster) {
+                state.selected_monster = None;
+            } else {
+                state.selected_room = None;
+                state.selected_monster = Some(monster);
             }
-            DrawerAction::BuildRoom => {
-                if let Err(e) = simulation::add_room(&mut state, None) {
+        }
+        DrawerAction::BuildRoom => {
+            if let Err(e) = simulation::add_room(state, None) {
+                state.add_log(game_state::LogEntry::system(e));
+            }
+        }
+        DrawerAction::ProcessEvolutions => simulation::process_evolutions(state),
+        DrawerAction::UnlockSpecies(species) => {
+            if let Err(e) = simulation::unlock_species(state, &species) {
+                state.add_log(game_state::LogEntry::system(e));
+            }
+        }
+        DrawerAction::ResetGame => {
+            *state = create_new_game();
+            let _ = persistence::save_game(state);
+            reset_timers(last_time_advance, last_adventure_tick, last_save);
+        }
+        DrawerAction::None => {}
+    }
+
+    let has_inspector = state.selected_room.is_some() || state.selected_monster.is_some();
+    let right_panel_w = if has_inspector {
+        (sw * 0.21).clamp(270.0, 330.0)
+    } else {
+        0.0
+    };
+    let right_gap = if right_panel_w > 0.0 { PANEL_GAP } else { 0.0 };
+    let dungeon_x = drawer_rect.x + drawer_rect.w + PANEL_GAP;
+    let dungeon_w = sw - dungeon_x - right_panel_w - right_gap - OUTER_MARGIN;
+    let dungeon_h = body_h;
+    let dungeon_rect = Rect::new(
+        dungeon_x,
+        body_top,
+        dungeon_w.max(320.0),
+        dungeon_h.max(220.0),
+    );
+
+    match draw_dungeon_board(state, dungeon_rect) {
+        DungeonAction::RoomSelected(floor_num, room_pos) => {
+            if let Some(ref monster_name) = state.selected_monster.clone() {
+                if let Err(e) = simulation::place_monster(state, floor_num, room_pos, monster_name) {
                     state.add_log(game_state::LogEntry::system(e));
                 }
+                state.selected_monster = None;
+            } else if state.selected_room == Some((floor_num, room_pos)) {
+                state.selected_room = None;
+                *upgrade_scroll = 0.0;
+            } else {
+                state.selected_room = Some((floor_num, room_pos));
+                *upgrade_scroll = 0.0;
             }
-            DrawerAction::ProcessEvolutions => simulation::process_evolutions(&mut state),
-            DrawerAction::UnlockSpecies(species) => {
-                if let Err(e) = simulation::unlock_species(&mut state, &species) {
-                    state.add_log(game_state::LogEntry::system(e));
-                }
-            }
-            DrawerAction::ResetGame => {
-                state = create_new_game();
-                let _ = persistence::save_game(&state);
-                reset_timers(
-                    &mut last_time_advance,
-                    &mut last_adventure_tick,
-                    &mut last_save,
-                );
-            }
-            DrawerAction::None => {}
         }
+        DungeonAction::BuildRoom => {
+            if let Err(e) = simulation::add_room(state, None) {
+                state.add_log(game_state::LogEntry::system(e));
+            }
+        }
+        DungeonAction::None => {}
+    }
 
-        let has_inspector = state.selected_room.is_some() || state.selected_monster.is_some();
-        let right_panel_w = if has_inspector {
-            (sw * 0.21).clamp(270.0, 330.0)
-        } else {
-            0.0
-        };
-        let right_gap = if right_panel_w > 0.0 { PANEL_GAP } else { 0.0 };
-        let dungeon_x = drawer_rect.x + drawer_rect.w + PANEL_GAP;
-        let dungeon_w = sw - dungeon_x - right_panel_w - right_gap - OUTER_MARGIN;
-        let dungeon_h = body_h;
-        let dungeon_rect = Rect::new(
-            dungeon_x,
-            body_top,
-            dungeon_w.max(320.0),
-            dungeon_h.max(220.0),
+    // Inspector panel (room, monster, and upgrade context)
+    if has_inspector {
+        let upgrade_panel_w = right_panel_w;
+        let upgrade_panel_h = dungeon_h;
+        let upgrade_panel_x = sw - upgrade_panel_w - OUTER_MARGIN;
+        let upgrade_panel_y = body_top;
+
+        let upgrade_action = draw_upgrade_panel(
+            state,
+            upgrade_panel_x,
+            upgrade_panel_y,
+            upgrade_panel_w,
+            upgrade_panel_h,
+            upgrade_scroll,
         );
-
-        match draw_dungeon_board(&state, dungeon_rect) {
-            DungeonAction::RoomSelected(floor_num, room_pos) => {
-                if let Some(ref monster_name) = state.selected_monster.clone() {
-                    if let Err(e) =
-                        simulation::place_monster(&mut state, floor_num, room_pos, monster_name)
-                    {
+        match upgrade_action {
+            UpgradeAction::Apply(name) => {
+                if let Some((floor, pos)) = state.selected_room {
+                    if let Err(e) = simulation::apply_upgrade(state, floor, pos, &name) {
                         state.add_log(game_state::LogEntry::system(e));
                     }
-                    state.selected_monster = None;
-                } else if state.selected_room == Some((floor_num, room_pos)) {
-                    state.selected_room = None;
-                    upgrade_scroll = 0.0;
-                } else {
-                    state.selected_room = Some((floor_num, room_pos));
-                    upgrade_scroll = 0.0;
                 }
             }
-            DungeonAction::BuildRoom => {
-                if let Err(e) = simulation::add_room(&mut state, None) {
-                    state.add_log(game_state::LogEntry::system(e));
-                }
-            }
-            DungeonAction::None => {}
-        }
-
-        // Inspector panel (room, monster, and upgrade context)
-        if has_inspector {
-            let upgrade_panel_w = right_panel_w;
-            let upgrade_panel_h = dungeon_h;
-            let upgrade_panel_x = sw - upgrade_panel_w - OUTER_MARGIN;
-            let upgrade_panel_y = body_top;
-
-            let upgrade_action = draw_upgrade_panel(
-                &state,
-                upgrade_panel_x,
-                upgrade_panel_y,
-                upgrade_panel_w,
-                upgrade_panel_h,
-                &mut upgrade_scroll,
-            );
-            match upgrade_action {
-                UpgradeAction::Apply(name) => {
-                    if let Some((floor, pos)) = state.selected_room {
-                        if let Err(e) = simulation::apply_upgrade(&mut state, floor, pos, &name) {
-                            state.add_log(game_state::LogEntry::system(e));
-                        }
+            UpgradeAction::Remove => {
+                if let Some((floor, pos)) = state.selected_room {
+                    if let Err(e) = simulation::remove_upgrade(state, floor, pos) {
+                        state.add_log(game_state::LogEntry::system(e));
                     }
                 }
-                UpgradeAction::Remove => {
-                    if let Some((floor, pos)) = state.selected_room {
-                        if let Err(e) = simulation::remove_upgrade(&mut state, floor, pos) {
-                            state.add_log(game_state::LogEntry::system(e));
-                        }
-                    }
-                }
-                UpgradeAction::Close => {
-                    state.selected_room = None;
-                    state.selected_monster = None;
-                    upgrade_scroll = 0.0;
-                }
-                UpgradeAction::None => {}
             }
+            UpgradeAction::Close => {
+                state.selected_room = None;
+                state.selected_monster = None;
+                *upgrade_scroll = 0.0;
+            }
+            UpgradeAction::None => {}
         }
+    }
 
-        let chip_w = if state.adventurer_parties.is_empty() {
-            132.0
-        } else {
-            184.0
+    let chip_w = if state.adventurer_parties.is_empty() {
+        132.0
+    } else {
+        184.0
+    };
+    draw_adventurer_status_chip(
+        state,
+        Rect::new(
+            dungeon_rect.x + dungeon_rect.w - chip_w - 24.0,
+            dungeon_rect.y + 24.0,
+            chip_w,
+            36.0,
+        ),
+    );
+
+    draw_event_log(state, log_rect);
+
+    // Onboarding tutorial: highlight the relevant panel and advance as the
+    // player completes each step.
+    if tutorial::is_active(state) {
+        let anchor_rect = match tutorial::current_anchor(state) {
+            Some(tutorial::TutorialAnchor::Drawer) => drawer_rect,
+            Some(tutorial::TutorialAnchor::Hud) => hud_rect,
+            _ => dungeon_rect,
         };
-        draw_adventurer_status_chip(
-            &state,
-            Rect::new(
-                dungeon_rect.x + dungeon_rect.w - chip_w - 24.0,
-                dungeon_rect.y + 24.0,
-                chip_w,
-                36.0,
-            ),
-        );
+        if tutorial::draw(state, dungeon_rect, anchor_rect) {
+            tutorial::skip(state);
+        }
+    }
+    if simulate {
+        tutorial::advance(state);
+    }
+}
 
-        draw_event_log(&state, log_rect);
+/// First species flagged as a starter, used to seed capture scenes.
+fn first_starter_species() -> Option<String> {
+    crate::data::monsters::get_all_species()
+        .into_iter()
+        .find(|species| species.starter)
+        .map(|species| species.name)
+}
 
-        next_frame().await;
+/// First combat-capable room (Normal or Boss) in the dungeon.
+fn find_combat_room(state: &GameState) -> Option<(i32, usize)> {
+    for floor in &state.floors {
+        for room in &floor.rooms {
+            if room.room_type == game_state::RoomType::Normal
+                || room.room_type == game_state::RoomType::Boss
+            {
+                return Some((room.floor_number, room.position));
+            }
+        }
+    }
+    None
+}
+
+/// Seed `state` into a representative scene for a screenshot. Scenes:
+/// `species` (starter-race modal), `tutorial` (onboarding overlay), and
+/// `gameplay` (default: a mid-raid dungeon showing icons, effects, threat, log).
+fn seed_capture_scene(state: &mut GameState, scene: &str) {
+    use game_state::{
+        Adventurer, AdventurerParty, DungeonStatus, EffectKind, Equipment, LogEntry, Stats,
+    };
+
+    state.mana = 999;
+    state.max_mana = 999;
+    state.gold = 500;
+
+    match scene {
+        "species" => {
+            state.unlocked_species.clear();
+            state.unlocked_monsters.clear();
+        }
+        "tutorial" => {
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = true;
+            state.tutorial_step = 0;
+            state.status = DungeonStatus::Closed;
+        }
+        _ => {
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = false;
+
+            // Build a couple of combat rooms.
+            let _ = simulation::add_room(state, None);
+            let _ = simulation::add_room(state, None);
+
+            // Place defenders in the first combat room.
+            let monster = state.unlocked_monsters.first().cloned();
+            if let (Some(monster), Some((floor, pos))) = (monster, find_combat_room(state)) {
+                for _ in 0..3 {
+                    let _ = simulation::place_monster(state, floor, pos, &monster);
+                }
+            }
+
+            state.status = DungeonStatus::Open;
+            state.total_deaths = 14; // -> "Wary" threat tier
+
+            // Drop an adventuring party into the defended room for a live fight.
+            if let Some((floor, pos)) = find_combat_room(state) {
+                let members = (0..3u64)
+                    .map(|i| Adventurer {
+                        id: 100 + i,
+                        name: ["Aldric", "Bryn", "Cael"][i as usize].to_string(),
+                        class_name: "Fighter".to_string(),
+                        level: 2,
+                        hp: 30,
+                        max_hp: 40,
+                        alive: true,
+                        experience: 0,
+                        gold: 0,
+                        equipment: Equipment::default(),
+                        conditions: Vec::new(),
+                        scaled_stats: Stats {
+                            hp: 40,
+                            attack: 8,
+                            defense: 3,
+                        },
+                    })
+                    .collect();
+                state.adventurer_parties.push(AdventurerParty {
+                    id: 1,
+                    members,
+                    current_floor: floor,
+                    current_room: pos,
+                    retreating: false,
+                    casualties: 1,
+                    loot: 40,
+                    entry_time: 8,
+                    target_floor: 1,
+                });
+
+                state.push_effect(floor, pos, "-12", EffectKind::Damage);
+                state.push_effect(floor, pos, "Slain!", EffectKind::AdventurerDown);
+            }
+
+            state.add_log(LogEntry::adventure("New adventurer party enters! (3 members)"));
+            state.add_log(LogEntry::combat(
+                "Goblin uses Ambush! Dealt 12 damage to 3 adventurers.",
+            ));
+            state.add_log(LogEntry::combat(
+                "Bryn has fallen on floor 1! +20 mana, +10 XP to monsters",
+            ));
+            state.add_log(LogEntry::building("Spawned defender on floor 1, room 1."));
+        }
     }
 }

@@ -226,14 +226,14 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
 }
 
 fn handle_retreating_parties(state: &mut GameState) {
-    state.adventurer_parties.retain(|party| {
-        if party.retreating {
-            // Party has left
-            false
-        } else {
-            true
-        }
-    });
+    let before = state.adventurer_parties.len();
+    state.adventurer_parties.retain(|party| !party.retreating);
+    let departed = before - state.adventurer_parties.len();
+    if departed > 0 {
+        // Every party that leaves (looted out or wiped/retreated) is a raid the
+        // dungeon has weathered.
+        state.raids_completed += departed as i32;
+    }
 
     // Respawn monsters if no parties remain
     if state.adventurer_parties.is_empty() {

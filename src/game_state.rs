@@ -282,6 +282,14 @@ pub struct GameState {
     pub total_deaths: i32,
     #[serde(default)]
     pub threat_warned: i32,
+    #[serde(default)]
+    pub raids_completed: i32,
+
+    // Onboarding tutorial (only enabled for fresh games)
+    #[serde(default)]
+    pub tutorial_active: bool,
+    #[serde(default)]
+    pub tutorial_step: i32,
 
     // Monster progression
     pub unlocked_species: Vec<String>,
@@ -329,6 +337,9 @@ impl GameState {
             next_party_spawn: 8,
             total_deaths: 0,
             threat_warned: 0,
+            raids_completed: 0,
+            tutorial_active: true,
+            tutorial_step: 0,
             unlocked_species: vec![],
             unlocked_monsters: vec![],
             selected_room: None,
