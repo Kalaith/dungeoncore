@@ -218,6 +218,40 @@ pub fn process_hourly_traits(state: &mut GameState) {
     }
 }
 
+/// Unlock evolved forms as defenders gain experience, WITHOUT transforming the
+/// placed monster. The player can then choose to summon the new tier and retire
+/// the old one. Runs hourly; each form is only announced once.
+pub fn process_evolution_unlocks(state: &mut GameState) {
+    // Collect (from, to) pairs for monsters that have earned their next tier.
+    let mut candidates: Vec<String> = Vec::new();
+    for floor in &state.floors {
+        for room in &floor.rooms {
+            for monster in &room.monsters {
+                if let Some(path) =
+                    crate::data::evolutions::get_evolution_for_monster(&monster.type_name)
+                {
+                    let earned = monster.experience >= path.experience_required
+                        && room.floor_number >= path.conditions.min_floor;
+                    if earned
+                        && !state.unlocked_monsters.contains(&path.to_monster)
+                        && !candidates.contains(&path.to_monster)
+                    {
+                        candidates.push(path.to_monster);
+                    }
+                }
+            }
+        }
+    }
+
+    for new_monster in candidates {
+        state.unlocked_monsters.push(new_monster.clone());
+        state.add_log(LogEntry::system(format!(
+            "New defender unlocked: {}! Summon it from the Monsters panel to upgrade your dungeon.",
+            new_monster
+        )));
+    }
+}
+
 /// Check and perform monster evolutions
 pub fn process_evolutions(state: &mut GameState) {
     let mut evolutions_performed = Vec::new();

@@ -30,8 +30,26 @@ pub fn advance_time(state: &mut GameState) {
     // Process hourly monster traits
     crate::simulation::monsters::process_hourly_traits(state);
 
-    // Process monster evolutions
-    crate::simulation::monsters::process_evolutions(state);
+    // Unlock evolved forms as defenders gain experience (no auto-transform).
+    crate::simulation::monsters::process_evolution_unlocks(state);
+
+    // Escalating warnings when too many adventurers die in the dungeon.
+    check_threat_level(state);
+}
+
+/// Emit escalating warnings as the dungeon's death toll rises.
+fn check_threat_level(state: &mut GameState) {
+    let tier = state.threat_tier();
+    if tier > state.threat_warned {
+        state.threat_warned = tier;
+        let message = match tier {
+            1 => "Word spreads: adventurers are dying in your dungeon. The nearby town grows wary.",
+            2 => "The Adventurers' Guild has posted warnings about your dungeon's death toll.",
+            3 => "The kingdom has taken notice. So many have died that a reckoning is being prepared.",
+            _ => "Your dungeon is branded a deathtrap. The realm is mustering an army to destroy your core.",
+        };
+        state.add_log(LogEntry::system(message));
+    }
 }
 
 /// Toggle dungeon status between Open and Closed

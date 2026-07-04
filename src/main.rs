@@ -76,7 +76,6 @@ async fn main() {
     let mut last_save = get_time();
     let mut drawer_tab = DrawerTab::Monsters;
     let mut drawer_open = true;
-    let mut log_expanded = false;
     let mut upgrade_scroll = 0.0;
 
     loop {
@@ -160,6 +159,9 @@ async fn main() {
         let sh = screen_height();
         draw_game_background(sw, sh);
 
+        // Age transient combat effects each frame.
+        state.decay_effects(get_frame_time());
+
         // === Time-based Updates ===
 
         // Advance game time based on speed
@@ -186,8 +188,8 @@ async fn main() {
 
         // Modal overlay: Species Selection (Prioritize over everything else)
         if state.unlocked_species.is_empty() {
-            let modal_w = 400.0;
-            let modal_h = 500.0;
+            let modal_w = 460.0;
+            let modal_h = 540.0;
             let modal_x = (sw - modal_w) / 2.0;
             let modal_y = (sh - modal_h) / 2.0;
 
@@ -220,17 +222,21 @@ async fn main() {
             sw - OUTER_MARGIN * 2.0,
             HUD_HEIGHT,
         );
-        draw_top_hud(&state, hud_rect);
+        match draw_top_hud(&state, hud_rect) {
+            ControlAction::ToggleSpeed => simulation::toggle_speed(&mut state),
+            ControlAction::ToggleDungeon => simulation::toggle_dungeon_status(&mut state),
+            _ => {}
+        }
 
-        let command_rect = Rect::new(
+        let log_rect = Rect::new(
             OUTER_MARGIN,
-            sh - OUTER_MARGIN - COMMAND_BAR_HEIGHT,
+            sh - OUTER_MARGIN - LOG_BAR_HEIGHT,
             sw - OUTER_MARGIN * 2.0,
-            COMMAND_BAR_HEIGHT,
+            LOG_BAR_HEIGHT,
         );
 
         let body_top = hud_rect.y + hud_rect.h + PANEL_GAP;
-        let body_bottom = command_rect.y - PANEL_GAP;
+        let body_bottom = log_rect.y - PANEL_GAP;
         let body_h = (body_bottom - body_top).max(220.0);
 
         let drawer_w = if drawer_open {
@@ -258,6 +264,15 @@ async fn main() {
                 if let Err(e) = simulation::unlock_species(&mut state, &species) {
                     state.add_log(game_state::LogEntry::system(e));
                 }
+            }
+            DrawerAction::ResetGame => {
+                state = create_new_game();
+                let _ = persistence::save_game(&state);
+                reset_timers(
+                    &mut last_time_advance,
+                    &mut last_adventure_tick,
+                    &mut last_save,
+                );
             }
             DrawerAction::None => {}
         }
@@ -358,39 +373,7 @@ async fn main() {
             ),
         );
 
-        let toast_w = (dungeon_rect.w * 0.66).clamp(420.0, 680.0);
-        let toast_rect = Rect::new(
-            dungeon_rect.x + (dungeon_rect.w - toast_w) * 0.5 - 28.0,
-            dungeon_rect.y + dungeon_rect.h - 56.0,
-            toast_w.min(dungeon_rect.w - 92.0),
-            44.0,
-        );
-        if draw_event_toast(&state, toast_rect, log_expanded) == EventToastAction::ToggleLog {
-            log_expanded = !log_expanded;
-        }
-
-        let control_action = draw_command_bar(&state, command_rect);
-        match control_action {
-            ControlAction::ToggleSpeed => simulation::toggle_speed(&mut state),
-            ControlAction::ToggleDungeon => simulation::toggle_dungeon_status(&mut state),
-            ControlAction::RespawnMonsters => simulation::respawn_monsters(&mut state),
-            ControlAction::AddRoom => {
-                if let Err(e) = simulation::add_room(&mut state, None) {
-                    state.add_log(game_state::LogEntry::system(e));
-                }
-            }
-            ControlAction::ResetGame => {
-                state = create_new_game();
-                let _ = persistence::save_game(&state);
-                reset_timers(
-                    &mut last_time_advance,
-                    &mut last_adventure_tick,
-                    &mut last_save,
-                );
-            }
-            ControlAction::ProcessEvolutions => simulation::process_evolutions(&mut state),
-            ControlAction::None => {}
-        }
+        draw_event_log(&state, log_rect);
 
         next_frame().await;
     }

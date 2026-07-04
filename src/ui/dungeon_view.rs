@@ -2,7 +2,7 @@ use macroquad::prelude::*;
 use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
 
 use crate::data::constants::{get_room_cost, MAX_ROOMS_PER_FLOOR};
-use crate::game_state::{GameState, Room, RoomType};
+use crate::game_state::{DungeonStatus, EffectKind, GameState, Monster, Room, RoomType};
 
 use super::theme::*;
 
@@ -374,7 +374,6 @@ fn draw_room_tile(state: &GameState, room: &Room, rect: Rect, placement: Placeme
     let selected = state.selected_room == Some((room.floor_number, room.position));
     let adventurers = adventurer_count_in_room(state, room);
     let alive = room.monsters.iter().filter(|monster| monster.alive).count();
-    let dead = room.monsters.len().saturating_sub(alive);
     let fighting = adventurers > 0 && alive > 0;
     let (fill, border, icon_color, title) = room_tone(room);
     let mut draw_rect = rect;
@@ -446,34 +445,124 @@ fn draw_room_tile(state: &GameState, room: &Room, rect: Rect, placement: Placeme
     );
     draw_room_label_plate(label_rect, title, room, icon_color);
 
+    // Per-unit icons: defenders on the left, adventurers on the right.
+    let strip = Rect::new(
+        draw_rect.x + 8.0,
+        draw_rect.y + draw_rect.h - 24.0,
+        draw_rect.w - 16.0,
+        20.0,
+    );
+    draw_room_units(room, strip, adventurers);
+
+    // Floating combat feedback (damage numbers, kills) rising over the room.
+    draw_room_effects(state, room, draw_rect);
+
+    was_clicked_rect(rect)
+}
+
+/// Draw one icon per unit in the room: monster defenders (with their initial)
+/// on the left, adventurers on the right. Overflow collapses into a "+N" tag.
+fn draw_room_units(room: &Room, strip: Rect, adventurers: usize) {
+    let radius = 7.0;
+    let step = radius * 2.0 + 3.0;
+    let cy = strip.y + strip.h * 0.5;
+
     if room.room_type == RoomType::Normal || room.room_type == RoomType::Boss {
-        draw_badge(
-            Rect::new(draw_rect.x + 6.0, draw_rect.y + 6.0, 38.0, 15.0),
-            &format!("M {alive}"),
-            if alive > 0 { EMERALD } else { TEXT_DIM },
-        );
-        if dead > 0 {
-            draw_badge(
-                Rect::new(draw_rect.x + 48.0, draw_rect.y + 6.0, 34.0, 15.0),
-                &format!("D {dead}"),
-                DANGER,
+        // Alive defenders first so they read clearly, then fallen ones.
+        let mut ordered: Vec<&Monster> = room.monsters.iter().filter(|m| m.alive).collect();
+        ordered.extend(room.monsters.iter().filter(|m| !m.alive));
+
+        let zone_w = strip.w * 0.60;
+        let max_icons = ((zone_w / step).floor() as usize).max(1);
+        let mut x = strip.x + radius + 1.0;
+        let mut drawn = 0;
+        for monster in &ordered {
+            if drawn >= max_icons {
+                break;
+            }
+            let color = if monster.alive { EMERALD } else { TEXT_DIM };
+            let initial = monster
+                .type_name
+                .chars()
+                .next()
+                .map(|c| c.to_ascii_uppercase().to_string())
+                .unwrap_or_else(|| "?".to_string());
+            draw_icon_disc(vec2(x, cy), radius, color, &initial);
+            x += step;
+            drawn += 1;
+        }
+        if ordered.len() > drawn {
+            draw_text_fit(
+                &format!("+{}", ordered.len() - drawn),
+                x - 2.0,
+                cy + 4.0,
+                28.0,
+                11.0,
+                TEXT_MUTED,
             );
         }
     }
+
     if adventurers > 0 {
-        draw_badge(
-            Rect::new(
-                draw_rect.x + draw_rect.w - 42.0,
-                draw_rect.y + 6.0,
-                36.0,
-                15.0,
-            ),
-            &format!("A {adventurers}"),
-            WARNING,
+        let zone_w = strip.w * 0.36;
+        let max_icons = ((zone_w / step).floor() as usize).max(1);
+        let shown = adventurers.min(max_icons);
+        let mut x = strip.x + strip.w - radius - 1.0;
+        for _ in 0..shown {
+            draw_icon_disc(vec2(x, cy), radius, WARNING, "A");
+            x -= step;
+        }
+        if adventurers > shown {
+            draw_text_fit_right(
+                &format!("+{}", adventurers - shown),
+                x + radius,
+                cy + 4.0,
+                28.0,
+                11.0,
+                WARNING,
+            );
+        }
+    }
+}
+
+/// Render active floating effects anchored to this room, rising and fading out.
+fn draw_room_effects(state: &GameState, room: &Room, rect: Rect) {
+    for (stack, effect) in state
+        .effects
+        .iter()
+        .filter(|e| e.floor == room.floor_number && e.room == room.position)
+        .enumerate()
+    {
+        let life = (effect.ttl / effect.max_ttl).clamp(0.0, 1.0);
+        let rise = (1.0 - life) * 28.0 + stack as f32 * 15.0;
+        let color = effect_color(effect.kind);
+        let faded = Color::new(color.r, color.g, color.b, life);
+        let cx = rect.x + rect.w * 0.5;
+        let cy = rect.y + rect.h * 0.36 - rise;
+        // Shadow for legibility over busy art.
+        draw_centered_text(
+            &effect.text,
+            Rect::new(cx - 69.0, cy - 7.0, 140.0, 16.0),
+            13.0,
+            Color::new(0.0, 0.0, 0.0, life * 0.7),
+        );
+        draw_centered_text(
+            &effect.text,
+            Rect::new(cx - 70.0, cy - 8.0, 140.0, 16.0),
+            13.0,
+            faded,
         );
     }
+}
 
-    was_clicked_rect(rect)
+fn effect_color(kind: EffectKind) -> Color {
+    match kind {
+        EffectKind::Damage => WARNING,
+        EffectKind::Ability => SOUL,
+        EffectKind::MonsterDown => DANGER,
+        EffectKind::AdventurerDown => EMERALD,
+        EffectKind::Loot => TREASURE,
+    }
 }
 
 fn draw_room_chamber_art(rect: Rect, room: &Room, fill: Color, border: Color, icon_color: Color) {
@@ -1014,11 +1103,29 @@ fn current_objective(state: &GameState) -> String {
         return "Adventurers are inside. Hold the route.".to_string();
     }
 
-    if state.mana < 20 {
-        return "Gather mana before expanding.".to_string();
-    }
+    let has_defender = state
+        .floors
+        .iter()
+        .flat_map(|floor| &floor.rooms)
+        .any(|room| !room.monsters.is_empty());
 
-    "Build deeper or strengthen a selected room.".to_string()
+    match state.status {
+        DungeonStatus::Closed => {
+            if !has_defender {
+                "Build a room and place a defender, then open the dungeon up top.".to_string()
+            } else {
+                "Dungeon is closed. Open it (top bar) when you're ready for adventurers.".to_string()
+            }
+        }
+        DungeonStatus::Closing => "Closing... adventurers are finishing their run.".to_string(),
+        _ => {
+            if state.mana < 20 {
+                "Gather mana before expanding.".to_string()
+            } else {
+                "Build deeper or strengthen a selected room.".to_string()
+            }
+        }
+    }
 }
 
 fn all_rooms(state: &GameState) -> Vec<&Room> {

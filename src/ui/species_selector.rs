@@ -1,9 +1,11 @@
 use crate::data::monsters::{
-    get_all_species, get_species_display_name, get_starter_monsters_for_species,
+    get_all_species, get_species_display_name, get_species_unlock_cost,
+    get_starter_monsters_for_species,
 };
 use crate::game_state::GameState;
 use macroquad::prelude::*;
-use macroquad_toolkit::ui::{button_styled, panel, truncate_text_to_width, ButtonStyle};
+
+use super::theme::*;
 
 pub fn draw_species_selector(
     state: &mut GameState,
@@ -12,115 +14,124 @@ pub fn draw_species_selector(
     w: f32,
     h: f32,
 ) -> Option<String> {
-    // Draw background panel
-    panel(x, y, w, h, Some("Select Starter Species"));
+    let panel = Rect::new(x, y, w, h);
+    draw_panel(panel, Some("Choose Your Starter Race"), SOUL);
+    draw_text_fit(
+        "Pick the species that awakens as your first defenders.",
+        x + 16.0,
+        y + 48.0,
+        w - 32.0,
+        12.0,
+        TEXT_MUTED,
+    );
 
-    let mut selected = None;
-    let mut current_y = y + 46.0;
-
-    let species_list = get_all_species();
     let choosing_starter = state.unlocked_species.is_empty();
 
+    // Order the list so selectable races surface first.
+    let mut species_list = get_all_species();
+    species_list.sort_by(|a, b| {
+        let a_key = (!a.starter, a.unlock_cost);
+        let b_key = (!b.starter, b.unlock_cost);
+        a_key.cmp(&b_key)
+    });
+
+    let mut selected = None;
+    let card_h = 96.0;
+    let gap = 10.0;
+    let mut cy = y + 64.0;
+
     for species in species_list {
-        let row_h = 92.0;
-        if current_y + row_h > y + h - 12.0 {
+        if cy + card_h > y + h - 14.0 {
             break;
         }
 
-        let cost = crate::data::monsters::get_species_unlock_cost(&species.name).unwrap_or(0);
-        let can_afford = if choosing_starter {
+        let cost = get_species_unlock_cost(&species.name).unwrap_or(0);
+        let selectable = if choosing_starter {
             species.starter
         } else {
             state.gold >= cost
         };
         let display_name = get_species_display_name(&species.name);
-        let starters = get_starter_monsters_for_species(&species.name)
+        let roster = get_starter_monsters_for_species(&species.name)
             .into_iter()
-            .map(|template| match template.element {
-                Some(element) => format!("{} ({})", template.name, element),
-                None => template.name,
-            })
+            .map(|template| template.name)
             .collect::<Vec<_>>();
-        let roster = if starters.is_empty() {
-            "Future unlock roster".to_string()
+        let roster_text = if roster.is_empty() {
+            "Roster unlocks later".to_string()
         } else {
-            starters.join(", ")
-        };
-        let label = if cost == 0 || (choosing_starter && species.starter) {
-            format!("Choose {}", display_name)
-        } else if choosing_starter {
-            format!("Future unlock: {}", display_name)
-        } else {
-            format!("Unlock {} ({} gold)", display_name, cost)
+            roster.join(", ")
         };
 
-        let button_color = if can_afford {
-            &ButtonStyle::default_dark()
-        } else {
-            // Grayed out style for unaffordable species
-            &ButtonStyle {
-                normal: Color::new(0.3, 0.3, 0.3, 1.0),
-                hovered: Color::new(0.3, 0.3, 0.3, 1.0),
-                pressed: Color::new(0.3, 0.3, 0.3, 1.0),
-                border: Color::new(0.4, 0.4, 0.4, 1.0),
-                text_color: Color::new(0.5, 0.5, 0.5, 1.0),
-                disabled: Color::new(0.1, 0.1, 0.1, 1.0),
-            }
-        };
-
-        draw_rectangle(
-            x + 10.0,
-            current_y,
-            w - 20.0,
-            row_h - 8.0,
-            Color::new(0.04, 0.05, 0.07, 0.82),
+        let card = Rect::new(x + 14.0, cy, w - 28.0, card_h);
+        let accent = if selectable { SOUL } else { BORDER_MUTED };
+        draw_card(
+            card,
+            Color::new(accent.r, accent.g, accent.b, if selectable { 0.06 } else { 0.02 }),
+            Color::new(accent.r, accent.g, accent.b, if selectable { 0.44 } else { 0.16 }),
         );
-        let description = truncate_text_to_width(&species.description, w - 40.0, 13.0);
-        let roster_text =
-            truncate_text_to_width(&format!("Starter units: {}", roster), w - 40.0, 12.0);
 
-        draw_text(
-            &description,
-            x + 20.0,
-            current_y + 47.0,
-            13.0,
-            Color::new(0.68, 0.70, 0.76, 1.0),
+        draw_text_fit(
+            &display_name,
+            card.x + 14.0,
+            card.y + 26.0,
+            card.w - 150.0,
+            18.0,
+            if selectable { TEXT } else { TEXT_DIM },
         );
-        draw_text(
-            &roster_text,
-            x + 20.0,
-            current_y + 67.0,
+
+        // Status pill in the top-right corner.
+        let (pill_text, pill_color) = if species.starter {
+            ("STARTER", EMERALD)
+        } else if selectable {
+            ("READY", TREASURE)
+        } else {
+            ("LOCKED", TEXT_DIM)
+        };
+        draw_pill(
+            Rect::new(card.x + card.w - 92.0, card.y + 12.0, 78.0, 18.0),
+            pill_text,
+            pill_color,
+        );
+
+        draw_text_fit(
+            &species.description,
+            card.x + 14.0,
+            card.y + 48.0,
+            card.w - 28.0,
             12.0,
-            if can_afford {
-                Color::new(0.44, 0.86, 0.64, 1.0)
-            } else {
-                Color::new(0.45, 0.45, 0.48, 1.0)
-            },
+            TEXT_MUTED,
+        );
+        draw_text_fit(
+            &format!("Units: {}", roster_text),
+            card.x + 14.0,
+            card.y + 70.0,
+            card.w - 130.0,
+            11.0,
+            if selectable { EMERALD } else { TEXT_DIM },
         );
 
-        if can_afford
-            && button_styled(
-                x + 16.0,
-                current_y + 8.0,
-                w - 32.0,
-                28.0,
-                &label,
-                button_color,
-            )
-        {
+        let label = if choosing_starter {
+            if species.starter {
+                "Choose".to_string()
+            } else {
+                "Locked".to_string()
+            }
+        } else if cost == 0 {
+            "Choose".to_string()
+        } else {
+            format!("Unlock {}g", cost)
+        };
+        let tone = if species.starter {
+            ButtonTone::Primary
+        } else {
+            ButtonTone::Arcane
+        };
+        let btn = Rect::new(card.x + card.w - 116.0, card.y + card.h - 38.0, 102.0, 28.0);
+        if draw_command_button(btn, &label, tone, selectable) {
             selected = Some(species.name.clone());
-        } else if !can_afford {
-            button_styled(
-                x + 16.0,
-                current_y + 8.0,
-                w - 32.0,
-                28.0,
-                &label,
-                button_color,
-            );
         }
 
-        current_y += row_h;
+        cy += card_h + gap;
     }
 
     selected

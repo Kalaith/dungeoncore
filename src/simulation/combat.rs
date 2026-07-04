@@ -1,6 +1,6 @@
 use crate::data::adventurers::get_victory_quotes;
 use crate::data::constants::RETREAT_THRESHOLD;
-use crate::game_state::{GameState, LogEntry};
+use crate::game_state::{EffectKind, GameState, LogEntry};
 
 /// Resolve combat between adventurers and monsters in a room
 pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
@@ -13,6 +13,9 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     if !has_alive_monsters {
         return;
     }
+
+    let floor_num = state.floors[floor_idx].number;
+    let room_pos = state.floors[floor_idx].rooms[room_idx].position;
 
     // Get room upgrade multipliers
     let trap_mult = state.floors[floor_idx].rooms[room_idx].trap_multiplier();
@@ -36,6 +39,8 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     // We need to borrow room and party disjointly to modify both
     // and we need to collect logs to add them to state later (since state is split borrowed)
     let mut combat_logs: Vec<LogEntry> = Vec::new();
+    let mut ability_deaths = 0;
+    let mut ability_used: Option<(String, String, i32)> = None;
 
     {
         // Disjoint borrows
@@ -69,6 +74,7 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
                                         if adv.hp <= 0 {
                                             adv.alive = false;
                                             party.casualties += 1;
+                                            ability_deaths += 1;
                                         }
                                     }
                                 }
@@ -78,6 +84,11 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
                                         "{} uses {}! Dealt {} damage to {} adventurers.",
                                         monster.type_name, trait_def.name, damage, total_hits
                                     )));
+                                    ability_used = Some((
+                                        monster.type_name.clone(),
+                                        trait_def.name.clone(),
+                                        damage,
+                                    ));
                                 }
                             }
                         }
@@ -89,9 +100,21 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
         }
     }
 
-    // Apply deferred logs
+    // Apply deferred logs and effects
     for log in combat_logs {
         state.add_log(log);
+    }
+    if let Some((_, ability_name, damage)) = ability_used {
+        state.push_effect(
+            floor_num,
+            room_pos,
+            format!("{} -{}", ability_name, damage),
+            EffectKind::Ability,
+        );
+    }
+    if ability_deaths > 0 {
+        state.total_deaths += ability_deaths;
+        state.push_effect(floor_num, room_pos, "Slain!", EffectKind::AdventurerDown);
     }
 
     // Phase 2: Standard Combat Attacks
@@ -196,18 +219,29 @@ fn apply_trap_damage(
         }
     };
 
+    let floor_num = state.floors[floor_idx].number;
+    let room_pos = state.floors[floor_idx].rooms[room_idx].position;
+
     if let Some((killed, victim_name, mana_gain, damage)) = log_msg {
         if killed {
             state.mana = (state.mana + mana_gain).min(state.max_mana);
+            state.total_deaths += 1;
             state.add_log(LogEntry::combat(format!(
                 "{} killed {} by {}! +{} mana",
                 trap_name, victim_name, trap_name, mana_gain
             )));
+            state.push_effect(floor_num, room_pos, "Trapped!", EffectKind::AdventurerDown);
         } else {
             state.add_log(LogEntry::combat(format!(
                 "{} dealt {} damage to {}",
                 trap_name, damage, victim_name
             )));
+            state.push_effect(
+                floor_num,
+                room_pos,
+                format!("-{}", damage),
+                EffectKind::Damage,
+            );
         }
     }
 }
@@ -240,9 +274,11 @@ fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, ro
         // Award mana for adventurer death
         let mana_gain = victim_level * 10;
         state.mana = (state.mana + mana_gain).min(state.max_mana);
+        state.total_deaths += 1;
 
         // Award XP to all surviving monsters in the room
         let room = &mut state.floors[floor_idx].rooms[room_idx];
+        let room_pos = room.position;
         let evolution_mult = room.evolution_multiplier();
         let base_xp = victim_level * 5;
         let xp_gain = (base_xp as f32 * evolution_mult) as i32;
@@ -255,6 +291,7 @@ fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, ro
             "{} has fallen on floor {}! +{} mana, +{} XP to monsters",
             victim_name, floor_num, mana_gain, xp_gain
         )));
+        state.push_effect(floor_num, room_pos, "Slain!", EffectKind::AdventurerDown);
 
         // Check retreat condition
         if retreating {
@@ -307,6 +344,12 @@ fn monster_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, room_
             String::new()
         }
     )));
+    state.push_effect(
+        floor_num,
+        room_pos,
+        format!("{} down", monster_name),
+        EffectKind::MonsterDown,
+    );
 
     // Victory quote
     let victory_quotes = get_victory_quotes();

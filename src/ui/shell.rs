@@ -5,13 +5,16 @@ use crate::game_state::{DungeonStatus, GameState, RoomType};
 use super::controls::ControlAction;
 use super::theme::*;
 
-pub const HUD_HEIGHT: f32 = 74.0;
-pub const COMMAND_BAR_HEIGHT: f32 = 76.0;
+pub const HUD_HEIGHT: f32 = 84.0;
+pub const LOG_BAR_HEIGHT: f32 = 108.0;
 pub const OUTER_MARGIN: f32 = 8.0;
 pub const PANEL_GAP: f32 = 12.0;
 pub const SIDE_PANEL_WIDTH: f32 = 274.0;
 
-pub fn draw_top_hud(state: &GameState, rect: Rect) {
+/// Draw the top HUD (resources, time, threat) plus the primary controls
+/// (speed and dungeon open/close). Returns any control action triggered.
+pub fn draw_top_hud(state: &GameState, rect: Rect) -> ControlAction {
+    let mut action = ControlAction::None;
     draw_rectangle(
         rect.x,
         rect.y,
@@ -28,100 +31,34 @@ pub fn draw_top_hud(state: &GameState, rect: Rect) {
         Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.22),
     );
 
-    let title_w = (rect.w * 0.25).clamp(260.0, 340.0);
+    let title_w = (rect.w * 0.20).clamp(210.0, 300.0);
     let title_rect = Rect::new(rect.x + 14.0, rect.y + 10.0, title_w, rect.h - 20.0);
     draw_brand_mark(
-        vec2(title_rect.x + 30.0, title_rect.y + title_rect.h * 0.5),
-        26.0,
+        vec2(title_rect.x + 28.0, title_rect.y + title_rect.h * 0.5),
+        24.0,
     );
     draw_text_fit(
         "DUNGEON CORE",
-        title_rect.x + 66.0,
-        title_rect.y + 36.0,
-        title_rect.w - 70.0,
-        26.0,
+        title_rect.x + 62.0,
+        title_rect.y + title_rect.h * 0.5 + 8.0,
+        title_rect.w - 66.0,
+        24.0,
         TEXT,
     );
 
-    let status_w = (rect.w * 0.15).clamp(150.0, 206.0);
-    let stats_x = title_rect.x + title_rect.w + 18.0;
-    let stats_w = rect.x + rect.w - stats_x - status_w - 24.0;
-    let stat_w = (stats_w / 4.0).clamp(112.0, 170.0);
-    let y = rect.y + 14.0;
+    // Right-hand control cluster: speed selector + dungeon toggle.
+    let dungeon_w = 150.0_f32.min(rect.w * 0.14).max(120.0);
+    let speed_w = 138.0_f32.min(rect.w * 0.13).max(112.0);
+    let cluster_gap = 10.0;
+    let control_h = 42.0;
+    let control_y = rect.y + (rect.h - control_h) * 0.5;
+    let dungeon_x = rect.x + rect.w - 14.0 - dungeon_w;
+    let speed_x = dungeon_x - cluster_gap - speed_w;
 
-    draw_top_stat(
-        Rect::new(stats_x, y, stat_w, rect.h - 28.0),
-        "Mana",
-        &format!("{}/{}", state.mana, state.max_mana),
-        MANA,
-        StatIcon::Mana,
-        Some((state.mana as f32, state.max_mana as f32)),
-    );
-    draw_top_stat(
-        Rect::new(stats_x + stat_w, y, stat_w, rect.h - 28.0),
-        "Gold",
-        &state.gold.to_string(),
-        TREASURE,
-        StatIcon::Gold,
-        None,
-    );
-    draw_top_stat(
-        Rect::new(stats_x + stat_w * 2.0, y, stat_w, rect.h - 28.0),
-        "Souls",
-        &state.souls.to_string(),
-        SOUL,
-        StatIcon::Soul,
-        None,
-    );
-    draw_top_stat(
-        Rect::new(stats_x + stat_w * 3.0, y, stat_w, rect.h - 28.0),
-        "",
-        &format!("Day {} {:02}:00", state.day, state.hour),
-        TEXT,
-        StatIcon::Time,
-        None,
-    );
-
-    let (status_color, status_label) = match state.status {
-        DungeonStatus::Open => (EMERALD, "Open"),
-        DungeonStatus::Closing => (WARNING, "Closing"),
-        DungeonStatus::Closed => (DANGER, "Closed"),
-        DungeonStatus::Maintenance => (TEXT_DIM, "Maint."),
-    };
-    draw_status_block(
-        Rect::new(
-            rect.x + rect.w - status_w - 14.0,
-            rect.y + 12.0,
-            status_w,
-            rect.h - 24.0,
-        ),
-        status_label,
-        status_color,
-    );
-}
-
-pub fn draw_command_bar(state: &GameState, rect: Rect) -> ControlAction {
-    let mut action = ControlAction::None;
-    draw_panel(rect, None, BORDER);
-
-    let inner = Rect::new(rect.x + 22.0, rect.y + 16.0, rect.w - 44.0, rect.h - 32.0);
-    let speed = Rect::new(inner.x, inner.y, 230.0, inner.h);
-    let primary = Rect::new(speed.x + speed.w + 34.0, inner.y, 210.0, inner.h);
-    let respawn = Rect::new(
-        primary.x + primary.w + 36.0,
-        inner.y,
-        220.0_f32.min(inner.w * 0.18),
-        inner.h,
-    );
-    let evolve = Rect::new(
-        respawn.x + respawn.w + 36.0,
-        inner.y,
-        220.0_f32.min(inner.w * 0.18),
-        inner.h,
-    );
-    let reset = Rect::new(inner.x + inner.w - 164.0, inner.y, 164.0, inner.h);
-
-    if draw_speed_segments(speed, state.speed) {
+    if draw_speed_segments(
+        Rect::new(speed_x, control_y, speed_w, control_h),
+        state.speed,
+    ) {
         action = ControlAction::ToggleSpeed;
     }
 
@@ -131,24 +68,76 @@ pub fn draw_command_bar(state: &GameState, rect: Rect) -> ControlAction {
         DungeonStatus::Closing => ("Closing...", ButtonTone::Ghost, false),
         DungeonStatus::Maintenance => ("Maintenance", ButtonTone::Ghost, false),
     };
-    if draw_command_button(primary, status_text, status_tone, enabled) {
+    if draw_command_button(
+        Rect::new(dungeon_x, control_y, dungeon_w, control_h),
+        status_text,
+        status_tone,
+        enabled,
+    ) {
         action = ControlAction::ToggleDungeon;
     }
 
-    let can_respawn = state.adventurer_parties.is_empty();
-    if draw_command_button(respawn, "Respawn", ButtonTone::Arcane, can_respawn) {
-        action = ControlAction::RespawnMonsters;
-    }
+    // Resource + status stats fill the space between the title and controls.
+    let stats_x = title_rect.x + title_rect.w + 16.0;
+    let stats_w = speed_x - stats_x - 16.0;
+    let stat_w = (stats_w / 5.0).clamp(90.0, 156.0);
+    let y = rect.y + 14.0;
+    let stat_h = rect.h - 28.0;
 
-    if draw_command_button(evolve, "Evolve", ButtonTone::Ghost, true) {
-        action = ControlAction::ProcessEvolutions;
-    }
-
-    if draw_reset_button(reset) {
-        action = ControlAction::ResetGame;
-    }
+    draw_top_stat(
+        Rect::new(stats_x, y, stat_w, stat_h),
+        "Mana",
+        &format!("{}/{}", state.mana, state.max_mana),
+        MANA,
+        StatIcon::Mana,
+        Some((state.mana as f32, state.max_mana as f32)),
+    );
+    draw_top_stat(
+        Rect::new(stats_x + stat_w, y, stat_w, stat_h),
+        "Gold",
+        &state.gold.to_string(),
+        TREASURE,
+        StatIcon::Gold,
+        None,
+    );
+    draw_top_stat(
+        Rect::new(stats_x + stat_w * 2.0, y, stat_w, stat_h),
+        "Souls",
+        &state.souls.to_string(),
+        SOUL,
+        StatIcon::Soul,
+        None,
+    );
+    let (threat_label, threat_color) = threat_display(state);
+    draw_top_stat(
+        Rect::new(stats_x + stat_w * 3.0, y, stat_w, stat_h),
+        &format!("Threat ({})", state.total_deaths),
+        &threat_label,
+        threat_color,
+        StatIcon::Threat,
+        None,
+    );
+    draw_top_stat(
+        Rect::new(stats_x + stat_w * 4.0, y, stat_w, stat_h),
+        "",
+        &format!("Day {} {:02}:00", state.day, state.hour),
+        TEXT,
+        StatIcon::Time,
+        None,
+    );
 
     action
+}
+
+/// Threat readout derived from accumulated adventurer deaths.
+fn threat_display(state: &GameState) -> (String, Color) {
+    match state.threat_tier() {
+        0 => ("Calm".to_string(), EMERALD),
+        1 => ("Wary".to_string(), TREASURE),
+        2 => ("Alarmed".to_string(), WARNING),
+        3 => ("Hunted".to_string(), DANGER),
+        _ => ("Besieged".to_string(), DANGER),
+    }
 }
 
 pub fn draw_adventurer_status_chip(state: &GameState, rect: Rect) {
@@ -180,6 +169,7 @@ enum StatIcon {
     Gold,
     Soul,
     Time,
+    Threat,
 }
 
 fn draw_top_stat(
@@ -237,42 +227,6 @@ fn draw_top_stat(
     }
 }
 
-fn draw_status_block(rect: Rect, value: &str, color: Color) {
-    draw_card(
-        rect,
-        Color::new(0.0, 0.0, 0.0, 0.20),
-        Color::new(BORDER.r, BORDER.g, BORDER.b, 0.34),
-    );
-    draw_circle(
-        rect.x - 18.0,
-        rect.y + rect.h * 0.5,
-        15.0,
-        Color::new(color.r, color.g, color.b, 0.10),
-    );
-    draw_stat_icon(
-        vec2(rect.x - 18.0, rect.y + rect.h * 0.5),
-        11.0,
-        StatIcon::Soul,
-        color,
-    );
-    draw_text_fit(
-        "DUNGEON STATUS",
-        rect.x + 12.0,
-        rect.y + 18.0,
-        rect.w - 24.0,
-        10.0,
-        TEXT_MUTED,
-    );
-    draw_text_fit(
-        value,
-        rect.x + 12.0,
-        rect.y + 41.0,
-        rect.w - 24.0,
-        18.0,
-        color,
-    );
-}
-
 fn draw_speed_segments(rect: Rect, speed: i32) -> bool {
     let clicked = rect.contains(vec2(mouse_position().0, mouse_position().1))
         && is_mouse_button_released(MouseButton::Left);
@@ -304,24 +258,6 @@ fn draw_speed_segments(rect: Rect, speed: i32) -> bool {
         }
         draw_centered_text(label, seg, 15.0, if active { TEXT } else { TEXT_DIM });
     }
-    clicked
-}
-
-fn draw_reset_button(rect: Rect) -> bool {
-    let mouse = mouse_position();
-    let hovered = rect.contains(vec2(mouse.0, mouse.1));
-    let clicked = hovered && is_mouse_button_released(MouseButton::Left);
-    draw_card(
-        rect,
-        Color::new(0.0, 0.0, 0.0, 0.18),
-        Color::new(
-            DANGER.r,
-            DANGER.g,
-            DANGER.b,
-            if hovered { 0.34 } else { 0.14 },
-        ),
-    );
-    draw_centered_text("Reset", rect, 14.0, if hovered { DANGER } else { TEXT_DIM });
     clicked
 }
 
@@ -424,6 +360,25 @@ fn draw_stat_icon(center: Vec2, radius: f32, icon: StatIcon, color: Color) {
                 1.5,
                 color,
             );
+        }
+        StatIcon::Threat => {
+            // A warning triangle with an exclamation mark.
+            draw_triangle_lines(
+                vec2(center.x, center.y - radius),
+                vec2(center.x - radius * 0.9, center.y + radius * 0.7),
+                vec2(center.x + radius * 0.9, center.y + radius * 0.7),
+                2.0,
+                color,
+            );
+            draw_line(
+                center.x,
+                center.y - radius * 0.36,
+                center.x,
+                center.y + radius * 0.2,
+                2.0,
+                color,
+            );
+            draw_circle(center.x, center.y + radius * 0.46, 1.4, color);
         }
     }
 }

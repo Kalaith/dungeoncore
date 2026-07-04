@@ -28,6 +28,7 @@ pub enum DrawerAction {
     SelectMonster(String),
     ProcessEvolutions,
     UnlockSpecies(String),
+    ResetGame,
 }
 
 pub fn draw_side_drawer(
@@ -40,7 +41,9 @@ pub fn draw_side_drawer(
     draw_panel(rect, None, ARCANE);
 
     let rail_w = DRAWER_COLLAPSED_WIDTH.min(rect.w);
-    draw_tab_rail(state, rect, rail_w, active_tab, open);
+    if draw_tab_rail(state, rect, rail_w, active_tab, open) {
+        action = DrawerAction::ResetGame;
+    }
 
     if !*open || rect.w <= rail_w + 24.0 {
         return action;
@@ -78,7 +81,7 @@ fn draw_tab_rail(
     rail_w: f32,
     active_tab: &mut DrawerTab,
     open: &mut bool,
-) {
+) -> bool {
     let toggle = Rect::new(rect.x + 9.0, rect.y + 12.0, rail_w - 18.0, 34.0);
     if draw_small_tab(toggle, if *open { "<" } else { ">" }, ARCANE, true) {
         *open = !*open;
@@ -98,7 +101,7 @@ fn draw_tab_rail(
         y += 86.0;
     }
 
-    let chip_rect = Rect::new(rect.x + 9.0, rect.y + rect.h - 50.0, rail_w - 18.0, 34.0);
+    let chip_rect = Rect::new(rect.x + 9.0, rect.y + rect.h - 88.0, rail_w - 18.0, 34.0);
     let color = if state.adventurer_parties.is_empty() {
         EMERALD
     } else {
@@ -119,6 +122,10 @@ fn draw_tab_rail(
         10.0,
         color,
     );
+
+    // Reset control lives quietly at the bottom of the rail.
+    let reset_rect = Rect::new(rect.x + 9.0, rect.y + rect.h - 46.0, rail_w - 18.0, 34.0);
+    draw_small_tab(reset_rect, "RESET", DANGER, false)
 }
 
 fn draw_build_tab(state: &GameState, rect: Rect) -> bool {

@@ -197,6 +197,27 @@ pub enum DungeonStatus {
     Maintenance,
 }
 
+/// Kind of transient visual effect surfaced over a room
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum EffectKind {
+    Damage,
+    Ability,
+    MonsterDown,
+    AdventurerDown,
+    Loot,
+}
+
+/// A short-lived floating effect anchored to a room (not persisted)
+#[derive(Clone, Debug)]
+pub struct RoomEffect {
+    pub floor: i32,
+    pub room: usize,
+    pub text: String,
+    pub kind: EffectKind,
+    pub ttl: f32,
+    pub max_ttl: f32,
+}
+
 /// Log entry type
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LogEntry {
@@ -256,6 +277,12 @@ pub struct GameState {
     pub adventurer_parties: Vec<AdventurerParty>,
     pub next_party_spawn: i32,
 
+    // Reputation / threat
+    #[serde(default)]
+    pub total_deaths: i32,
+    #[serde(default)]
+    pub threat_warned: i32,
+
     // Monster progression
     pub unlocked_species: Vec<String>,
     pub unlocked_monsters: Vec<String>,
@@ -265,6 +292,8 @@ pub struct GameState {
     pub selected_room: Option<(i32, usize)>,
     #[serde(skip)]
     pub selected_monster: Option<String>,
+    #[serde(skip)]
+    pub effects: Vec<RoomEffect>,
 
     // Log
     pub log: Vec<LogEntry>,
@@ -292,16 +321,19 @@ impl GameState {
             day: 1,
             hour: 6,
             speed: 1,
-            status: DungeonStatus::Open,
+            status: DungeonStatus::Closed,
             floors: vec![floor1],
             total_floors: 1,
             deep_core_bonus: 0.1,
             adventurer_parties: Vec::new(),
             next_party_spawn: 8,
+            total_deaths: 0,
+            threat_warned: 0,
             unlocked_species: vec![],
             unlocked_monsters: vec![],
             selected_room: None,
             selected_monster: None,
+            effects: Vec::new(),
             log: vec![LogEntry::system(
                 "Welcome to Dungeon Core! Choose a starter race to awaken your first defenders.",
             )],
@@ -313,6 +345,47 @@ impl GameState {
         self.log.push(entry);
         if self.log.len() > crate::data::MAX_LOG_ENTRIES {
             self.log.remove(0);
+        }
+    }
+
+    /// Spawn a short-lived floating effect over a room
+    pub fn push_effect(
+        &mut self,
+        floor: i32,
+        room: usize,
+        text: impl Into<String>,
+        kind: EffectKind,
+    ) {
+        const EFFECT_TTL: f32 = 1.6;
+        self.effects.push(RoomEffect {
+            floor,
+            room,
+            text: text.into(),
+            kind,
+            ttl: EFFECT_TTL,
+            max_ttl: EFFECT_TTL,
+        });
+        if self.effects.len() > 48 {
+            self.effects.remove(0);
+        }
+    }
+
+    /// Age floating effects and drop expired ones
+    pub fn decay_effects(&mut self, dt: f32) {
+        for effect in &mut self.effects {
+            effect.ttl -= dt;
+        }
+        self.effects.retain(|effect| effect.ttl > 0.0);
+    }
+
+    /// Current threat tier (0-4) derived from accumulated adventurer deaths
+    pub fn threat_tier(&self) -> i32 {
+        match self.total_deaths {
+            d if d >= 100 => 4,
+            d if d >= 50 => 3,
+            d if d >= 25 => 2,
+            d if d >= 10 => 1,
+            _ => 0,
         }
     }
 
