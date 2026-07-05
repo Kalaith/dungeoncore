@@ -74,6 +74,7 @@ async fn main() {
         let mut drawer_open = true;
         let mut upgrade_scroll = 0.0;
         let mut species_scroll = 0.0;
+        let mut defender_scroll = 0.0;
         let mut t0 = get_time();
         let mut t1 = t0;
         let mut t2 = t0;
@@ -85,6 +86,7 @@ async fn main() {
                 &mut drawer_open,
                 &mut upgrade_scroll,
                 &mut species_scroll,
+                &mut defender_scroll,
                 &mut t0,
                 &mut t1,
                 &mut t2,
@@ -109,6 +111,7 @@ async fn main() {
     let mut drawer_open = true;
     let mut upgrade_scroll = 0.0;
     let mut species_scroll = 0.0;
+    let mut defender_scroll = 0.0;
 
     loop {
         match screen {
@@ -193,6 +196,7 @@ async fn main() {
             &mut drawer_open,
             &mut upgrade_scroll,
             &mut species_scroll,
+            &mut defender_scroll,
             &mut last_time_advance,
             &mut last_adventure_tick,
             &mut last_save,
@@ -215,6 +219,7 @@ fn render_playing_frame(
     drawer_open: &mut bool,
     upgrade_scroll: &mut f32,
     species_scroll: &mut f32,
+    defender_scroll: &mut f32,
     last_time_advance: &mut f64,
     last_adventure_tick: &mut f64,
     last_save: &mut f64,
@@ -382,9 +387,11 @@ fn render_playing_frame(
             } else if state.selected_room == Some((floor_num, room_pos)) {
                 state.selected_room = None;
                 *upgrade_scroll = 0.0;
+                *defender_scroll = 0.0;
             } else {
                 state.selected_room = Some((floor_num, room_pos));
                 *upgrade_scroll = 0.0;
+                *defender_scroll = 0.0;
             }
         }
         DungeonAction::BuildRoom => {
@@ -409,6 +416,7 @@ fn render_playing_frame(
             upgrade_panel_w,
             upgrade_panel_h,
             upgrade_scroll,
+            defender_scroll,
         );
         match upgrade_action {
             UpgradeAction::Apply(name) => {
@@ -436,6 +444,7 @@ fn render_playing_frame(
                 state.selected_room = None;
                 state.selected_monster = None;
                 *upgrade_scroll = 0.0;
+                *defender_scroll = 0.0;
             }
             UpgradeAction::None => {}
         }
@@ -579,6 +588,9 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
 
                 state.push_effect(floor, pos, "-12", EffectKind::Damage);
                 state.push_effect(floor, pos, "Slain!", EffectKind::AdventurerDown);
+
+                // Show the room inspector (defender list + upgrade catalog).
+                state.selected_room = Some((floor, pos));
             }
 
             state.add_log(LogEntry::adventure("New adventurer party enters! (3 members)"));

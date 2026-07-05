@@ -25,6 +25,7 @@ pub fn draw_upgrade_panel(
     w: f32,
     h: f32,
     upgrade_scroll: &mut f32,
+    defender_scroll: &mut f32,
 ) -> UpgradeAction {
     let mut action = UpgradeAction::None;
     let rect = Rect::new(x, y, w, h);
@@ -50,7 +51,8 @@ pub fn draw_upgrade_panel(
     }
 
     if let Some(room) = selected_room(state) {
-        y_cursor = draw_selected_room(state, room, inner, y_cursor + 10.0, &mut action);
+        y_cursor =
+            draw_selected_room(state, room, inner, y_cursor + 10.0, defender_scroll, &mut action);
         if room.room_type == RoomType::Normal || room.room_type == RoomType::Boss {
             draw_upgrade_choices(
                 state,
@@ -173,9 +175,17 @@ fn draw_selected_room(
     room: &Room,
     bounds: Rect,
     y: f32,
+    defender_scroll: &mut f32,
     action: &mut UpgradeAction,
 ) -> f32 {
-    let rect = Rect::new(bounds.x, y, bounds.w, 238.0);
+    // Card grows with the defender list (up to MAX_DEFENDER_ROWS visible).
+    let defender_rows = room.monsters.len().clamp(1, MAX_DEFENDER_ROWS);
+    let rect = Rect::new(
+        bounds.x,
+        y,
+        bounds.w,
+        214.0 + defender_rows as f32 * DEFENDER_ROW_H + 10.0,
+    );
     let tone = room_color(room);
     draw_card(
         rect,
@@ -263,7 +273,13 @@ fn draw_selected_room(
     if let Some(monster_id) = draw_monster_progress_rows(
         state,
         room,
-        Rect::new(rect.x + 12.0, rect.y + 212.0, rect.w - 24.0, 24.0),
+        Rect::new(
+            rect.x + 12.0,
+            rect.y + 212.0,
+            rect.w - 24.0,
+            defender_rows as f32 * DEFENDER_ROW_H,
+        ),
+        defender_scroll,
     ) {
         *action = UpgradeAction::DismissMonster(monster_id);
     }
@@ -382,7 +398,18 @@ fn draw_upgrade_catalog(
     }
 }
 
-fn draw_monster_progress_rows(state: &GameState, room: &Room, rect: Rect) -> Option<u64> {
+const DEFENDER_ROW_H: f32 = 24.0;
+const MAX_DEFENDER_ROWS: usize = 6;
+
+/// Vertical list of every defender in the room — one row each with name,
+/// evolution status, and a dismiss control. Wheel-scrolls past
+/// MAX_DEFENDER_ROWS.
+fn draw_monster_progress_rows(
+    state: &GameState,
+    room: &Room,
+    rect: Rect,
+    defender_scroll: &mut f32,
+) -> Option<u64> {
     if room.monsters.is_empty() {
         draw_text_fit(
             "No defenders placed.",
@@ -395,24 +422,47 @@ fn draw_monster_progress_rows(state: &GameState, room: &Room, rect: Rect) -> Opt
         return None;
     }
 
+    let total = room.monsters.len();
+    let visible = total.min(MAX_DEFENDER_ROWS);
+    let max_scroll = (total - visible) as f32;
+    if total > visible && rect.contains(vec2(mouse_position().0, mouse_position().1)) {
+        let (_, wheel_y) = mouse_wheel();
+        if wheel_y.abs() > 0.0 {
+            *defender_scroll -= wheel_y.signum();
+        }
+    }
+    *defender_scroll = defender_scroll.clamp(0.0, max_scroll);
+    let first = *defender_scroll as usize;
+
     let mut dismissed = None;
     let can_dismiss = state.adventurer_parties.is_empty();
-    let row_w = rect.w / room.monsters.len().min(3) as f32;
-    for (idx, monster) in room.monsters.iter().take(3).enumerate() {
-        let row = Rect::new(rect.x + idx as f32 * row_w, rect.y, row_w - 5.0, rect.h);
+    for (slot, monster) in room.monsters.iter().skip(first).take(visible).enumerate() {
+        let row = Rect::new(
+            rect.x,
+            rect.y + slot as f32 * DEFENDER_ROW_H,
+            rect.w,
+            DEFENDER_ROW_H - 3.0,
+        );
         let (status, color) = monster_evolution_status(state, room, monster);
         draw_text_fit(
             &monster.type_name,
             row.x,
-            row.y + 10.0,
-            row.w - 18.0,
+            row.y + 14.0,
+            row.w * 0.42,
             10.0,
             if monster.alive { TEXT } else { TEXT_DIM },
         );
-        draw_text_fit(&status, row.x, row.y + 23.0, row.w - 18.0, 9.0, color);
+        draw_text_fit(
+            &status,
+            row.x + row.w * 0.44,
+            row.y + 14.0,
+            row.w * 0.56 - 20.0,
+            9.0,
+            color,
+        );
 
         // Dismiss control: refunds half the summon cost.
-        let x_rect = Rect::new(row.x + row.w - 16.0, row.y + 4.0, 16.0, 16.0);
+        let x_rect = Rect::new(row.x + row.w - 16.0, row.y + 3.0, 16.0, 16.0);
         let hovered = can_dismiss && x_rect.contains(vec2(mouse_position().0, mouse_position().1));
         draw_centered_text(
             "x",
@@ -430,6 +480,18 @@ fn draw_monster_progress_rows(state: &GameState, room: &Room, rect: Rect) -> Opt
             dismissed = Some(monster.id);
         }
     }
+
+    if total > visible {
+        draw_text_fit_right(
+            &format!("{}-{} of {} (scroll)", first + 1, first + visible, total),
+            rect.x + rect.w,
+            rect.y + rect.h + 10.0,
+            rect.w,
+            9.0,
+            TEXT_DIM,
+        );
+    }
+
     dismissed
 }
 
