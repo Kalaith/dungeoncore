@@ -75,6 +75,7 @@ async fn main() {
         let mut upgrade_scroll = 0.0;
         let mut species_scroll = 0.0;
         let mut defender_scroll = 0.0;
+        let mut heroes_scroll = 0.0;
         let mut t0 = get_time();
         let mut t1 = t0;
         let mut t2 = t0;
@@ -87,6 +88,7 @@ async fn main() {
                 &mut upgrade_scroll,
                 &mut species_scroll,
                 &mut defender_scroll,
+                &mut heroes_scroll,
                 &mut t0,
                 &mut t1,
                 &mut t2,
@@ -112,6 +114,7 @@ async fn main() {
     let mut upgrade_scroll = 0.0;
     let mut species_scroll = 0.0;
     let mut defender_scroll = 0.0;
+    let mut heroes_scroll = 0.0;
 
     loop {
         match screen {
@@ -197,6 +200,7 @@ async fn main() {
             &mut upgrade_scroll,
             &mut species_scroll,
             &mut defender_scroll,
+            &mut heroes_scroll,
             &mut last_time_advance,
             &mut last_adventure_tick,
             &mut last_save,
@@ -220,6 +224,7 @@ fn render_playing_frame(
     upgrade_scroll: &mut f32,
     species_scroll: &mut f32,
     defender_scroll: &mut f32,
+    heroes_scroll: &mut f32,
     last_time_advance: &mut f64,
     last_adventure_tick: &mut f64,
     last_save: &mut f64,
@@ -316,7 +321,7 @@ fn render_playing_frame(
         DRAWER_COLLAPSED_WIDTH
     };
     let drawer_rect = Rect::new(OUTER_MARGIN, body_top, drawer_w, body_h);
-    match draw_side_drawer(state, drawer_rect, drawer_tab, drawer_open, upgrade_section) {
+    match draw_side_drawer(state, drawer_rect, drawer_tab, drawer_open, upgrade_section, heroes_scroll) {
         DrawerAction::SelectMonster(monster) => {
             if state.selected_monster.as_ref() == Some(&monster) {
                 state.selected_monster = None;
@@ -561,7 +566,8 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
                     .map(|i| Adventurer {
                         id: 100 + i,
                         name: ["Aldric", "Bryn", "Cael"][i as usize].to_string(),
-                        class_name: "Fighter".to_string(),
+                        class_name: "Warrior".to_string(),
+                        race: "Human".to_string(),
                         level: 2,
                         hp: 30,
                         max_hp: 40,
@@ -597,6 +603,31 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
                 // Show the room inspector (defender list + upgrade catalog).
                 state.selected_room = Some((floor, pos));
             }
+
+            // Seed the hero ledger so the HEROES tab has content to show.
+            use game_state::{HeroRecord, HeroStatus};
+            let seed_hero = |id, name: &str, class: &str, race: &str, level, delves, kills,
+                             gold, status, df, dd| HeroRecord {
+                id,
+                name: name.to_string(),
+                class_name: class.to_string(),
+                race: race.to_string(),
+                level,
+                experience: 0,
+                delves,
+                kills,
+                gold_stolen: gold,
+                status,
+                death_floor: df,
+                death_day: dd,
+            };
+            state.known_adventurers = vec![
+                seed_hero(100, "Aldric", "Warrior", "Human", 2, 1, 0, 0, HeroStatus::Inside, 0, 0),
+                seed_hero(101, "Bryn", "Warrior", "Dwarf", 2, 1, 0, 0, HeroStatus::Inside, 0, 0),
+                seed_hero(200, "Sable", "Rogue", "Halfling", 4, 5, 12, 180, HeroStatus::Alive, 0, 0),
+                seed_hero(201, "Wren", "Ranger", "Elf", 3, 3, 6, 90, HeroStatus::Alive, 0, 0),
+                seed_hero(300, "Mordred", "Mage", "Human", 2, 2, 3, 40, HeroStatus::Dead, 2, 3),
+            ];
 
             state.add_log(LogEntry::adventure("New adventurer party enters! (3 members)"));
             state.add_log(LogEntry::combat(

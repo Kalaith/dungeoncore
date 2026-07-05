@@ -1,8 +1,61 @@
 use crate::data::adventurers::{
-    get_adventurer_classes, get_adventurer_names, get_entry_quotes, get_exit_quotes,
+    get_adventurer_class, get_adventurer_classes, get_adventurer_names, get_entry_quotes,
+    get_exit_quotes,
 };
 use crate::data::constants::{ADVENTURER_SPAWN_CHANCE, MAX_PARTY_SIZE, MIN_PARTY_SIZE};
-use crate::game_state::{Adventurer, AdventurerParty, DungeonStatus, GameState, LogEntry, Stats};
+use crate::game_state::{
+    Adventurer, AdventurerParty, DungeonStatus, GameState, HeroRecord, HeroStatus, LogEntry, Stats,
+};
+
+/// Build a combat-ready adventurer from a class, level, and identity.
+fn build_adventurer(id: u64, name: String, class_name: &str, race: &str, level: i32) -> Adventurer {
+    let class = get_adventurer_class(class_name)
+        .unwrap_or_else(|| get_adventurer_classes().into_iter().next().unwrap());
+    let race_mod = crate::data::adventurers::get_race(race).unwrap_or_default();
+
+    let base_hp = class.hp + (level - 1) * 10 + race_mod.hp;
+    let equipment = crate::data::equipment::recommended_loadout(&class.name, level);
+    let equipment_bonus = crate::data::equipment::equipment_stat_bonus(&equipment, &class.name);
+    let hp = (base_hp + equipment_bonus.hp).max(1);
+
+    Adventurer {
+        id,
+        name,
+        class_name: class.name.clone(),
+        race: race.to_string(),
+        level,
+        hp,
+        max_hp: hp,
+        alive: true,
+        experience: 0,
+        gold: 0,
+        equipment,
+        conditions: Vec::new(),
+        scaled_stats: Stats {
+            hp,
+            attack: (class.attack + (level - 1) * 2 + equipment_bonus.attack + race_mod.attack)
+                .max(1),
+            defense: (class.defense + (level - 1) + equipment_bonus.defense + race_mod.defense)
+                .max(0),
+        },
+    }
+}
+
+/// Party size and adventurer level range for the current threat/floor state.
+/// Low threat sends larger bands of weaker heroes; high threat sends smaller,
+/// far more dangerous elites.
+fn threat_party_shape(state: &GameState) -> (usize, i32, i32) {
+    let tier = state.threat_tier();
+    let deepest = state.total_floors.max(1);
+    let level_min = 1 + tier;
+    let level_max = (3 + tier + deepest / 2).max(level_min);
+    let size = match tier {
+        0 => macroquad_toolkit::rng::gen_range(MIN_PARTY_SIZE, MAX_PARTY_SIZE + 1),
+        1 | 2 => macroquad_toolkit::rng::gen_range(MIN_PARTY_SIZE, MAX_PARTY_SIZE),
+        _ => MIN_PARTY_SIZE,
+    };
+    (size.max(1), level_min, level_max)
+}
 
 /// Try to spawn a new adventurer party
 pub fn spawn_party(state: &mut GameState) {
@@ -25,40 +78,66 @@ pub fn spawn_party(state: &mut GameState) {
         return;
     }
 
-    let classes = get_adventurer_classes();
     let names = get_adventurer_names();
     let entry_quotes = get_entry_quotes();
+    let races = crate::data::adventurers::get_race_names();
 
-    let party_size = macroquad_toolkit::rng::gen_range(MIN_PARTY_SIZE, MAX_PARTY_SIZE + 1);
+    // Higher threat means fewer but stronger parties (see threat_party_shape).
+    let (party_size, level_min, level_max) = threat_party_shape(state);
     let mut members = Vec::with_capacity(party_size);
 
-    for _ in 0..party_size {
-        let class = macroquad_toolkit::rng::choose(&classes).unwrap();
-        let name = macroquad_toolkit::rng::choose(&names).unwrap();
-        let level = macroquad_toolkit::rng::gen_range(1, 4);
-        let base_hp = class.hp + (level - 1) * 10;
-        let equipment = crate::data::equipment::recommended_loadout(&class.name, level);
-        let equipment_bonus = crate::data::equipment::equipment_stat_bonus(&equipment, &class.name);
-        let hp = base_hp + equipment_bonus.hp;
+    // Some slots are filled by veterans returning for another delve.
+    let mut returning: Vec<u64> = state
+        .known_adventurers
+        .iter()
+        .filter(|h| h.status == HeroStatus::Alive)
+        .map(|h| h.id)
+        .collect();
+    macroquad_toolkit::rng::shuffle(&mut returning);
 
-        members.push(Adventurer {
-            id: macroquad_toolkit::rng::random_u64(),
+    for slot in 0..party_size {
+        // Roughly half the slots prefer a returning veteran, if any remain.
+        let use_veteran = slot % 2 == 0 && !returning.is_empty();
+        if use_veteran {
+            let hero_id = returning.pop().unwrap();
+            if let Some(record) = state.hero_mut(hero_id) {
+                record.status = HeroStatus::Inside;
+                record.delves += 1;
+                let (name, class, race, level) = (
+                    record.name.clone(),
+                    record.class_name.clone(),
+                    record.race.clone(),
+                    record.level,
+                );
+                members.push(build_adventurer(hero_id, name, &class, &race, level));
+                continue;
+            }
+        }
+
+        // Fresh recruit: roll identity and register a new ledger entry.
+        let classes = get_adventurer_classes();
+        let class = macroquad_toolkit::rng::choose(&classes).unwrap();
+        let name = macroquad_toolkit::rng::choose(&names).unwrap().clone();
+        let race = macroquad_toolkit::rng::choose(&races)
+            .cloned()
+            .unwrap_or_else(|| "Human".to_string());
+        let level = macroquad_toolkit::rng::gen_range(level_min, level_max + 1);
+        let id = macroquad_toolkit::rng::random_u64();
+        state.known_adventurers.push(HeroRecord {
+            id,
             name: name.clone(),
             class_name: class.name.clone(),
+            race: race.clone(),
             level,
-            hp,
-            max_hp: hp,
-            alive: true,
             experience: 0,
-            gold: 0,
-            equipment,
-            conditions: Vec::new(),
-            scaled_stats: Stats {
-                hp,
-                attack: class.attack + (level - 1) * 2 + equipment_bonus.attack,
-                defense: class.defense + (level - 1) + equipment_bonus.defense,
-            },
+            delves: 1,
+            kills: 0,
+            gold_stolen: 0,
+            status: HeroStatus::Inside,
+            death_floor: 0,
+            death_day: 0,
         });
+        members.push(build_adventurer(id, name, &class.name, &race, level));
     }
 
     let target_floor = state.floors.len().min(2) as i32;
@@ -232,6 +311,19 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
 }
 
 fn handle_retreating_parties(state: &mut GameState) {
+    // Settle the ledger for every departing party before it is removed:
+    // survivors bank XP and gold and level up; the fallen are entombed.
+    let departing: Vec<usize> = state
+        .adventurer_parties
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| p.retreating)
+        .map(|(i, _)| i)
+        .collect();
+    for idx in departing {
+        settle_departing_party(state, idx);
+    }
+
     let before = state.adventurer_parties.len();
     state.adventurer_parties.retain(|party| !party.retreating);
     let departed = before - state.adventurer_parties.len();
@@ -245,5 +337,43 @@ fn handle_retreating_parties(state: &mut GameState) {
     if state.adventurer_parties.is_empty() {
         super::monsters::respawn_monsters(state);
         super::combat::rearm_traps(state);
+    }
+}
+
+/// Update the hero ledger for a party that is leaving the dungeon.
+fn settle_departing_party(state: &mut GameState, party_idx: usize) {
+    let party_floor = state.adventurer_parties[party_idx].current_floor;
+    let survivors: Vec<u64> = state.adventurer_parties[party_idx]
+        .members
+        .iter()
+        .filter(|m| m.alive)
+        .map(|m| m.id)
+        .collect();
+    let survivor_count = survivors.len().max(1) as i32;
+    let loot_share = state.adventurer_parties[party_idx].loot / survivor_count;
+
+    let member_ids: Vec<(u64, bool)> = state.adventurer_parties[party_idx]
+        .members
+        .iter()
+        .map(|m| (m.id, m.alive))
+        .collect();
+
+    for (id, alive) in member_ids {
+        if alive {
+            // Escaped: bank XP, gold, and possibly a level.
+            if let Some(record) = state.hero_mut(id) {
+                record.status = HeroStatus::Alive;
+                record.experience += 20 + record.delves * 5;
+                record.gold_stolen += loot_share;
+                while record.level < 10
+                    && record.experience >= GameState::xp_for_level(record.level)
+                {
+                    record.experience -= GameState::xp_for_level(record.level);
+                    record.level += 1;
+                }
+            }
+        } else {
+            state.record_hero_death(id, party_floor);
+        }
     }
 }

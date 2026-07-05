@@ -205,6 +205,8 @@ pub struct Adventurer {
     pub id: u64,
     pub name: String,
     pub class_name: String,
+    #[serde(default = "default_race")]
+    pub race: String,
     pub level: i32,
     pub hp: i32,
     pub max_hp: i32,
@@ -215,6 +217,44 @@ pub struct Adventurer {
     #[serde(default)]
     pub conditions: Vec<Condition>,
     pub scaled_stats: Stats,
+}
+
+fn default_race() -> String {
+    "Human".to_string()
+}
+
+/// Standing of a hero in the persistent registry.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum HeroStatus {
+    /// Survived a previous raid; available to return.
+    Alive,
+    /// Currently raiding the dungeon.
+    Inside,
+    /// Killed within the dungeon.
+    Dead,
+}
+
+/// Persistent ledger entry for an adventurer who has entered the dungeon.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct HeroRecord {
+    pub id: u64,
+    pub name: String,
+    pub class_name: String,
+    pub race: String,
+    pub level: i32,
+    pub experience: i32,
+    /// Times this hero has entered the dungeon.
+    pub delves: i32,
+    /// Monsters this hero has slain across all delves.
+    pub kills: i32,
+    /// Total gold this hero has escaped the dungeon with.
+    pub gold_stolen: i32,
+    pub status: HeroStatus,
+    /// Floor and day of death (only meaningful when status is Dead).
+    #[serde(default)]
+    pub death_floor: i32,
+    #[serde(default)]
+    pub death_day: i32,
 }
 
 /// Party of adventurers exploring the dungeon
@@ -326,6 +366,9 @@ pub struct GameState {
     /// Earliest spawn time for the next party, in absolute hours
     /// (day * 24 + hour) so it survives the midnight wrap.
     pub next_party_spawn: i32,
+    /// Ledger of every hero who has ever entered the dungeon.
+    #[serde(default)]
+    pub known_adventurers: Vec<HeroRecord>,
 
     // Reputation / threat
     #[serde(default)]
@@ -388,6 +431,7 @@ impl GameState {
             adventurer_parties: Vec::new(),
             // Day 1, hour 8 in absolute hours.
             next_party_spawn: 32,
+            known_adventurers: Vec::new(),
             total_deaths: 0,
             threat_warned: 0,
             raids_completed: 0,
@@ -417,6 +461,33 @@ impl GameState {
                 }
             }
         }
+    }
+
+    /// Mutable registry record for a hero id, if known.
+    pub fn hero_mut(&mut self, id: u64) -> Option<&mut HeroRecord> {
+        self.known_adventurers.iter_mut().find(|h| h.id == id)
+    }
+
+    /// Credit a monster kill to a hero's ledger.
+    pub fn record_hero_kill(&mut self, hero_id: u64) {
+        if let Some(record) = self.hero_mut(hero_id) {
+            record.kills += 1;
+        }
+    }
+
+    /// Record a hero's death in the ledger.
+    pub fn record_hero_death(&mut self, hero_id: u64, floor: i32) {
+        let day = self.day;
+        if let Some(record) = self.hero_mut(hero_id) {
+            record.status = HeroStatus::Dead;
+            record.death_floor = floor;
+            record.death_day = day;
+        }
+    }
+
+    /// XP needed to advance from `level` to the next. Levels cap at 10.
+    pub fn xp_for_level(level: i32) -> i32 {
+        level * 50
     }
 
     /// Add a log entry, keeping max entries

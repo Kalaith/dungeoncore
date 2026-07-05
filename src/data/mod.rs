@@ -184,6 +184,23 @@ mod tests {
     }
 
     #[test]
+    fn adventurer_races_present() {
+        let races = adventurers::get_all_races();
+        assert!(
+            races.len() >= 4,
+            "expected the four core races, found {}",
+            races.len()
+        );
+        for want in ["Human", "Elf", "Dwarf", "Halfling"] {
+            assert!(
+                adventurers::get_race(want).is_some(),
+                "missing race '{}'",
+                want
+            );
+        }
+    }
+
+    #[test]
     fn upgrades_use_known_types_and_elements() {
         const KNOWN_TYPES: [&str; 5] =
             ["trap", "treasure", "reinforcement", "evolution", "attunement"];

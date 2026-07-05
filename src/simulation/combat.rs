@@ -55,24 +55,25 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
         state.adventurer_parties[party_idx].snared_ticks -= 1;
         state.push_effect(floor_num, room_pos, "Snared!", EffectKind::Ability);
     }
-    let adv_attacks: Vec<(i32, String)> = if snared {
+    let adv_attacks: Vec<(u64, i32, String)> = if snared {
         Vec::new()
     } else {
         state.adventurer_parties[party_idx]
             .members
             .iter()
             .filter(|a| a.alive)
-            .map(|a| (a.scaled_stats.attack, adventurer_element(&a.class_name)))
+            .map(|a| (a.id, a.scaled_stats.attack, adventurer_element(&a.class_name)))
             .collect()
     };
 
     let mut monster_kills: Vec<(String, bool)> = Vec::new();
     let mut split_spawns: Vec<String> = Vec::new();
+    let mut kill_credits: Vec<u64> = Vec::new();
     let mut party_hit_strong = false;
     let mut party_hit_weak = false;
     {
         let room = &mut state.floors[floor_idx].rooms[room_idx];
-        for (attack, adv_element) in &adv_attacks {
+        for (attacker_id, attack, adv_element) in &adv_attacks {
             // Taunting monsters soak hits before the rest of the room.
             let Some(target_idx) = target_monster_idx(&room.monsters) else {
                 break;
@@ -99,6 +100,7 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
                 monster.hp = 0;
                 monster.alive = false;
                 monster_kills.push((monster.type_name.clone(), monster.is_boss));
+                kill_credits.push(*attacker_id);
                 if has_passive(monster, "SplitOnDeath") {
                     if let Some(spawn) = split_spawn(&monster.type_name, floor_num) {
                         split_spawns.push(spawn.type_name.clone());
@@ -107,6 +109,9 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
                 }
             }
         }
+    }
+    for hero_id in kill_credits {
+        state.record_hero_kill(hero_id);
     }
 
     for spawn_name in &split_spawns {
@@ -846,6 +851,24 @@ fn reward_adventurer_kills(
     }
 }
 
+/// Casualties a party will accept before retreating. Cautious races
+/// (Halflings) bail early; brave ones (Dwarves, Paladins) hold longer.
+fn party_nerve(party: &crate::game_state::AdventurerParty) -> i32 {
+    let mut threshold = RETREAT_THRESHOLD;
+    let living = party.members.iter().filter(|a| a.alive);
+    for member in living {
+        match member.race.as_str() {
+            "Halfling" => threshold -= 1,
+            "Dwarf" => threshold += 1,
+            _ => {}
+        }
+        if member.class_name == "Paladin" {
+            threshold += 1;
+        }
+    }
+    threshold.clamp(1, 5)
+}
+
 /// Flag the party as retreating after heavy losses or a full wipe.
 fn check_retreat(state: &mut GameState, party_idx: usize) {
     let party = &mut state.adventurer_parties[party_idx];
@@ -853,10 +876,11 @@ fn check_retreat(state: &mut GameState, party_idx: usize) {
         return;
     }
     let no_survivors = party.members.iter().all(|a| !a.alive);
+    let nerve = party_nerve(party);
     if no_survivors {
         party.retreating = true;
         state.add_log(LogEntry::adventure("The entire party has been wiped out!"));
-    } else if party.casualties >= RETREAT_THRESHOLD {
+    } else if party.casualties >= nerve {
         party.retreating = true;
         state.add_log(LogEntry::adventure(
             "Party is retreating due to heavy casualties!",

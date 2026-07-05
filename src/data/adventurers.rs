@@ -12,6 +12,17 @@ pub struct AdventurerClass {
     pub element: String,
 }
 
+/// Adventurer race: flat stat modifiers applied on top of the class.
+#[derive(Clone, Debug, Default, Deserialize)]
+pub struct AdventurerRace {
+    pub name: String,
+    pub hp: i32,
+    pub attack: i32,
+    pub defense: i32,
+    #[serde(default)]
+    pub description: String,
+}
+
 /// Dialogue quotes
 #[derive(Debug, Deserialize)]
 pub struct QuotesData {
@@ -23,6 +34,8 @@ pub struct QuotesData {
 #[derive(Debug, Deserialize)]
 struct AdventurersData {
     classes: Vec<AdventurerClass>,
+    #[serde(default)]
+    races: Vec<AdventurerRace>,
     names: Vec<String>,
     quotes: QuotesData,
 }
@@ -44,6 +57,21 @@ pub fn get_adventurer_class(name: &str) -> Option<AdventurerClass> {
     get_adventurer_classes()
         .into_iter()
         .find(|c| c.name == name)
+}
+
+/// Get all adventurer races
+pub fn get_all_races() -> Vec<AdventurerRace> {
+    load_data().races
+}
+
+/// Get a race's stat modifiers by name.
+pub fn get_race(name: &str) -> Option<AdventurerRace> {
+    get_all_races().into_iter().find(|r| r.name == name)
+}
+
+/// Get all race names.
+pub fn get_race_names() -> Vec<String> {
+    get_all_races().into_iter().map(|r| r.name).collect()
 }
 
 /// Get all adventurer names

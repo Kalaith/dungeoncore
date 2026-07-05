@@ -27,6 +27,57 @@
             "attack": 20,
             "defense": 20,
             "element": "Spirit"
+        },
+        {
+            "name": "Ranger",
+            "hp": 75,
+            "attack": 28,
+            "defense": 12,
+            "element": "Nature"
+        },
+        {
+            "name": "Paladin",
+            "hp": 110,
+            "attack": 22,
+            "defense": 18,
+            "element": "Spirit"
+        },
+        {
+            "name": "Alchemist",
+            "hp": 70,
+            "attack": 26,
+            "defense": 8,
+            "element": "Fire"
+        }
+    ],
+    "races": [
+        {
+            "name": "Human",
+            "hp": 0,
+            "attack": 0,
+            "defense": 0,
+            "description": "Balanced and adaptable, with no particular weakness."
+        },
+        {
+            "name": "Elf",
+            "hp": -8,
+            "attack": 6,
+            "defense": 0,
+            "description": "Swift and deadly, but fragile."
+        },
+        {
+            "name": "Dwarf",
+            "hp": 10,
+            "attack": 0,
+            "defense": 6,
+            "description": "Stout and armored, hard to bring down."
+        },
+        {
+            "name": "Halfling",
+            "hp": -4,
+            "attack": 2,
+            "defense": 2,
+            "description": "Nimble treasure-hunters who flee at the first real danger."
         }
     ],
     "names": [
