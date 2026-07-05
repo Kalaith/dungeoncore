@@ -11,7 +11,9 @@ pub fn save_game(state: &GameState) -> Result<(), String> {
 
 /// Load game state from JSON file
 pub fn load_game() -> Result<GameState, String> {
-    load_json_key(GAME_NAME, SAVE_FILE)
+    let mut state: GameState = load_json_key(GAME_NAME, SAVE_FILE)?;
+    state.migrate();
+    Ok(state)
 }
 
 /// Check whether a saved dungeon exists in the active platform storage.

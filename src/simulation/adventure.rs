@@ -13,7 +13,11 @@ pub fn spawn_party(state: &mut GameState) {
     if !state.adventurer_parties.is_empty() {
         return;
     }
-    if state.hour < state.next_party_spawn {
+    // Compare in absolute hours — hour-of-day comparisons broke at the day
+    // wrap (a party spawned at hour 23 set next_party_spawn to 24, which
+    // hour-of-day never reaches, so spawns stopped after day 1).
+    let now_abs = state.day * 24 + state.hour;
+    if now_abs < state.next_party_spawn {
         return;
     }
 
@@ -84,7 +88,7 @@ pub fn spawn_party(state: &mut GameState) {
     }
 
     state.adventurer_parties.push(party);
-    state.next_party_spawn = state.hour + 1;
+    state.next_party_spawn = now_abs + 1;
 }
 
 /// Process all adventurer parties

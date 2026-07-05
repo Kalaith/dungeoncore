@@ -9,7 +9,7 @@ pub struct UpgradeTemplate {
     pub name: String,
     pub effect: String,
     pub multiplier: f32,
-    pub gold_cost: i32,
+    pub mana_cost: i32,
     pub souls_cost: i32,
     /// Element this upgrade is keyed to (attunement only)
     #[serde(default)]

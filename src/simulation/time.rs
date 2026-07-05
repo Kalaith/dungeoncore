@@ -8,18 +8,19 @@ pub fn advance_time(state: &mut GameState) {
         state.day += 1;
     }
 
-    // Calculate adventurer bonus for mana regen
+    // Living intruders feed the core: each adventurer inside meaningfully
+    // accelerates mana regeneration.
     let adventurer_count: usize = state
         .adventurer_parties
         .iter()
         .map(|p| p.members.iter().filter(|a| a.alive).count())
         .sum();
-    let adventurer_bonus = adventurer_count as f32 * 0.1;
+    let adventurer_bonus = adventurer_count as f32 * 0.5;
 
-    // Mana regeneration
+    // Mana regeneration (rounded so fractional bonuses aren't lost)
     let regen = 1.0 + state.deep_core_bonus + adventurer_bonus;
     state.mana_regen = regen;
-    state.mana = (state.mana + regen as i32).min(state.max_mana);
+    state.mana = (state.mana + regen.round() as i32).min(state.max_mana);
 
     // Auto-close dungeon when closing and no parties remain
     if state.status == DungeonStatus::Closing && state.adventurer_parties.is_empty() {

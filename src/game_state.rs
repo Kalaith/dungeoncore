@@ -71,6 +71,11 @@ pub struct Room {
     pub position: usize,
     pub floor_number: i32,
     pub monsters: Vec<Monster>,
+    /// Installed upgrades — at most one per RoomUpgradeType.
+    #[serde(default)]
+    pub upgrades: Vec<RoomUpgrade>,
+    /// Legacy single-slot field; migrated into `upgrades` on load.
+    #[serde(default, skip_serializing)]
     pub upgrade: Option<RoomUpgrade>,
     pub explored: bool,
     pub loot: i32,
@@ -84,53 +89,58 @@ impl Room {
             position,
             floor_number,
             monsters: Vec::new(),
+            upgrades: Vec::new(),
             upgrade: None,
             explored: false,
             loot: 0,
         }
     }
 
+    /// The installed upgrade of a given type, if any.
+    pub fn upgrade_of(&self, upgrade_type: RoomUpgradeType) -> Option<&RoomUpgrade> {
+        self.upgrades
+            .iter()
+            .find(|u| u.upgrade_type == upgrade_type)
+    }
+
+    /// Whether the room already holds an upgrade of this type.
+    pub fn has_upgrade_type(&self, upgrade_type: RoomUpgradeType) -> bool {
+        self.upgrade_of(upgrade_type).is_some()
+    }
+
     /// Get the trap damage multiplier (from trap upgrades)
     pub fn trap_multiplier(&self) -> f32 {
-        match &self.upgrade {
-            Some(u) if u.upgrade_type == RoomUpgradeType::Trap => u.multiplier,
-            _ => 1.0,
-        }
+        self.upgrade_of(RoomUpgradeType::Trap)
+            .map(|u| u.multiplier)
+            .unwrap_or(1.0)
     }
 
     /// Get the treasure/loot multiplier
     pub fn treasure_multiplier(&self) -> f32 {
-        match &self.upgrade {
-            Some(u) if u.upgrade_type == RoomUpgradeType::Treasure => u.multiplier,
-            _ => 1.0,
-        }
+        self.upgrade_of(RoomUpgradeType::Treasure)
+            .map(|u| u.multiplier)
+            .unwrap_or(1.0)
     }
 
     /// Get monster stat boost from reinforcement
     pub fn reinforcement_multiplier(&self) -> f32 {
-        match &self.upgrade {
-            Some(u) if u.upgrade_type == RoomUpgradeType::Reinforcement => u.multiplier,
-            _ => 1.0,
-        }
+        self.upgrade_of(RoomUpgradeType::Reinforcement)
+            .map(|u| u.multiplier)
+            .unwrap_or(1.0)
     }
 
     /// Get XP multiplier from evolution upgrade
     pub fn evolution_multiplier(&self) -> f32 {
-        match &self.upgrade {
-            Some(u) if u.upgrade_type == RoomUpgradeType::Evolution => u.multiplier,
-            _ => 1.0,
-        }
+        self.upgrade_of(RoomUpgradeType::Evolution)
+            .map(|u| u.multiplier)
+            .unwrap_or(1.0)
     }
 
     /// Element attunement of this room: (element, stat multiplier for
     /// monsters of that element), if an attunement upgrade is installed.
     pub fn attunement(&self) -> Option<(&str, f32)> {
-        match &self.upgrade {
-            Some(u) if u.upgrade_type == RoomUpgradeType::Attunement => {
-                u.element.as_deref().map(|e| (e, u.multiplier))
-            }
-            _ => None,
-        }
+        self.upgrade_of(RoomUpgradeType::Attunement)
+            .and_then(|u| u.element.as_deref().map(|e| (e, u.multiplier)))
     }
 }
 
@@ -289,6 +299,8 @@ pub struct GameState {
 
     // Adventurers
     pub adventurer_parties: Vec<AdventurerParty>,
+    /// Earliest spawn time for the next party, in absolute hours
+    /// (day * 24 + hour) so it survives the midnight wrap.
     pub next_party_spawn: i32,
 
     // Reputation / threat
@@ -314,6 +326,8 @@ pub struct GameState {
     pub selected_room: Option<(i32, usize)>,
     #[serde(skip)]
     pub selected_monster: Option<String>,
+    #[serde(skip)]
+    pub selected_upgrade: Option<String>,
     #[serde(skip)]
     pub effects: Vec<RoomEffect>,
 
@@ -348,7 +362,8 @@ impl GameState {
             total_floors: 1,
             deep_core_bonus: 0.1,
             adventurer_parties: Vec::new(),
-            next_party_spawn: 8,
+            // Day 1, hour 8 in absolute hours.
+            next_party_spawn: 32,
             total_deaths: 0,
             threat_warned: 0,
             raids_completed: 0,
@@ -358,10 +373,25 @@ impl GameState {
             unlocked_monsters: vec![],
             selected_room: None,
             selected_monster: None,
+            selected_upgrade: None,
             effects: Vec::new(),
             log: vec![LogEntry::system(
                 "Welcome to Dungeon Core! Choose a starter race to awaken your first defenders.",
             )],
+        }
+    }
+
+    /// Upgrade older saves to the current schema. Called after load.
+    pub fn migrate(&mut self) {
+        // Single-slot room upgrade → per-type upgrade list.
+        for floor in &mut self.floors {
+            for room in &mut floor.rooms {
+                if let Some(upgrade) = room.upgrade.take() {
+                    if !room.has_upgrade_type(upgrade.upgrade_type.clone()) {
+                        room.upgrades.push(upgrade);
+                    }
+                }
+            }
         }
     }
 

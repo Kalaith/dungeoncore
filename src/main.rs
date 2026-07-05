@@ -312,7 +312,17 @@ fn render_playing_frame(
                 state.selected_monster = None;
             } else {
                 state.selected_room = None;
+                state.selected_upgrade = None;
                 state.selected_monster = Some(monster);
+            }
+        }
+        DrawerAction::SelectUpgrade(upgrade) => {
+            if state.selected_upgrade.as_ref() == Some(&upgrade) {
+                state.selected_upgrade = None;
+            } else {
+                state.selected_room = None;
+                state.selected_monster = None;
+                state.selected_upgrade = Some(upgrade);
             }
         }
         DrawerAction::BuildRoom => {
@@ -358,6 +368,12 @@ fn render_playing_frame(
                     state.add_log(game_state::LogEntry::system(e));
                 }
                 state.selected_monster = None;
+            } else if let Some(ref upgrade_name) = state.selected_upgrade.clone() {
+                if let Err(e) = simulation::apply_upgrade(state, floor_num, room_pos, upgrade_name)
+                {
+                    state.add_log(game_state::LogEntry::system(e));
+                }
+                state.selected_upgrade = None;
             } else if state.selected_room == Some((floor_num, room_pos)) {
                 state.selected_room = None;
                 *upgrade_scroll = 0.0;
@@ -397,9 +413,9 @@ fn render_playing_frame(
                     }
                 }
             }
-            UpgradeAction::Remove => {
+            UpgradeAction::Remove(upgrade_type) => {
                 if let Some((floor, pos)) = state.selected_room {
-                    if let Err(e) = simulation::remove_upgrade(state, floor, pos) {
+                    if let Err(e) = simulation::remove_upgrade(state, floor, pos, upgrade_type) {
                         state.add_log(game_state::LogEntry::system(e));
                     }
                 }

@@ -35,16 +35,21 @@ pub fn apply_upgrade(
         return Err("Cannot upgrade entrance or core rooms!".into());
     }
 
-    // Check if room already has an upgrade
-    if room.upgrade.is_some() {
-        return Err("Room already has an upgrade! Remove it first.".into());
+    // One upgrade per type: a room can hold a trap AND a treasure, but not
+    // two traps.
+    let upgrade_type = crate::data::upgrades::parse_upgrade_type(&template.upgrade_type);
+    if room.has_upgrade_type(upgrade_type) {
+        return Err(format!(
+            "Room already has a {} upgrade! Remove it first.",
+            template.upgrade_type
+        ));
     }
 
-    // Check costs
-    if state.gold < template.gold_cost {
+    // Upgrades are conjured by the core: they cost mana (and sometimes souls).
+    if state.mana < template.mana_cost {
         return Err(format!(
-            "Not enough gold! Need {} gold.",
-            template.gold_cost
+            "Not enough mana! Need {} mana.",
+            template.mana_cost
         ));
     }
     if state.souls < template.souls_cost {
@@ -55,18 +60,18 @@ pub fn apply_upgrade(
     }
 
     // Deduct costs
-    state.gold -= template.gold_cost;
+    state.mana -= template.mana_cost;
     state.souls -= template.souls_cost;
 
     // Apply upgrade
-    room.upgrade = Some(template.to_room_upgrade());
+    room.upgrades.push(template.to_room_upgrade());
 
     state.add_log(LogEntry::building(format!(
-        "Applied {} to floor {}, room {} for {} gold{}",
+        "Applied {} to floor {}, room {} for {} mana{}",
         upgrade_name,
         floor_num,
         room_pos,
-        template.gold_cost,
+        template.mana_cost,
         if template.souls_cost > 0 {
             format!(" and {} souls", template.souls_cost)
         } else {
@@ -77,11 +82,12 @@ pub fn apply_upgrade(
     Ok(())
 }
 
-/// Remove an upgrade from a room (no refund)
+/// Remove the upgrade of a given type from a room (no refund)
 pub fn remove_upgrade(
     state: &mut GameState,
     floor_num: i32,
     room_pos: usize,
+    upgrade_type: RoomUpgradeType,
 ) -> Result<(), String> {
     // Cannot modify while adventurers are in dungeon
     if !state.adventurer_parties.is_empty() {
@@ -101,14 +107,12 @@ pub fn remove_upgrade(
         .find(|r| r.position == room_pos)
         .ok_or("Room not found")?;
 
-    // Check if room has an upgrade
-    let upgrade_name = match &room.upgrade {
-        Some(u) => u.name.clone(),
-        None => return Err("Room has no upgrade to remove.".into()),
-    };
-
-    // Remove upgrade
-    room.upgrade = None;
+    let idx = room
+        .upgrades
+        .iter()
+        .position(|u| u.upgrade_type == upgrade_type)
+        .ok_or("Room has no upgrade of that type to remove.")?;
+    let upgrade_name = room.upgrades.remove(idx).name;
 
     state.add_log(LogEntry::building(format!(
         "Removed {} from floor {}, room {}",
@@ -142,18 +146,18 @@ pub fn get_available_upgrades(
         return Ok(Vec::new());
     }
 
-    // If room already has upgrade, return empty
-    if room.upgrade.is_some() {
-        return Ok(Vec::new());
-    }
-
-    // Return all upgrades - in future could filter by room type (boss gets better options)
-    Ok(crate::data::get_all_upgrades())
+    // Offer upgrades of types the room does not hold yet.
+    Ok(crate::data::get_all_upgrades()
+        .into_iter()
+        .filter(|t| {
+            !room.has_upgrade_type(crate::data::upgrades::parse_upgrade_type(&t.upgrade_type))
+        })
+        .collect())
 }
 
 /// Check if an upgrade can be afforded
 pub fn can_afford_upgrade(state: &GameState, template: &UpgradeTemplate) -> bool {
-    state.gold >= template.gold_cost && state.souls >= template.souls_cost
+    state.mana >= template.mana_cost && state.souls >= template.souls_cost
 }
 
 /// Get upgrade type icon/emoji

@@ -13,7 +13,7 @@ use super::theme::*;
 pub enum UpgradeAction {
     None,
     Apply(String),
-    Remove,
+    Remove(crate::game_state::RoomUpgradeType),
     Close,
 }
 
@@ -217,19 +217,25 @@ fn draw_selected_room(state: &GameState, room: &Room, bounds: Rect, y: f32) -> f
         &format!("{alive}/{}", room.monsters.len()),
         if alive > 0 { EMERALD } else { TEXT_DIM },
     );
+    let upgrade_names = if room.upgrades.is_empty() {
+        "None".to_string()
+    } else {
+        room.upgrades
+            .iter()
+            .map(|u| u.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
     draw_stat_line(
         rect.x + 12.0,
         rect.y + 153.0,
         rect.w - 24.0,
-        "Upgrade",
-        room.upgrade
-            .as_ref()
-            .map(|upgrade| upgrade.name.as_str())
-            .unwrap_or("None"),
-        if room.upgrade.is_some() {
-            TREASURE
-        } else {
+        "Upgrades",
+        &upgrade_names,
+        if room.upgrades.is_empty() {
             TEXT_DIM
+        } else {
+            TREASURE
         },
     );
     draw_stat_line(
@@ -272,25 +278,35 @@ fn draw_upgrade_choices(
     draw_section_rule(bounds.x, y + 18.0, bounds.w, "ACTIONS");
     let mut row_y = y + 36.0;
 
-    if let Some(upgrade) = &room.upgrade {
+    // Installed upgrades, each with its own remove control.
+    for upgrade in &room.upgrades {
+        if row_y + 44.0 > bounds.y + bounds.h {
+            return;
+        }
         draw_hint(
-            Rect::new(bounds.x, row_y, bounds.w, 58.0),
+            Rect::new(bounds.x, row_y, bounds.w - 92.0, 40.0),
             &format!("{}: {}", upgrade.name, room_upgrade_preview(upgrade)),
             TREASURE,
         );
-        row_y += 70.0;
         if draw_command_button(
-            Rect::new(bounds.x, row_y, bounds.w, 34.0),
-            "Remove Upgrade",
+            Rect::new(bounds.x + bounds.w - 84.0, row_y + 4.0, 84.0, 30.0),
+            "Remove",
             ButtonTone::Danger,
             state.adventurer_parties.is_empty(),
         ) {
-            *action = UpgradeAction::Remove;
+            *action = UpgradeAction::Remove(upgrade.upgrade_type.clone());
         }
-        return;
+        row_y += 48.0;
     }
 
-    let upgrades = get_all_upgrades();
+    // Catalog offers only types the room does not hold yet.
+    let installed: Vec<_> = room.upgrades.iter().map(|u| &u.upgrade_type).collect();
+    let upgrades: Vec<UpgradeTemplate> = get_all_upgrades()
+        .into_iter()
+        .filter(|t| {
+            !installed.contains(&&crate::data::upgrades::parse_upgrade_type(&t.upgrade_type))
+        })
+        .collect();
     let list_rect = Rect::new(
         bounds.x,
         row_y,
@@ -387,7 +403,7 @@ fn draw_monster_progress_rows(state: &GameState, room: &Room, rect: Rect) {
 }
 
 fn draw_upgrade_row(state: &GameState, upgrade: &UpgradeTemplate, rect: Rect) -> bool {
-    let can_afford = state.gold >= upgrade.gold_cost && state.souls >= upgrade.souls_cost;
+    let can_afford = state.mana >= upgrade.mana_cost && state.souls >= upgrade.souls_cost;
     let enabled = can_afford && state.adventurer_parties.is_empty();
     let color = upgrade_color(&upgrade.upgrade_type);
     let hovered = enabled && rect.contains(vec2(mouse_position().0, mouse_position().1));
@@ -416,13 +432,18 @@ fn draw_upgrade_row(state: &GameState, upgrade: &UpgradeTemplate, rect: Rect) ->
         10.0,
         TEXT_MUTED,
     );
+    let cost_text = if upgrade.souls_cost > 0 {
+        format!("{}M {}S", upgrade.mana_cost, upgrade.souls_cost)
+    } else {
+        format!("{}M", upgrade.mana_cost)
+    };
     draw_text_fit_right(
-        &format!("{}g {}s", upgrade.gold_cost, upgrade.souls_cost),
+        &cost_text,
         rect.x + rect.w - 10.0,
         rect.y + 16.0,
         78.0,
         10.0,
-        if can_afford { TREASURE } else { TEXT_DIM },
+        if can_afford { MANA } else { TEXT_DIM },
     );
     draw_text_fit_right(
         if enabled { "Apply" } else { "Locked" },

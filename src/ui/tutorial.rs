@@ -84,12 +84,7 @@ fn step_complete(state: &GameState, step_idx: usize) -> bool {
             .floors
             .iter()
             .flat_map(|floor| &floor.rooms)
-            .any(|room| {
-                room.upgrade
-                    .as_ref()
-                    .map(|u| u.upgrade_type == RoomUpgradeType::Trap)
-                    .unwrap_or(false)
-            }),
+            .any(|room| room.has_upgrade_type(RoomUpgradeType::Trap)),
         // Open the dungeon: it is open, has visitors, or a raid already ran.
         3 => {
             state.status == DungeonStatus::Open

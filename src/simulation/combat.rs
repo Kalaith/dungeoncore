@@ -473,8 +473,7 @@ fn apply_trap_damage(
 
     // Get trap name for log
     let trap_name = state.floors[floor_idx].rooms[room_idx]
-        .upgrade
-        .as_ref()
+        .upgrade_of(crate::game_state::RoomUpgradeType::Trap)
         .map(|u| u.name.clone())
         .unwrap_or_else(|| "Trap".into());
 

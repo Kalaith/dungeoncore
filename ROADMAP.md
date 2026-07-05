@@ -154,12 +154,26 @@ Still to do in later drops:
 **Exit criteria:** two playthroughs with different species feel mechanically
 different, not just cosmetically.
 
+## Playtest feedback round (DONE 2026-07-05)
+
+- [x] Room upgrades cost **mana** (not gold) — gold is what the dungeon
+      earns, mana is what it spends. `mana_cost` in upgrades.json.
+- [x] Rooms hold **one upgrade per type** (trap + treasure + … can coexist);
+      old single-slot saves migrate on load.
+- [x] Traps/treasure placeable from a new left-drawer **TRAPS** tab, same
+      select-then-click-a-room flow as monsters. Inspector panel still works
+      per-room with per-upgrade remove buttons.
+- [x] Monster drawer lists only unlocked monsters.
+- [x] Fixed: parties stopped spawning after day 1 (`next_party_spawn` was
+      hour-of-day and broke at the midnight wrap; now absolute hours).
+- [x] Mana regen bonus per adventurer inside raised 0.1 → 0.5/hour and no
+      longer lost to integer truncation.
+
 ## Phase 3 — Traps as first-class content
 
-Today traps are 3 entries in the single room-upgrade slot. Promote them.
+Traps/treasure are now mana-costed, per-type room slots placeable from the
+drawer (see playtest round above). Remaining Phase 3 work:
 
-- [ ] Separate trap slot per room (room keeps its upgrade slot; traps get 1–2
-      dedicated slots) — `Room { traps: Vec<Trap> }`.
 - [ ] `assets/traps.json` with categories:
       **Damage** (spike, boulder), **DoT/status** (poison, burn — needs a
       simple status-effect list on Adventurer, the `conditions: Vec<String>`
