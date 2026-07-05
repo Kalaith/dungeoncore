@@ -76,14 +76,128 @@
                     "min_floor": 2,
                     "gold_cost": 50
                 }
+            },
+            {
+                "from_monster": "Skeleton",
+                "to_monster": "Bone Mage",
+                "experience_required": 80,
+                "conditions": {
+                    "min_floor": 2,
+                    "gold_cost": 30
+                }
+            },
+            {
+                "from_monster": "Vampire",
+                "to_monster": "Lich",
+                "experience_required": 150,
+                "conditions": {
+                    "min_floor": 3,
+                    "gold_cost": 80
+                }
+            },
+            {
+                "from_monster": "Bone Mage",
+                "to_monster": "Lich",
+                "experience_required": 140,
+                "conditions": {
+                    "min_floor": 3,
+                    "gold_cost": 80
+                }
             }
         ],
-        "Draconic": []
+        "Draconic": [],
+        "Beast": [
+            {
+                "from_monster": "Wolf",
+                "to_monster": "Dire Wolf",
+                "experience_required": 60,
+                "conditions": {
+                    "min_floor": 1,
+                    "gold_cost": 10
+                }
+            },
+            {
+                "from_monster": "Giant Rat",
+                "to_monster": "Dire Wolf",
+                "experience_required": 70,
+                "conditions": {
+                    "min_floor": 1,
+                    "gold_cost": 15
+                }
+            },
+            {
+                "from_monster": "Wild Boar",
+                "to_monster": "Alpha Boar",
+                "experience_required": 60,
+                "conditions": {
+                    "min_floor": 1,
+                    "gold_cost": 10
+                }
+            },
+            {
+                "from_monster": "Dire Wolf",
+                "to_monster": "Werewolf",
+                "experience_required": 110,
+                "conditions": {
+                    "min_floor": 2,
+                    "gold_cost": 40
+                }
+            },
+            {
+                "from_monster": "Alpha Boar",
+                "to_monster": "Behemoth",
+                "experience_required": 110,
+                "conditions": {
+                    "min_floor": 2,
+                    "gold_cost": 40
+                }
+            }
+        ],
+        "Demon": [
+            {
+                "from_monster": "Imp",
+                "to_monster": "Hellhound",
+                "experience_required": 60,
+                "conditions": {
+                    "min_floor": 1,
+                    "gold_cost": 15
+                }
+            },
+            {
+                "from_monster": "Imp",
+                "to_monster": "Shadow Fiend",
+                "experience_required": 60,
+                "conditions": {
+                    "min_floor": 1,
+                    "gold_cost": 15
+                }
+            },
+            {
+                "from_monster": "Hellhound",
+                "to_monster": "Pit Fiend",
+                "experience_required": 120,
+                "conditions": {
+                    "min_floor": 3,
+                    "gold_cost": 60
+                }
+            },
+            {
+                "from_monster": "Shadow Fiend",
+                "to_monster": "Pit Fiend",
+                "experience_required": 120,
+                "conditions": {
+                    "min_floor": 3,
+                    "gold_cost": 60
+                }
+            }
+        ]
     },
     "starting_monsters": {
         "Goblinoid": "Goblin",
         "Slime": "Red Slime",
         "Undead": "Skeleton",
-        "Draconic": "Dragon"
+        "Draconic": "Dragon",
+        "Beast": "Wolf",
+        "Demon": "Imp"
     }
 }

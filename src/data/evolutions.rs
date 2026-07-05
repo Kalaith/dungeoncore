@@ -41,36 +41,36 @@ pub fn get_starting_monsters() -> HashMap<String, String> {
     data.starting_monsters
 }
 
-/// Get the evolution path for a specific monster (if it can evolve)
+/// Get the first evolution path for a specific monster (if it can evolve).
+/// Prefer `get_evolutions_for_monster` — branching monsters have several.
 pub fn get_evolution_for_monster(monster_name: &str) -> Option<EvolutionPath> {
-    let trees = get_evolution_trees();
-
-    for paths in trees.values() {
-        if let Some(path) = paths.iter().find(|p| p.from_monster == monster_name) {
-            return Some(path.clone());
-        }
-    }
-
-    None
+    get_evolutions_for_monster(monster_name).into_iter().next()
 }
 
-/// Check if a monster can evolve given current conditions
+/// All evolution paths available to a monster (branching supported).
+pub fn get_evolutions_for_monster(monster_name: &str) -> Vec<EvolutionPath> {
+    get_evolution_trees()
+        .into_values()
+        .flatten()
+        .filter(|p| p.from_monster == monster_name)
+        .collect()
+}
+
+/// Check if a monster can evolve given current conditions.
+/// With branching paths, the first satisfiable one wins.
 pub fn can_evolve(
     monster_name: &str,
     experience: i32,
     current_floor: i32,
     available_gold: i32,
 ) -> Option<EvolutionPath> {
-    if let Some(path) = get_evolution_for_monster(monster_name) {
-        if experience >= path.experience_required
-            && current_floor >= path.conditions.min_floor
-            && available_gold >= path.conditions.gold_cost
-        {
-            return Some(path);
-        }
-    }
-
-    None
+    get_evolutions_for_monster(monster_name)
+        .into_iter()
+        .find(|path| {
+            experience >= path.experience_required
+                && current_floor >= path.conditions.min_floor
+                && available_gold >= path.conditions.gold_cost
+        })
 }
 
 /// Get all monsters that can be reached through evolution from a starting monster

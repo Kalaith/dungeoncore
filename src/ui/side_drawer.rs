@@ -349,7 +349,7 @@ fn draw_evolution_tab(state: &GameState, rect: Rect) -> DrawerAction {
 fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect) -> bool {
     let unlocked = state.unlocked_species.contains(&template.species)
         && state.unlocked_monsters.contains(&template.name);
-    let can_afford = state.mana >= template.base_cost;
+    let can_afford = state.mana >= template.base_cost && state.souls >= template.souls_cost;
     let enabled = unlocked && can_afford;
     let selected = state.selected_monster.as_ref() == Some(&template.name);
     let hovered = enabled && is_hovered_rect(rect);
@@ -404,8 +404,13 @@ fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect
         11.0,
         TEXT_MUTED,
     );
+    let cost_label = if template.souls_cost > 0 {
+        format!("{}M+{}S", template.base_cost, template.souls_cost)
+    } else {
+        format!("{}M", template.base_cost)
+    };
     draw_text_fit_right(
-        &format!("{}M", template.base_cost),
+        &cost_label,
         rect.x + rect.w - 10.0,
         rect.y + rect.h * 0.58,
         54.0,

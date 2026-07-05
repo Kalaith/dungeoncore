@@ -50,8 +50,15 @@ pub fn place_monster(
     if state.mana < cost {
         return Err(format!("Not enough mana! Need {} mana.", cost));
     }
+    if state.souls < template.souls_cost {
+        return Err(format!(
+            "Not enough souls! Need {} souls.",
+            template.souls_cost
+        ));
+    }
 
     state.mana -= cost;
+    state.souls -= template.souls_cost;
 
     // Scale stats based on floor and boss status
     let base_stats = Stats {
@@ -201,14 +208,13 @@ pub fn process_hourly_traits(state: &mut GameState) {
                 for trait_data in &monster.active_traits {
                     // Look up definition
                     if let Some(def) = crate::data::traits::get_trait(&trait_data.id) {
-                        if def.applies_to == "Hourly" && def.trait_type == "Passive" {
-                            // Logic dispatcher based on ID still needed for *behavior*, but values come from JSON
-                            // "regenerate_minor" behavior: heal % of max hp
-                            if def.id == "regenerate_minor" {
-                                let heal_amount = (monster.max_hp as f32 * def.value).ceil() as i32;
-                                if monster.hp < monster.max_hp {
-                                    monster.hp = (monster.hp + heal_amount).min(monster.max_hp);
-                                }
+                        if def.applies_to == "Hourly"
+                            && def.trait_type == "Passive"
+                            && def.effect_type == "HealPercent"
+                        {
+                            let heal_amount = (monster.max_hp as f32 * def.value).ceil() as i32;
+                            if monster.hp < monster.max_hp {
+                                monster.hp = (monster.hp + heal_amount).min(monster.max_hp);
                             }
                         }
                     }
@@ -222,13 +228,15 @@ pub fn process_hourly_traits(state: &mut GameState) {
 /// placed monster. The player can then choose to summon the new tier and retire
 /// the old one. Runs hourly; each form is only announced once.
 pub fn process_evolution_unlocks(state: &mut GameState) {
-    // Collect (from, to) pairs for monsters that have earned their next tier.
+    // Collect evolved forms whose conditions are met. A monster with
+    // branching paths unlocks every branch it qualifies for — the player
+    // chooses which to summon.
     let mut candidates: Vec<String> = Vec::new();
     for floor in &state.floors {
         for room in &floor.rooms {
             for monster in &room.monsters {
-                if let Some(path) =
-                    crate::data::evolutions::get_evolution_for_monster(&monster.type_name)
+                for path in
+                    crate::data::evolutions::get_evolutions_for_monster(&monster.type_name)
                 {
                     let earned = monster.experience >= path.experience_required
                         && room.floor_number >= path.conditions.min_floor;

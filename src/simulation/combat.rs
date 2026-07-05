@@ -51,14 +51,17 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
         .collect();
 
     let mut monster_kills: Vec<(String, bool)> = Vec::new();
+    let mut split_spawns: Vec<String> = Vec::new();
     let mut party_hit_strong = false;
     let mut party_hit_weak = false;
     {
         let room = &mut state.floors[floor_idx].rooms[room_idx];
         for (attack, adv_element) in &adv_attacks {
-            let Some(monster) = room.monsters.iter_mut().find(|m| m.alive) else {
+            // Taunting monsters soak hits before the rest of the room.
+            let Some(target_idx) = target_monster_idx(&room.monsters) else {
                 break;
             };
+            let monster = &mut room.monsters[target_idx];
             let mon_element = monster_element(&monster.type_name);
             let attune_mult = attunement_mult(&attunement, &mon_element);
             let effective_def =
@@ -80,8 +83,22 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
                 monster.hp = 0;
                 monster.alive = false;
                 monster_kills.push((monster.type_name.clone(), monster.is_boss));
+                if has_passive(monster, "SplitOnDeath") {
+                    if let Some(spawn) = split_spawn(&monster.type_name, floor_num) {
+                        split_spawns.push(spawn.type_name.clone());
+                        room.monsters.push(spawn);
+                    }
+                }
             }
         }
+    }
+
+    for spawn_name in &split_spawns {
+        state.add_log(LogEntry::combat(format!(
+            "The slain monster splits — a {} emerges!",
+            spawn_name
+        )));
+        state.push_effect(floor_num, room_pos, "Split!", EffectKind::Ability);
     }
 
     if party_hit_strong {
@@ -91,19 +108,33 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     }
 
     // Phase 4: surviving monsters strike back
-    let monster_strikes: Vec<(i32, String)> = {
+    let monster_strikes: Vec<MonsterStrike> = {
         let room = &state.floors[floor_idx].rooms[room_idx];
         let alive_count = room.monsters.iter().filter(|m| m.alive).count();
+        let enemies_alive = state.adventurer_parties[party_idx]
+            .members
+            .iter()
+            .filter(|a| a.alive)
+            .count();
         room.monsters
             .iter()
             .filter(|m| m.alive)
             .map(|m| {
                 let element = monster_element(&m.type_name);
                 let attune_mult = attunement_mult(&attunement, &element);
-                (
-                    monster_attack_value(m, alive_count, reinforcement_mult * attune_mult),
+                MonsterStrike {
+                    monster_id: m.id,
+                    attack: monster_attack_value(
+                        m,
+                        alive_count,
+                        enemies_alive,
+                        reinforcement_mult * attune_mult,
+                    ),
                     element,
-                )
+                    pierce: has_passive(m, "ArmorPierce"),
+                    lifesteal: passive_value(m, "LifeStealPercent"),
+                    mana_on_kill: passive_value(m, "ManaOnKill") as i32,
+                }
             })
             .collect()
     };
@@ -111,9 +142,11 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     let mut adventurer_kills: Vec<(String, i32)> = Vec::new();
     let mut damage_to_party = 0;
     let mut monster_hit_strong = false;
+    let mut lifesteal_heals: Vec<(u64, i32)> = Vec::new();
+    let mut leeched_mana = 0;
     {
         let party = &mut state.adventurer_parties[party_idx];
-        for (attack, mon_element) in monster_strikes {
+        for strike in monster_strikes {
             let alive_idxs: Vec<usize> = party
                 .members
                 .iter()
@@ -128,23 +161,55 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
                 [macroquad_toolkit::rng::gen_range(0, alive_idxs.len())];
             let victim = &mut party.members[victim_idx];
             let elem_mult =
-                element_multiplier(&mon_element, &adventurer_element(&victim.class_name));
+                element_multiplier(&strike.element, &adventurer_element(&victim.class_name));
             if elem_mult > 1.0 {
                 monster_hit_strong = true;
             }
-            let damage = ((attack as f32 - victim.scaled_stats.defense as f32 / 2.0).max(1.0)
-                * elem_mult)
+            let victim_def = if strike.pierce {
+                0.0
+            } else {
+                victim.scaled_stats.defense as f32 / 2.0
+            };
+            let damage = ((strike.attack as f32 - victim_def).max(1.0) * elem_mult)
                 .round()
                 .max(1.0) as i32;
             victim.hp -= damage;
             damage_to_party += damage;
+            if strike.lifesteal > 0.0 {
+                let heal = (damage as f32 * strike.lifesteal).round() as i32;
+                if heal > 0 {
+                    lifesteal_heals.push((strike.monster_id, heal));
+                }
+            }
             if victim.hp <= 0 {
                 victim.hp = 0;
                 victim.alive = false;
                 party.casualties += 1;
                 adventurer_kills.push((victim.name.clone(), victim.level));
+                leeched_mana += strike.mana_on_kill;
             }
         }
+    }
+
+    // Apply lifesteal heals now that the party borrow has ended.
+    if !lifesteal_heals.is_empty() {
+        let room = &mut state.floors[floor_idx].rooms[room_idx];
+        for (monster_id, heal) in lifesteal_heals {
+            if let Some(monster) = room
+                .monsters
+                .iter_mut()
+                .find(|m| m.id == monster_id && m.alive)
+            {
+                monster.hp = (monster.hp + heal).min(monster.max_hp);
+            }
+        }
+    }
+    if leeched_mana > 0 {
+        state.mana = (state.mana + leeched_mana).min(state.max_mana);
+        state.add_log(LogEntry::combat(format!(
+            "Mana Leech drains +{} mana from the fallen.",
+            leeched_mana
+        )));
     }
 
     if damage_to_party > 0 && adventurer_kills.is_empty() {
@@ -163,6 +228,89 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     reward_monster_kills(state, party_idx, floor_idx, room_idx, &monster_kills);
     reward_adventurer_kills(state, party_idx, floor_idx, room_idx, &adventurer_kills);
     check_retreat(state, party_idx);
+}
+
+/// One monster's pending attack for the strike-back phase.
+struct MonsterStrike {
+    monster_id: u64,
+    attack: i32,
+    element: String,
+    pierce: bool,
+    lifesteal: f32,
+    mana_on_kill: i32,
+}
+
+/// Whether a monster has a passive trait with the given effect type.
+fn has_passive(monster: &Monster, effect_type: &str) -> bool {
+    monster.active_traits.iter().any(|t| {
+        get_trait(&t.id)
+            .is_some_and(|d| d.trait_type == "Passive" && d.effect_type == effect_type)
+    })
+}
+
+/// Summed value of a monster's passive traits with the given effect type.
+fn passive_value(monster: &Monster, effect_type: &str) -> f32 {
+    monster
+        .active_traits
+        .iter()
+        .filter_map(|t| get_trait(&t.id))
+        .filter(|d| d.trait_type == "Passive" && d.effect_type == effect_type)
+        .map(|d| d.value)
+        .sum()
+}
+
+/// Index of the monster adventurers hit next: taunters first, then the front.
+fn target_monster_idx(monsters: &[Monster]) -> Option<usize> {
+    monsters
+        .iter()
+        .position(|m| m.alive && has_passive(m, "Taunt"))
+        .or_else(|| monsters.iter().position(|m| m.alive))
+}
+
+/// Build the tier-1 monster a slain splitter breaks into (half HP).
+fn split_spawn(parent_type: &str, floor: i32) -> Option<Monster> {
+    let parent = crate::data::monsters::get_monster_template(parent_type)?;
+    let candidates: Vec<_> = crate::data::monsters::get_monster_templates()
+        .into_iter()
+        .filter(|t| t.species == parent.species && t.tier == 1)
+        .collect();
+    let template = candidates
+        .iter()
+        .find(|t| t.element == parent.element)
+        .or_else(|| candidates.first())?
+        .clone();
+
+    let scaled = crate::data::get_scaled_stats(
+        crate::game_state::Stats {
+            hp: template.hp,
+            attack: template.attack,
+            defense: template.defense,
+        },
+        floor,
+        false,
+    );
+
+    Some(Monster {
+        id: macroquad_toolkit::rng::random_u64(),
+        type_name: template.name.clone(),
+        hp: (scaled.hp / 2).max(1),
+        max_hp: scaled.hp,
+        alive: true,
+        is_boss: false,
+        scaled_stats: scaled,
+        active_traits: template
+            .traits
+            .iter()
+            .map(|trait_id| crate::game_state::ActiveTrait {
+                id: trait_id.clone(),
+                name: get_trait(trait_id)
+                    .map(|t| t.name)
+                    .unwrap_or_else(|| trait_id.clone()),
+                cooldown_timer: 0,
+            })
+            .collect(),
+        experience: 0,
+    })
 }
 
 /// Damage element of an adventurer, from their class. Empty = neutral.
@@ -204,16 +352,24 @@ fn monster_damage_taken_mult(monster: &Monster) -> f32 {
 }
 
 /// Effective attack including offensive passives and room reinforcement.
-fn monster_attack_value(monster: &Monster, allies_alive: usize, reinforcement_mult: f32) -> i32 {
+fn monster_attack_value(
+    monster: &Monster,
+    allies_alive: usize,
+    enemies_alive: usize,
+    reinforcement_mult: f32,
+) -> i32 {
     let mut attack = monster.scaled_stats.attack as f32;
     for trait_data in &monster.active_traits {
         if let Some(def) = get_trait(&trait_data.id) {
             if def.trait_type == "Passive"
                 && def.applies_to == "OnAttack"
                 && def.effect_type == "AttackBonus"
-                && def.scaling_type == "PerAlly"
             {
-                attack += def.value * allies_alive.saturating_sub(1) as f32;
+                match def.scaling_type.as_str() {
+                    "PerAlly" => attack += def.value * allies_alive.saturating_sub(1) as f32,
+                    "PerEnemy" => attack += def.value * enemies_alive as f32,
+                    _ => attack += def.value,
+                }
             }
         }
     }
@@ -250,29 +406,35 @@ fn resolve_abilities(
                 if trait_def.trait_type == "Active"
                     && trait_def.applies_to == "OnCombatStart"
                     && trait_def.effect_type == "DamageFlat"
-                    && trait_def.target_type == "EnemyParty"
                 {
                     let damage = trait_def.value as i32;
                     trait_data.cooldown_timer = trait_def.cooldown;
 
+                    // "EnemyParty" hits everyone; "Enemy" hits the front adventurer.
+                    let single_target = trait_def.target_type == "Enemy";
                     let mut total_hits = 0;
-                    for adv in &mut party.members {
-                        if adv.alive {
-                            adv.hp -= damage;
-                            total_hits += 1;
-                            if adv.hp <= 0 {
-                                adv.hp = 0;
-                                adv.alive = false;
-                                party.casualties += 1;
-                                ability_deaths += 1;
-                            }
+                    for adv in party.members.iter_mut().filter(|a| a.alive) {
+                        adv.hp -= damage;
+                        total_hits += 1;
+                        if adv.hp <= 0 {
+                            adv.hp = 0;
+                            adv.alive = false;
+                            party.casualties += 1;
+                            ability_deaths += 1;
+                        }
+                        if single_target {
+                            break;
                         }
                     }
 
                     if total_hits > 0 {
                         combat_logs.push(LogEntry::combat(format!(
-                            "{} uses {}! Dealt {} damage to {} adventurers.",
-                            monster.type_name, trait_def.name, damage, total_hits
+                            "{} uses {}! Dealt {} damage to {} adventurer{}.",
+                            monster.type_name,
+                            trait_def.name,
+                            damage,
+                            total_hits,
+                            if total_hits == 1 { "" } else { "s" }
                         )));
                         ability_used = Some((trait_def.name.clone(), damage));
                     }

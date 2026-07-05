@@ -210,6 +210,68 @@ mod tests {
     }
 
     #[test]
+    fn exactly_three_starter_species() {
+        let starters: Vec<String> = monsters::get_all_species()
+            .into_iter()
+            .filter(|s| s.starter)
+            .map(|s| s.name)
+            .collect();
+        assert_eq!(
+            starters.len(),
+            3,
+            "expected 3 starter species, got {:?}",
+            starters
+        );
+    }
+
+    #[test]
+    fn demons_cost_souls() {
+        for template in monsters::get_monster_templates() {
+            if template.species == "Demon" {
+                assert!(
+                    template.souls_cost > 0,
+                    "demon '{}' should cost souls to summon",
+                    template.name
+                );
+            } else {
+                assert_eq!(
+                    template.souls_cost, 0,
+                    "non-demon '{}' should not cost souls",
+                    template.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn branching_evolutions_exist() {
+        assert_eq!(
+            evolutions::get_evolutions_for_monster("Imp").len(),
+            2,
+            "Imp should branch into Hellhound and Shadow Fiend"
+        );
+        assert_eq!(
+            evolutions::get_evolutions_for_monster("Skeleton").len(),
+            2,
+            "Skeleton should branch into Vampire and Bone Mage"
+        );
+    }
+
+    #[test]
+    fn splitters_break_into_non_splitting_tier_ones() {
+        // split_on_death must terminate: no tier-1 monster may carry it.
+        for template in monsters::get_monster_templates() {
+            if template.tier == 1 {
+                assert!(
+                    !template.traits.iter().any(|t| t == "split_on_death"),
+                    "tier-1 '{}' with split_on_death would split forever",
+                    template.name
+                );
+            }
+        }
+    }
+
+    #[test]
     fn every_species_is_summonable_after_unlock() {
         // unlock_species grants the tier-1 roster, falling back to the
         // starting_monsters map (e.g. Draconic only has the tier-3 Dragon).

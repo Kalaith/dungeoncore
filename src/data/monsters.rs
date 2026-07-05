@@ -17,6 +17,9 @@ pub struct MonsterTemplate {
     pub description: String,
     #[serde(default)]
     pub traits: Vec<String>,
+    /// Souls required to summon, on top of mana (Demons)
+    #[serde(default)]
+    pub souls_cost: i32,
 }
 
 /// Species data from JSON

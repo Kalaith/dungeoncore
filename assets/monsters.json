@@ -57,7 +57,8 @@
             "element": "Earth",
             "description": "A brutish warrior with immense strength.",
             "traits": [
-                "swarm_tactics"
+                "swarm_tactics",
+                "taunt"
             ]
         },
         {
@@ -87,7 +88,7 @@
             "element": "Nature",
             "description": "A regenerating giant that hates fire.",
             "traits": [
-                "regenerate_minor"
+                "regenerate_major"
             ]
         },
         {
@@ -147,7 +148,8 @@
             "element": "Body",
             "description": "A dense predatory slime grown large enough to engulf intruders.",
             "traits": [
-                "regenerate_minor"
+                "regenerate_minor",
+                "split_on_death"
             ]
         },
         {
@@ -162,7 +164,8 @@
             "element": "Arcane",
             "description": "A mana-rich slime that channels wild dungeon magic.",
             "traits": [
-                "fire_breath"
+                "fire_breath",
+                "split_on_death"
             ]
         },
         {
@@ -193,7 +196,8 @@
             "description": "A blood-sucking aristocrat of the night.",
             "traits": [
                 "regenerate_minor",
-                "undead_resilience"
+                "undead_resilience",
+                "life_steal"
             ]
         },
         {
@@ -209,7 +213,8 @@
             "description": "An undead sorcerer with immense magical power.",
             "traits": [
                 "regenerate_minor",
-                "undead_resilience"
+                "undead_resilience",
+                "shadow_bolt"
             ]
         },
         {
@@ -226,6 +231,199 @@
             "traits": [
                 "fire_breath"
             ]
+        },
+        {
+            "name": "Bone Mage",
+            "base_cost": 28,
+            "hp": 40,
+            "attack": 15,
+            "defense": 3,
+            "species": "Undead",
+            "tier": 2,
+            "emoji": "🦴",
+            "element": "Arcane",
+            "description": "A skeletal caster crackling with stolen magic.",
+            "traits": [
+                "undead_resilience",
+                "shadow_bolt"
+            ]
+        },
+        {
+            "name": "Wolf",
+            "base_cost": 12,
+            "hp": 22,
+            "attack": 7,
+            "defense": 1,
+            "species": "Beast",
+            "tier": 1,
+            "emoji": "🐺",
+            "element": "Body",
+            "description": "A swift hunter that fights harder alongside its pack.",
+            "traits": [
+                "pack_hunter"
+            ]
+        },
+        {
+            "name": "Giant Rat",
+            "base_cost": 8,
+            "hp": 16,
+            "attack": 5,
+            "defense": 1,
+            "species": "Beast",
+            "tier": 1,
+            "emoji": "🐀",
+            "element": "Nature",
+            "description": "A mangy scavenger. Cheap, expendable, everywhere.",
+            "traits": [
+                "pack_hunter"
+            ]
+        },
+        {
+            "name": "Wild Boar",
+            "base_cost": 14,
+            "hp": 30,
+            "attack": 6,
+            "defense": 3,
+            "species": "Beast",
+            "tier": 1,
+            "emoji": "🐗",
+            "element": "Earth",
+            "description": "A stubborn tusker that shields the pack behind it.",
+            "traits": [
+                "taunt"
+            ]
+        },
+        {
+            "name": "Dire Wolf",
+            "base_cost": 30,
+            "hp": 55,
+            "attack": 14,
+            "defense": 4,
+            "species": "Beast",
+            "tier": 2,
+            "emoji": "🐺",
+            "element": "Body",
+            "description": "An alpha predator whipped to fury by cornered prey.",
+            "traits": [
+                "pack_hunter",
+                "frenzy"
+            ]
+        },
+        {
+            "name": "Alpha Boar",
+            "base_cost": 32,
+            "hp": 75,
+            "attack": 11,
+            "defense": 8,
+            "species": "Beast",
+            "tier": 2,
+            "emoji": "🐗",
+            "element": "Earth",
+            "description": "A scarred bulwark of muscle and hide.",
+            "traits": [
+                "taunt",
+                "stone_skin"
+            ]
+        },
+        {
+            "name": "Werewolf",
+            "base_cost": 70,
+            "hp": 110,
+            "attack": 22,
+            "defense": 8,
+            "species": "Beast",
+            "tier": 3,
+            "emoji": "🌕",
+            "element": "Body",
+            "description": "A cursed shapeshifter whose claws shear through armor.",
+            "traits": [
+                "armor_pierce",
+                "frenzy"
+            ]
+        },
+        {
+            "name": "Behemoth",
+            "base_cost": 90,
+            "hp": 170,
+            "attack": 18,
+            "defense": 16,
+            "species": "Beast",
+            "tier": 3,
+            "emoji": "🦏",
+            "element": "Earth",
+            "description": "A living rampart. What it guards, stays guarded.",
+            "traits": [
+                "taunt",
+                "stone_skin",
+                "regenerate_minor"
+            ]
+        },
+        {
+            "name": "Imp",
+            "base_cost": 8,
+            "hp": 18,
+            "attack": 8,
+            "defense": 1,
+            "species": "Demon",
+            "tier": 1,
+            "emoji": "😈",
+            "element": "Fire",
+            "description": "A cackling pest that funnels stolen life back to the core.",
+            "traits": [
+                "mana_leech"
+            ],
+            "souls_cost": 1
+        },
+        {
+            "name": "Hellhound",
+            "base_cost": 25,
+            "hp": 60,
+            "attack": 16,
+            "defense": 4,
+            "species": "Demon",
+            "tier": 2,
+            "emoji": "🔥",
+            "element": "Fire",
+            "description": "A burning predator that feeds on every wound it opens.",
+            "traits": [
+                "life_steal",
+                "frenzy"
+            ],
+            "souls_cost": 2
+        },
+        {
+            "name": "Shadow Fiend",
+            "base_cost": 22,
+            "hp": 45,
+            "attack": 18,
+            "defense": 2,
+            "species": "Demon",
+            "tier": 2,
+            "emoji": "👤",
+            "element": "Death",
+            "description": "A whisper of malice that strikes from darkness.",
+            "traits": [
+                "mana_leech",
+                "shadow_bolt"
+            ],
+            "souls_cost": 2
+        },
+        {
+            "name": "Pit Fiend",
+            "base_cost": 80,
+            "hp": 140,
+            "attack": 26,
+            "defense": 10,
+            "species": "Demon",
+            "tier": 3,
+            "emoji": "👹",
+            "element": "Fire",
+            "description": "A general of the abyss wreathed in stolen souls.",
+            "traits": [
+                "fire_breath",
+                "life_steal"
+            ],
+            "souls_cost": 4
         }
     ],
     "species": [
@@ -256,6 +454,20 @@
             "starter": false,
             "unlock_cost": 500,
             "description": "Powerful dragon-kin"
+        },
+        {
+            "name": "Beast",
+            "display_name": "Beasts",
+            "starter": true,
+            "unlock_cost": 150,
+            "description": "Fangs and hooves of the wild - packs that grow deadlier together."
+        },
+        {
+            "name": "Demon",
+            "display_name": "Demons",
+            "starter": false,
+            "unlock_cost": 400,
+            "description": "Fiends bargained from below. Summoning costs souls as well as mana."
         }
     ]
 }

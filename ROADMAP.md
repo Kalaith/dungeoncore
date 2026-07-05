@@ -107,25 +107,37 @@ Deferred to later phases: per-hero element variance, elemental trap combos
 **Exit criteria met:** matchups shift damage 1.5×/0.67× both directions, and
 attuned rooms make same-element placement strictly better.
 
-## Phase 2 — Monster & species expansion
+## Phase 2 — Monster & species expansion (first drop DONE 2026-07-05)
 
 Target: 8 species, 4 tiers, 45–60 monsters, branching evolutions.
 
-- [ ] New species (one shipped at a time, each with a tier-1→4 tree):
-      Beast (starter candidate), Demon, Elemental, Construct, Plant/Fungal,
-      Insect swarm. Keep 3 starters total (Goblinoid, Slime, Beast).
-- [ ] Branching evolutions: at tier 2→3 offer two paths (e.g. Skeleton →
-      Skeleton Knight *or* Bone Mage) — `evolution_trees.json` already supports
-      multiple paths from one monster; the UI needs a chooser.
-- [ ] Trait pool: grow 4 → ~20. The engine is already data-driven
-      (effect_type/scaling_type); add effect types incrementally:
-      `LifeStealPercent`, `FirstStrike`, `ArmorShred`, `ManaOnKill`,
-      `TauntAggro`, `SplashDamage`. Every monster gets 1–2 traits.
-- [ ] Species identity rules: Undead don't heal but respawn cheap; Slimes split
-      on death (spawn a tier-1 at half HP); Demons cost souls, not mana; ties
-      species choice to playstyle instead of just different art.
-- [ ] Boss uniques: one named boss form per species (Goblin King, Slime
-      Empress…), summonable only in Boss rooms.
+Shipped in the first drop (15 → 27 monsters, 4 → 6 species):
+- [x] **Beast** starter species (3 starters now: Goblinoid, Slime, Beast):
+      Wolf/Giant Rat/Wild Boar → Dire Wolf/Alpha Boar → Werewolf/Behemoth.
+- [x] **Demon** species with the souls identity rule: summons cost souls on
+      top of mana (`MonsterTemplate.souls_cost`). Imp → Hellhound *or*
+      Shadow Fiend → Pit Fiend.
+- [x] Branching evolutions live (data + `get_evolutions_for_monster`):
+      Imp and Skeleton each branch two ways; all qualifying branches unlock
+      for summoning (chooser-free: player picks what to summon).
+      Undead extended: Skeleton → Vampire | Bone Mage, both → Lich.
+- [x] Trait pool 4 → 14 with new wired effect types: LifeStealPercent,
+      ArmorPierce, Taunt (soaks focus-fire), AttackBonus PerEnemy (frenzy),
+      ManaOnKill (mana leech), SplitOnDeath (slimes), single-target actives
+      (Shadow Bolt), plus data variants (pack_hunter, stone_skin,
+      regenerate_major). Every monster now has 1–2 traits; existing roster
+      retrofitted (Vampire steals life, Orc taunts, big slimes split).
+- [x] Slime identity rule: tier-2+ slimes split into a tier-1 at half HP on
+      death (guarded by a no-tier-1-splitters test).
+
+Still to do in later drops:
+- [ ] More species: Elemental, Construct, Plant/Fungal, Insect swarm (target 8).
+- [ ] Tier 4 + boss uniques per species (Goblin King, Slime Empress…),
+      summonable only in Boss rooms.
+- [ ] Undead identity rule (no healing, cheap respawn) — needs a respawn-cost
+      mechanic first; all respawns are currently free.
+- [ ] Species selector modal overflows at 6 species (fixed-height list; Demon/
+      Draconic fall below the fold) — needs scroll or grid.
 
 **Exit criteria:** two playthroughs with different species feel mechanically
 different, not just cosmetically.
