@@ -264,6 +264,17 @@ fn render_playing_frame(
         }
     }
 
+    // Game over: the core has fallen. Offer a fresh dungeon.
+    if state.game_over {
+        draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.82));
+        if draw_game_over_overlay(state, sw, sh) {
+            *state = create_new_game();
+            let _ = persistence::save_game(state);
+            reset_timers(last_time_advance, last_adventure_tick, last_save);
+        }
+        return;
+    }
+
     // Modal overlay: Species Selection (Prioritize over everything else)
     if state.unlocked_species.is_empty() {
         let modal_w = 460.0;
@@ -348,6 +359,11 @@ fn render_playing_frame(
         DrawerAction::ProcessEvolutions => simulation::process_evolutions(state),
         DrawerAction::UnlockSpecies(species) => {
             if let Err(e) = simulation::unlock_species(state, &species) {
+                state.add_log(game_state::LogEntry::system(e));
+            }
+        }
+        DrawerAction::BuyCorePower(id) => {
+            if let Err(e) = simulation::endgame::buy_core_power(state, &id) {
                 state.add_log(game_state::LogEntry::system(e));
             }
         }
@@ -595,6 +611,7 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
                     target_floor: 1,
                     snared_ticks: 0,
                     alarmed: false,
+                    sieging: false,
                 });
 
                 state.push_effect(floor, pos, "-12", EffectKind::Damage);

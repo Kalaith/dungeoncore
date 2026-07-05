@@ -61,6 +61,7 @@ pub enum DrawerAction {
     SelectUpgrade(String),
     ProcessEvolutions,
     UnlockSpecies(String),
+    BuyCorePower(String),
     ResetGame,
 }
 
@@ -92,11 +93,11 @@ pub fn draw_side_drawer(
     );
 
     match active_tab {
-        DrawerTab::Build => {
-            if draw_build_tab(state, content) {
-                action = DrawerAction::BuildRoom;
-            }
-        }
+        DrawerTab::Build => match draw_build_tab(state, content) {
+            BuildTabAction::Build => action = DrawerAction::BuildRoom,
+            BuildTabAction::BuyPower(id) => action = DrawerAction::BuyCorePower(id),
+            BuildTabAction::None => {}
+        },
         DrawerTab::Monsters => {
             if let Some(monster) = draw_monster_tab(state, content) {
                 action = DrawerAction::SelectMonster(monster);
@@ -173,7 +174,14 @@ fn draw_tab_rail(
     draw_small_tab(reset_rect, "RESET", DANGER, false)
 }
 
-fn draw_build_tab(state: &GameState, rect: Rect) -> bool {
+/// What the Build tab wants to do this frame.
+pub enum BuildTabAction {
+    None,
+    Build,
+    BuyPower(String),
+}
+
+fn draw_build_tab(state: &GameState, rect: Rect) -> BuildTabAction {
     draw_section_title(rect, "BUILD", "Shape the dungeon path.");
 
     let (label, detail, cost) = next_build_summary(state);
@@ -224,12 +232,58 @@ fn draw_build_tab(state: &GameState, rect: Rect) -> bool {
         if can_build { EMERALD } else { TEXT_DIM },
     );
 
-    draw_command_button(
+    let build_clicked = draw_command_button(
         Rect::new(rect.x, card.y + card.h + 16.0, rect.w, 42.0),
         "Build",
         ButtonTone::Arcane,
         can_build,
-    )
+    );
+    if build_clicked {
+        return BuildTabAction::Build;
+    }
+
+    // Permanent, soul-bought core powers below the build controls.
+    let mut y = card.y + card.h + 70.0;
+    draw_text_fit(&format!("CORE POWERS · {} souls", state.souls), rect.x, y, rect.w, 10.0, SOUL);
+    y += 14.0;
+    for power in crate::simulation::endgame::CORE_POWERS.iter() {
+        if y + 46.0 > rect.y + rect.h {
+            break;
+        }
+        let owned = state.has_core_power(power.id);
+        let affordable = state.souls >= power.cost;
+        let row = Rect::new(rect.x, y, rect.w, 44.0);
+        let accent = if owned { EMERALD } else { SOUL };
+        draw_card(
+            row,
+            Color::new(accent.r, accent.g, accent.b, 0.06),
+            Color::new(accent.r, accent.g, accent.b, 0.24),
+        );
+        draw_text_fit(power.name, row.x + 10.0, row.y + 16.0, row.w - 60.0, 12.0, TEXT);
+        draw_text_fit(
+            power.description,
+            row.x + 10.0,
+            row.y + 33.0,
+            row.w - 60.0,
+            9.0,
+            TEXT_MUTED,
+        );
+        if owned {
+            draw_pill(
+                Rect::new(row.x + row.w - 52.0, row.y + 6.0, 44.0, 16.0),
+                "OWNED",
+                EMERALD,
+            );
+        } else {
+            let btn = Rect::new(row.x + row.w - 54.0, row.y + 8.0, 48.0, 28.0);
+            if draw_command_button(btn, &format!("{}s", power.cost), ButtonTone::Arcane, affordable) {
+                return BuildTabAction::BuyPower(power.id.to_string());
+            }
+        }
+        y += 50.0;
+    }
+
+    BuildTabAction::None
 }
 
 fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> {

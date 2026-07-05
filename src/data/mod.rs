@@ -184,6 +184,18 @@ mod tests {
     }
 
     #[test]
+    fn core_powers_are_soul_priced() {
+        for power in crate::simulation::endgame::CORE_POWERS.iter() {
+            assert!(
+                power.cost > 0,
+                "core power '{}' must cost souls",
+                power.id
+            );
+            assert!(!power.name.is_empty() && !power.description.is_empty());
+        }
+    }
+
+    #[test]
     fn adventurer_races_present() {
         let races = adventurers::get_all_races();
         assert!(

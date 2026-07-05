@@ -107,18 +107,35 @@ pub fn draw_top_hud(state: &GameState, rect: Rect) -> ControlAction {
         StatIcon::Soul,
         None,
     );
-    let (threat_label, threat_color) = threat_display(state);
-    draw_top_stat(
-        Rect::new(stats_x + stat_w * 3.0, y, stat_w, stat_h),
-        &format!("Threat ({})", state.total_deaths),
-        &threat_label,
-        threat_color,
-        StatIcon::Threat,
-        None,
-    );
+    // During a siege the threat slot becomes a live core-HP readout.
+    if state.siege_active {
+        draw_top_stat(
+            Rect::new(stats_x + stat_w * 3.0, y, stat_w, stat_h),
+            "CORE UNDER SIEGE",
+            &format!("{}/{}", state.core_hp, state.core_max_hp),
+            DANGER,
+            StatIcon::Threat,
+            Some((state.core_hp as f32, state.core_max_hp as f32)),
+        );
+    } else {
+        let (threat_label, threat_color) = threat_display(state);
+        draw_top_stat(
+            Rect::new(stats_x + stat_w * 3.0, y, stat_w, stat_h),
+            &format!("Threat ({})", state.total_deaths),
+            &threat_label,
+            threat_color,
+            StatIcon::Threat,
+            None,
+        );
+    }
+    let time_label = if state.prestige > 0 {
+        format!("Prestige {}", state.prestige)
+    } else {
+        String::new()
+    };
     draw_top_stat(
         Rect::new(stats_x + stat_w * 4.0, y, stat_w, stat_h),
-        "",
+        &time_label,
         &format!("Day {} {:02}:00", state.day, state.hour),
         TEXT,
         StatIcon::Time,

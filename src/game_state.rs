@@ -223,6 +223,10 @@ fn default_race() -> String {
     "Human".to_string()
 }
 
+fn default_core_hp() -> i32 {
+    500
+}
+
 /// Standing of a hero in the persistent registry.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum HeroStatus {
@@ -275,6 +279,9 @@ pub struct AdventurerParty {
     /// An alarm trap has alerted the dungeon: monsters fight harder
     #[serde(default)]
     pub alarmed: bool,
+    /// Part of the tier-4 siege: marches on the core instead of looting.
+    #[serde(default)]
+    pub sieging: bool,
 }
 
 /// Dungeon operational status
@@ -378,6 +385,24 @@ pub struct GameState {
     #[serde(default)]
     pub raids_completed: i32,
 
+    // Endgame: the core, sieges, and prestige
+    #[serde(default = "default_core_hp")]
+    pub core_hp: i32,
+    #[serde(default = "default_core_hp")]
+    pub core_max_hp: i32,
+    /// A tier-4 siege is currently marching / assaulting the core.
+    #[serde(default)]
+    pub siege_active: bool,
+    /// Times the dungeon has repelled the realm's siege.
+    #[serde(default)]
+    pub prestige: i32,
+    /// Permanent soul-bought core powers (ids).
+    #[serde(default)]
+    pub core_powers: Vec<String>,
+    /// The core has fallen; the run is over (not persisted meaningfully).
+    #[serde(default)]
+    pub game_over: bool,
+
     // Onboarding tutorial (only enabled for fresh games)
     #[serde(default)]
     pub tutorial_active: bool,
@@ -435,6 +460,12 @@ impl GameState {
             total_deaths: 0,
             threat_warned: 0,
             raids_completed: 0,
+            core_hp: 500,
+            core_max_hp: 500,
+            siege_active: false,
+            prestige: 0,
+            core_powers: Vec::new(),
+            game_over: false,
             tutorial_active: true,
             tutorial_step: 0,
             unlocked_species: vec![],
@@ -526,6 +557,11 @@ impl GameState {
             effect.ttl -= dt;
         }
         self.effects.retain(|effect| effect.ttl > 0.0);
+    }
+
+    /// Whether a permanent core power has been purchased.
+    pub fn has_core_power(&self, id: &str) -> bool {
+        self.core_powers.iter().any(|p| p == id)
     }
 
     /// Current threat tier (0-4) derived from accumulated adventurer deaths

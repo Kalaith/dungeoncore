@@ -17,8 +17,15 @@ pub fn advance_time(state: &mut GameState) {
         .sum();
     let adventurer_bonus = adventurer_count as f32 * 0.5;
 
+    // Deep Roots core power: a permanent regen bonus.
+    let core_power_bonus = if state.has_core_power("deep_roots") {
+        1.0
+    } else {
+        0.0
+    };
+
     // Mana regeneration (rounded so fractional bonuses aren't lost)
-    let regen = 1.0 + state.deep_core_bonus + adventurer_bonus;
+    let regen = 1.0 + state.deep_core_bonus + adventurer_bonus + core_power_bonus;
     state.mana_regen = regen;
     state.mana = (state.mana + regen.round() as i32).min(state.max_mana);
 
@@ -36,6 +43,9 @@ pub fn advance_time(state: &mut GameState) {
 
     // Escalating warnings when too many adventurers die in the dungeon.
     check_threat_level(state);
+
+    // At peak fury the realm musters its army for a siege on the core.
+    crate::simulation::endgame::maybe_launch_siege(state);
 }
 
 /// Emit escalating warnings as the dungeon's death toll rises.
