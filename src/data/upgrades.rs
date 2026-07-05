@@ -11,9 +11,12 @@ pub struct UpgradeTemplate {
     pub multiplier: f32,
     pub mana_cost: i32,
     pub souls_cost: i32,
-    /// Element this upgrade is keyed to (attunement only)
+    /// Element this upgrade is keyed to (attunements, elemental traps)
     #[serde(default)]
     pub element: Option<String>,
+    /// Trap behavior kind; see RoomUpgrade::effect_kind
+    #[serde(default)]
+    pub effect_kind: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,6 +68,8 @@ impl UpgradeTemplate {
             effect: self.effect.clone(),
             multiplier: self.multiplier,
             element: self.element.clone(),
+            effect_kind: self.effect_kind.clone(),
+            disarmed: false,
         }
     }
 }

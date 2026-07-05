@@ -195,18 +195,63 @@ mod tests {
                 upgrade.upgrade_type
             );
             if upgrade.upgrade_type == "attunement" {
-                let element = upgrade
-                    .element
-                    .as_deref()
-                    .unwrap_or_else(|| panic!("attunement '{}' missing element", upgrade.name));
+                assert!(
+                    upgrade.element.is_some(),
+                    "attunement '{}' missing element",
+                    upgrade.name
+                );
+            }
+            // Any upgrade may be elemental (attunements, elemental traps);
+            // whatever is set must exist in the matrix.
+            if let Some(element) = &upgrade.element {
                 assert!(
                     elements::get_element(element).is_some(),
-                    "attunement '{}' keyed to unknown element '{}'",
+                    "upgrade '{}' keyed to unknown element '{}'",
                     upgrade.name,
                     element
                 );
             }
         }
+    }
+
+    #[test]
+    fn trap_catalog_is_valid() {
+        const KNOWN_KINDS: [&str; 7] = [
+            "Damage",
+            "Poison",
+            "Burn",
+            "Snare",
+            "Alarm",
+            "ManaSiphon",
+            "GoldSteal",
+        ];
+        let traps: Vec<_> = upgrades::get_all_upgrades()
+            .into_iter()
+            .filter(|u| u.upgrade_type == "trap")
+            .collect();
+        assert!(
+            traps.len() >= 8,
+            "expected a full trap catalog, found {}",
+            traps.len()
+        );
+        for trap in &traps {
+            assert!(
+                KNOWN_KINDS.contains(&trap.effect_kind.as_str()),
+                "trap '{}' has unknown effect_kind '{}' (would fall back to legacy damage)",
+                trap.name,
+                trap.effect_kind
+            );
+            assert!(
+                trap.multiplier > 0.0,
+                "trap '{}' has no effect value",
+                trap.name
+            );
+        }
+        // The soul economy keeps a sink in the top trap tier.
+        assert!(
+            traps.iter().any(|t| t.souls_cost >= 2),
+            "no soul-gated top-tier trap in the catalog"
+        );
     }
 
     #[test]

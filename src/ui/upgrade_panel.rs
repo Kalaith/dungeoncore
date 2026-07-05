@@ -550,9 +550,23 @@ fn draw_upgrade_row(state: &GameState, upgrade: &UpgradeTemplate, rect: Rect) ->
     enabled && was_clicked_rect(rect)
 }
 
+/// Human description of a trap's behavior from its effect kind and value.
+fn trap_preview(effect_kind: &str, value: f32) -> String {
+    match effect_kind {
+        "Damage" => format!("{:.0} damage on trigger", value),
+        "Poison" => format!("Poison: {:.0} dmg/tick", value),
+        "Burn" => format!("Burn: {:.0} dmg/tick", value),
+        "Snare" => format!("Holds party {:.0} ticks", value),
+        "Alarm" => "Alerts defenders: +25% attack".to_string(),
+        "ManaSiphon" => format!("Siphons {:.0} mana per trigger", value),
+        "GoldSteal" => format!("Steals {:.0} gold per trigger", value),
+        _ => format!("Trap damage x{:.2}", value),
+    }
+}
+
 fn upgrade_preview(upgrade: &UpgradeTemplate) -> String {
     match upgrade.upgrade_type.as_str() {
-        "trap" => format!("Trap damage x{:.2}", upgrade.multiplier),
+        "trap" => trap_preview(&upgrade.effect_kind, upgrade.multiplier),
         "treasure" => format!("Gold drops x{:.2}", upgrade.multiplier),
         "reinforcement" => format!("Monster survival x{:.2}", upgrade.multiplier),
         "evolution" => format!("Monster XP x{:.2}", upgrade.multiplier),
@@ -568,7 +582,11 @@ fn upgrade_preview(upgrade: &UpgradeTemplate) -> String {
 fn room_upgrade_preview(upgrade: &crate::game_state::RoomUpgrade) -> String {
     match &upgrade.upgrade_type {
         crate::game_state::RoomUpgradeType::Trap => {
-            format!("{} Trap damage x{:.2}", upgrade.effect, upgrade.multiplier)
+            let mut text = trap_preview(&upgrade.effect_kind, upgrade.multiplier);
+            if upgrade.disarmed {
+                text.push_str(" (disarmed)");
+            }
+            text
         }
         crate::game_state::RoomUpgradeType::Treasure => {
             format!("{} Gold drops x{:.2}", upgrade.effect, upgrade.multiplier)

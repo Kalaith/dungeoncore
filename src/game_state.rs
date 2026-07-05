@@ -34,9 +34,16 @@ pub struct RoomUpgrade {
     pub name: String,
     pub effect: String,
     pub multiplier: f32,
-    /// Element this upgrade is keyed to (Attunement only)
+    /// Element this upgrade is keyed to (attunements, elemental traps)
     #[serde(default)]
     pub element: Option<String>,
+    /// Trap behavior: "Damage", "Poison", "Burn", "Snare", "Alarm",
+    /// "ManaSiphon", "GoldSteal". Empty = legacy flat-damage trap.
+    #[serde(default)]
+    pub effect_kind: String,
+    /// A Rogue sprung this trap; it re-arms between raids (costs mana).
+    #[serde(default)]
+    pub disarmed: bool,
 }
 
 /// Active trait instance on a monster
@@ -182,6 +189,16 @@ impl Default for Equipment {
     }
 }
 
+/// A lingering status effect on an adventurer (poison, burn, …)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Condition {
+    pub kind: String,
+    /// Combat ticks remaining
+    pub ticks: i32,
+    /// Damage dealt per tick
+    pub power: i32,
+}
+
 /// Individual adventurer in a party
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Adventurer {
@@ -195,7 +212,8 @@ pub struct Adventurer {
     pub experience: i32,
     pub gold: i32,
     pub equipment: Equipment,
-    pub conditions: Vec<String>,
+    #[serde(default)]
+    pub conditions: Vec<Condition>,
     pub scaled_stats: Stats,
 }
 
@@ -211,6 +229,12 @@ pub struct AdventurerParty {
     pub loot: i32,
     pub entry_time: i32,
     pub target_floor: i32,
+    /// Combat ticks the party is held fast by a snare trap (can't attack)
+    #[serde(default)]
+    pub snared_ticks: i32,
+    /// An alarm trap has alerted the dungeon: monsters fight harder
+    #[serde(default)]
+    pub alarmed: bool,
 }
 
 /// Dungeon operational status

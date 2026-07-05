@@ -73,6 +73,8 @@ pub fn spawn_party(state: &mut GameState) {
         loot: 0,
         entry_time: state.hour,
         target_floor,
+        snared_ticks: 0,
+        alarmed: false,
     };
 
     state.add_log(LogEntry::adventure(format!(
@@ -239,8 +241,9 @@ fn handle_retreating_parties(state: &mut GameState) {
         state.raids_completed += departed as i32;
     }
 
-    // Respawn monsters if no parties remain
+    // Respawn monsters and re-arm sprung traps once the dungeon is clear
     if state.adventurer_parties.is_empty() {
         super::monsters::respawn_monsters(state);
+        super::combat::rearm_traps(state);
     }
 }

@@ -587,6 +587,8 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
                     loot: 40,
                     entry_time: 8,
                     target_floor: 1,
+                    snared_ticks: 0,
+                    alarmed: false,
                 });
 
                 state.push_effect(floor, pos, "-12", EffectKind::Damage);

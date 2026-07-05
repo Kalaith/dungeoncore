@@ -2,10 +2,16 @@ use crate::data::adventurers::get_victory_quotes;
 use crate::data::constants::RETREAT_THRESHOLD;
 use crate::data::elements::element_multiplier;
 use crate::data::traits::get_trait;
-use crate::game_state::{EffectKind, GameState, LogEntry, Monster};
+use crate::game_state::{Condition, EffectKind, GameState, LogEntry, Monster, RoomUpgradeType};
 
 /// Chance per combat tick that a room's trap upgrade fires.
 const TRAP_TRIGGER_CHANCE: f32 = 0.2;
+/// Chance a triggered trap is safely sprung when a Rogue is in the party.
+const ROGUE_DISARM_CHANCE: f32 = 0.3;
+/// Attack bonus for all monsters fighting a party that tripped an alarm.
+const ALARM_ATTACK_MULT: f32 = 1.25;
+/// Combat ticks a poison/burn condition lasts.
+const CONDITION_TICKS: i32 = 4;
 
 /// Resolve one combat tick between a party and the monsters in a room.
 ///
@@ -26,13 +32,13 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     let floor_num = state.floors[floor_idx].number;
     let room_pos = state.floors[floor_idx].rooms[room_idx].position;
 
-    let trap_mult = state.floors[floor_idx].rooms[room_idx].trap_multiplier();
     let reinforcement_mult = state.floors[floor_idx].rooms[room_idx].reinforcement_multiplier();
 
-    // Phase 1: trap damage
-    if trap_mult > 1.0 {
-        apply_trap_damage(state, party_idx, floor_idx, room_idx, trap_mult);
-    }
+    // Phase 0: lingering afflictions (poison, burn) tick on the party
+    tick_conditions(state, party_idx, floor_idx, room_idx);
+
+    // Phase 1: the room's trap fires
+    resolve_trap(state, party_idx, floor_idx, room_idx);
 
     // Phase 2: active abilities (e.g. Fire Breath on combat start)
     resolve_abilities(state, party_idx, floor_idx, room_idx, floor_num, room_pos);
@@ -42,13 +48,23 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
         .attunement()
         .map(|(element, mult)| (element.to_string(), mult));
 
-    // Phase 3: adventurers strike the front monster
-    let adv_attacks: Vec<(i32, String)> = state.adventurer_parties[party_idx]
-        .members
-        .iter()
-        .filter(|a| a.alive)
-        .map(|a| (a.scaled_stats.attack, adventurer_element(&a.class_name)))
-        .collect();
+    // Phase 3: adventurers strike the front monster — unless a snare trap
+    // holds them fast this tick.
+    let snared = state.adventurer_parties[party_idx].snared_ticks > 0;
+    if snared {
+        state.adventurer_parties[party_idx].snared_ticks -= 1;
+        state.push_effect(floor_num, room_pos, "Snared!", EffectKind::Ability);
+    }
+    let adv_attacks: Vec<(i32, String)> = if snared {
+        Vec::new()
+    } else {
+        state.adventurer_parties[party_idx]
+            .members
+            .iter()
+            .filter(|a| a.alive)
+            .map(|a| (a.scaled_stats.attack, adventurer_element(&a.class_name)))
+            .collect()
+    };
 
     let mut monster_kills: Vec<(String, bool)> = Vec::new();
     let mut split_spawns: Vec<String> = Vec::new();
@@ -107,7 +123,12 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
         state.push_effect(floor_num, room_pos, "Resisted", EffectKind::Ability);
     }
 
-    // Phase 4: surviving monsters strike back
+    // Phase 4: surviving monsters strike back (harder if an alarm was tripped)
+    let alarm_mult = if state.adventurer_parties[party_idx].alarmed {
+        ALARM_ATTACK_MULT
+    } else {
+        1.0
+    };
     let monster_strikes: Vec<MonsterStrike> = {
         let room = &state.floors[floor_idx].rooms[room_idx];
         let alive_count = room.monsters.iter().filter(|m| m.alive).count();
@@ -128,7 +149,7 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
                         m,
                         alive_count,
                         enemies_alive,
-                        reinforcement_mult * attune_mult,
+                        reinforcement_mult * attune_mult * alarm_mult,
                     ),
                     element,
                     pierce: has_passive(m, "ArmorPierce"),
@@ -460,70 +481,267 @@ fn resolve_abilities(
     }
 }
 
-fn apply_trap_damage(
-    state: &mut GameState,
-    party_idx: usize,
-    floor_idx: usize,
-    room_idx: usize,
-    trap_mult: f32,
-) {
-    if !macroquad_toolkit::rng::chance(TRAP_TRIGGER_CHANCE) {
-        return;
+/// Lingering conditions (poison, burn) damage the party each combat tick.
+fn tick_conditions(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
+    let floor_num = state.floors[floor_idx].number;
+    let room_pos = state.floors[floor_idx].rooms[room_idx].position;
+
+    let mut kills: Vec<(String, i32)> = Vec::new();
+    let mut total_damage = 0;
+    {
+        let party = &mut state.adventurer_parties[party_idx];
+        for adv in party.members.iter_mut() {
+            if !adv.alive || adv.conditions.is_empty() {
+                continue;
+            }
+            let mut damage = 0;
+            for condition in &mut adv.conditions {
+                damage += condition.power;
+                condition.ticks -= 1;
+            }
+            adv.conditions.retain(|c| c.ticks > 0);
+            if damage > 0 {
+                adv.hp -= damage;
+                total_damage += damage;
+                if adv.hp <= 0 {
+                    adv.hp = 0;
+                    adv.alive = false;
+                    party.casualties += 1;
+                    kills.push((adv.name.clone(), adv.level));
+                }
+            }
+        }
     }
 
-    // Get trap name for log
-    let trap_name = state.floors[floor_idx].rooms[room_idx]
-        .upgrade_of(crate::game_state::RoomUpgradeType::Trap)
-        .map(|u| u.name.clone())
-        .unwrap_or_else(|| "Trap".into());
+    if total_damage > 0 && kills.is_empty() {
+        state.push_effect(
+            floor_num,
+            room_pos,
+            format!("-{}", total_damage),
+            EffectKind::Damage,
+        );
+    }
+    reward_adventurer_kills(state, party_idx, floor_idx, room_idx, &kills);
+}
 
-    // Find an alive adventurer to damage
-    // We scope the mutable borrow of party so we can log afterwards
-    let log_msg = {
-        let party = &mut state.adventurer_parties[party_idx];
-        if let Some(victim) = party.members.iter_mut().find(|a| a.alive) {
-            let damage = (10.0 * trap_mult) as i32;
-            victim.hp -= damage;
-
-            if victim.hp <= 0 {
-                victim.hp = 0;
-                victim.alive = false;
-                party.casualties += 1;
-
-                let mana_gain = victim.level * 10;
-                Some((true, victim.name.clone(), mana_gain, damage))
-            } else {
-                Some((false, victim.name.clone(), 0, damage))
-            }
-        } else {
-            None
-        }
+/// Fire the room's trap: chance to trigger, Rogue counterplay, then an
+/// effect determined by the trap's kind. Elemental traps hit matchups and
+/// are empowered by a matching room attunement.
+fn resolve_trap(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
+    let Some(trap) = state.floors[floor_idx].rooms[room_idx]
+        .upgrade_of(RoomUpgradeType::Trap)
+        .cloned()
+    else {
+        return;
     };
+    if trap.disarmed || !macroquad_toolkit::rng::chance(TRAP_TRIGGER_CHANCE) {
+        return;
+    }
 
     let floor_num = state.floors[floor_idx].number;
     let room_pos = state.floors[floor_idx].rooms[room_idx].position;
 
-    if let Some((killed, victim_name, mana_gain, damage)) = log_msg {
-        if killed {
-            state.mana = (state.mana + mana_gain).min(state.max_mana);
-            state.total_deaths += 1;
-            state.add_log(LogEntry::combat(format!(
-                "{} killed {} by {}! +{} mana",
-                trap_name, victim_name, trap_name, mana_gain
-            )));
-            state.push_effect(floor_num, room_pos, "Trapped!", EffectKind::AdventurerDown);
-        } else {
-            state.add_log(LogEntry::combat(format!(
-                "{} dealt {} damage to {}",
-                trap_name, damage, victim_name
-            )));
-            state.push_effect(
-                floor_num,
-                room_pos,
-                format!("-{}", damage),
-                EffectKind::Damage,
-            );
+    // Rogue counterplay: the trap is sprung safely and stays down this raid.
+    let has_rogue = state.adventurer_parties[party_idx]
+        .members
+        .iter()
+        .any(|a| a.alive && a.class_name == "Rogue");
+    if has_rogue && macroquad_toolkit::rng::chance(ROGUE_DISARM_CHANCE) {
+        if let Some(installed) = state.floors[floor_idx].rooms[room_idx]
+            .upgrades
+            .iter_mut()
+            .find(|u| u.upgrade_type == RoomUpgradeType::Trap)
+        {
+            installed.disarmed = true;
         }
+        state.add_log(LogEntry::combat(format!(
+            "A Rogue disarms the {}! It stays down until re-armed.",
+            trap.name
+        )));
+        state.push_effect(floor_num, room_pos, "Disarmed!", EffectKind::Ability);
+        return;
+    }
+
+    // Matching room attunement empowers an elemental trap.
+    let attune_boost = match state.floors[floor_idx].rooms[room_idx].attunement() {
+        Some((element, mult)) if Some(element) == trap.element.as_deref() => mult,
+        _ => 1.0,
+    };
+    let trap_element = trap.element.clone().unwrap_or_default();
+
+    match trap.effect_kind.as_str() {
+        "Poison" | "Burn" => {
+            let power = (trap.multiplier * attune_boost).round().max(1.0) as i32;
+            let victim_name = {
+                let party = &mut state.adventurer_parties[party_idx];
+                random_alive_idx(party).map(|idx| {
+                    let victim = &mut party.members[idx];
+                    victim.conditions.push(Condition {
+                        kind: trap.effect_kind.clone(),
+                        ticks: CONDITION_TICKS,
+                        power,
+                    });
+                    victim.name.clone()
+                })
+            };
+            if let Some(name) = victim_name {
+                state.add_log(LogEntry::combat(format!(
+                    "{} afflicts {} ({} {}/tick)!",
+                    trap.name, name, trap.effect_kind, power
+                )));
+                state.push_effect(
+                    floor_num,
+                    room_pos,
+                    format!("{}!", trap.effect_kind),
+                    EffectKind::Ability,
+                );
+            }
+        }
+        "Snare" => {
+            let ticks = trap.multiplier.round().max(1.0) as i32;
+            let party = &mut state.adventurer_parties[party_idx];
+            party.snared_ticks = party.snared_ticks.max(ticks);
+            state.add_log(LogEntry::combat(format!(
+                "{} holds the party fast for {} ticks!",
+                trap.name, ticks
+            )));
+            state.push_effect(floor_num, room_pos, "Held!", EffectKind::Ability);
+        }
+        "Alarm" => {
+            let party = &mut state.adventurer_parties[party_idx];
+            if !party.alarmed {
+                party.alarmed = true;
+                state.add_log(LogEntry::combat(format!(
+                    "{} sounds! Every defender fights harder against this party.",
+                    trap.name
+                )));
+                state.push_effect(floor_num, room_pos, "Alarm!", EffectKind::Ability);
+            }
+        }
+        "ManaSiphon" => {
+            let gain = (trap.multiplier * attune_boost).round() as i32;
+            state.mana = (state.mana + gain).min(state.max_mana);
+            state.add_log(LogEntry::combat(format!(
+                "{} drinks the party's magic: +{} mana.",
+                trap.name, gain
+            )));
+            state.push_effect(floor_num, room_pos, format!("+{} mana", gain), EffectKind::Loot);
+        }
+        "GoldSteal" => {
+            let party = &mut state.adventurer_parties[party_idx];
+            let steal = party.loot.min(trap.multiplier.round() as i32);
+            if steal > 0 {
+                party.loot -= steal;
+                state.gold += steal;
+                state.add_log(LogEntry::combat(format!(
+                    "{} pockets {} gold from the party's haul.",
+                    trap.name, steal
+                )));
+                state.push_effect(floor_num, room_pos, format!("+{}g", steal), EffectKind::Loot);
+            }
+        }
+        // "Damage" plus legacy traps from old saves (empty effect_kind,
+        // multiplier-style values around 1.2–1.5).
+        _ => {
+            let base = if trap.effect_kind == "Damage" {
+                trap.multiplier
+            } else {
+                10.0 * trap.multiplier
+            };
+            let hit = {
+                let party = &mut state.adventurer_parties[party_idx];
+                random_alive_idx(party).map(|idx| {
+                    let victim = &mut party.members[idx];
+                    let elem_mult = element_multiplier(
+                        &trap_element,
+                        &adventurer_element(&victim.class_name),
+                    );
+                    let damage = (base * attune_boost * elem_mult).round().max(1.0) as i32;
+                    victim.hp -= damage;
+                    if victim.hp <= 0 {
+                        victim.hp = 0;
+                        victim.alive = false;
+                        party.casualties += 1;
+                        (victim.name.clone(), victim.level, damage, true)
+                    } else {
+                        (victim.name.clone(), 0, damage, false)
+                    }
+                })
+            };
+            if let Some((victim_name, level, damage, killed)) = hit {
+                if killed {
+                    let mana_gain = level * 10;
+                    state.mana = (state.mana + mana_gain).min(state.max_mana);
+                    state.total_deaths += 1;
+                    state.add_log(LogEntry::combat(format!(
+                        "{} killed {}! +{} mana",
+                        trap.name, victim_name, mana_gain
+                    )));
+                    state.push_effect(floor_num, room_pos, "Trapped!", EffectKind::AdventurerDown);
+                } else {
+                    state.add_log(LogEntry::combat(format!(
+                        "{} dealt {} damage to {}",
+                        trap.name, damage, victim_name
+                    )));
+                    state.push_effect(
+                        floor_num,
+                        room_pos,
+                        format!("-{}", damage),
+                        EffectKind::Damage,
+                    );
+                }
+            }
+        }
+    }
+}
+
+/// Re-arm disarmed traps between raids; each costs a quarter of its
+/// original mana price. Unaffordable traps stay down until next time.
+pub fn rearm_traps(state: &mut GameState) {
+    let mut rearmed: Vec<(String, i32)> = Vec::new();
+    for floor_idx in 0..state.floors.len() {
+        for room_idx in 0..state.floors[floor_idx].rooms.len() {
+            let Some(upgrade_idx) = state.floors[floor_idx].rooms[room_idx]
+                .upgrades
+                .iter()
+                .position(|u| u.upgrade_type == RoomUpgradeType::Trap && u.disarmed)
+            else {
+                continue;
+            };
+            let name = state.floors[floor_idx].rooms[room_idx].upgrades[upgrade_idx]
+                .name
+                .clone();
+            let cost = crate::data::upgrades::get_upgrade_template(&name)
+                .map(|t| t.mana_cost / 4)
+                .unwrap_or(0);
+            if state.mana >= cost {
+                state.mana -= cost;
+                state.floors[floor_idx].rooms[room_idx].upgrades[upgrade_idx].disarmed = false;
+                rearmed.push((name, cost));
+            }
+        }
+    }
+    for (name, cost) in rearmed {
+        state.add_log(LogEntry::building(format!(
+            "Re-armed {} for {} mana.",
+            name, cost
+        )));
+    }
+}
+
+/// Index of a random living party member.
+fn random_alive_idx(party: &crate::game_state::AdventurerParty) -> Option<usize> {
+    let alive: Vec<usize> = party
+        .members
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| a.alive)
+        .map(|(i, _)| i)
+        .collect();
+    if alive.is_empty() {
+        None
+    } else {
+        Some(alive[macroquad_toolkit::rng::gen_range(0, alive.len())])
     }
 }
 

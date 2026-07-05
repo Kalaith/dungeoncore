@@ -399,10 +399,16 @@ fn draw_upgrade_option(
         13.0,
         if can_afford { TEXT } else { TEXT_DIM },
     );
+    // Traps show their behavior kind; other upgrades show their family.
+    let kind_label = if template.upgrade_type == "trap" && !template.effect_kind.is_empty() {
+        template.effect_kind.as_str()
+    } else {
+        template.upgrade_type.as_str()
+    };
     draw_text_fit(
         &format!(
             "{}{}",
-            template.upgrade_type,
+            kind_label,
             template
                 .element
                 .as_deref()

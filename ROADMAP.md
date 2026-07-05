@@ -169,25 +169,27 @@ different, not just cosmetically.
 - [x] Mana regen bonus per adventurer inside raised 0.1 → 0.5/hour and no
       longer lost to integer truncation.
 
-## Phase 3 — Traps as first-class content
+## Phase 3 — Traps as first-class content (DONE 2026-07-05)
 
-Traps/treasure are now mana-costed, per-type room slots placeable from the
-drawer (see playtest round above). Remaining Phase 3 work:
+- [x] Trap catalog 3 → 9 with behavior kinds (`effect_kind` on upgrades):
+      **Damage** (Spike Trap, Boulder Trap, Abyssal Maw), **DoT** (Poison
+      Dart, Flame Vent — `Condition {kind, ticks, power}` list on Adventurer
+      ticks each combat round), **Control** (Frost Snare freezes the party's
+      attacks for N ticks; Alarm Gong makes every defender hit the flagged
+      party 25% harder), **Economy** (Mana Siphon feeds the core, Gold
+      Snatcher claws loot back mid-raid).
+- [x] Elemental traps combo with Phase 1: trap damage runs the element
+      matchup against the victim's class, and a matching room attunement
+      multiplies trap power (Flame Vent in a Fire Shrine room).
+- [x] Counterplay: a party with a living Rogue has a 30% chance to disarm a
+      triggering trap for the rest of the raid; traps auto re-arm between
+      raids for 25% of their mana cost (skipped if the core can't afford it).
+- [x] Soul-gated top tier (Boulder 1S, Mana Siphon/Gold Snatcher 1S,
+      Abyssal Maw 3S) keeps the soul sink.
 
-- [ ] `assets/traps.json` with categories:
-      **Damage** (spike, boulder), **DoT/status** (poison, burn — needs a
-      simple status-effect list on Adventurer, the `conditions: Vec<String>`
-      field already exists and is unused), **Control** (snare: party loses a
-      tick; alarm: buffs monsters in next room), **Economy** (mana siphon, gold
-      steal).
-- [ ] Elemental traps that combo with Phase 1 (flame vent in a Fire-attuned
-      room, etc.).
-- [ ] Counterplay: Rogues get a disarm chance per trap; disarmed traps need
-      gold to re-arm — makes party composition matter to the defender.
-- [ ] Trap tiers gated by souls, giving the soul economy a real sink.
-
-**Exit criteria:** a trap-focused dungeon (few monsters, deadly corridors) is a
-viable strategy.
+**Exit criteria met:** a corridor of damage + DoT + snare traps kills without
+monsters; Rogue parties counter it, alarms and attunements deepen the build
+space.
 
 ## Phase 4 — Adventurer depth (the opposing content)
 
