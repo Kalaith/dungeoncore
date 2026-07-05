@@ -20,6 +20,9 @@ pub struct MonsterTemplate {
     /// Souls required to summon, on top of mana (Demons)
     #[serde(default)]
     pub souls_cost: i32,
+    /// Tier-4 uniques that can only be summoned in Boss rooms
+    #[serde(default)]
+    pub boss_only: bool,
 }
 
 /// Species data from JSON

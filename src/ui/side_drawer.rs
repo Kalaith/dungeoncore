@@ -387,10 +387,11 @@ fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect
     let traits = trait_summary(&template.traits);
     let detail = if unlocked {
         format!(
-            "T{} {} {}  {}",
+            "T{} {} {}{}  {}",
             template.tier,
             get_species_display_name(&template.species),
             template.element.as_deref().unwrap_or("Neutral"),
+            if template.boss_only { " • Boss room" } else { "" },
             traits
         )
     } else {

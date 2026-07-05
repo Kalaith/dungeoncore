@@ -24,7 +24,7 @@
             "scaling_type": "None",
             "mana_cost": 0,
             "cooldown": 0,
-            "value": 0.20
+            "value": 0.2
         },
         {
             "id": "fire_breath",
@@ -128,7 +128,7 @@
             "scaling_type": "None",
             "mana_cost": 0,
             "cooldown": 0,
-            "value": 0.30
+            "value": 0.3
         },
         {
             "id": "regenerate_major",
@@ -181,6 +181,19 @@
             "mana_cost": 10,
             "cooldown": 4,
             "value": 35.0
+        },
+        {
+            "id": "tempest",
+            "name": "Tempest",
+            "description": "Batters the whole party for 30 damage",
+            "trait_type": "Active",
+            "target_type": "EnemyParty",
+            "applies_to": "OnCombatStart",
+            "effect_type": "DamageFlat",
+            "scaling_type": "None",
+            "mana_cost": 12,
+            "cooldown": 4,
+            "value": 30.0
         }
     ]
 }

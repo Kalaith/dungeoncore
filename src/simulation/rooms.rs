@@ -133,11 +133,15 @@ fn create_new_floor(state: &mut GameState) -> Result<(), String> {
     state.total_floors += 1;
     state.deep_core_bonus = state.total_floors as f32 * CORE_ROOM_MANA_BONUS;
 
+    // A deeper core holds more mana — keeps late-tier summons affordable.
+    state.max_mana += 50;
+
     state.add_log(LogEntry::building(format!(
-        "New floor {} created for {} mana! Deep core bonus: +{}%",
+        "New floor {} created for {} mana! Deep core bonus: +{}%, max mana {}",
         new_floor_num,
         cost,
-        (state.deep_core_bonus * 100.0) as i32
+        (state.deep_core_bonus * 100.0) as i32,
+        state.max_mana
     )));
 
     Ok(())

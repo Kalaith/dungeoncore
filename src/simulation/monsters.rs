@@ -45,7 +45,16 @@ pub fn place_monster(
     }
 
     let is_boss = room.room_type == RoomType::Boss;
-    let cost = get_monster_mana_cost(template.base_cost, floor_num, is_boss);
+    if template.boss_only && !is_boss {
+        return Err(format!(
+            "{} can only be summoned in a Boss room!",
+            template.name
+        ));
+    }
+
+    // Boss uniques already price in their throne room — no 2x boss surcharge.
+    let boss_surcharge = is_boss && !template.boss_only;
+    let cost = get_monster_mana_cost(template.base_cost, floor_num, boss_surcharge);
 
     if state.mana < cost {
         return Err(format!("Not enough mana! Need {} mana.", cost));

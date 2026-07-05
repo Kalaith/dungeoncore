@@ -424,6 +424,332 @@
                 "life_steal"
             ],
             "souls_cost": 4
+        },
+        {
+            "name": "Ember Wisp",
+            "base_cost": 12,
+            "hp": 18,
+            "attack": 9,
+            "defense": 1,
+            "species": "Elemental",
+            "tier": 1,
+            "emoji": "🔥",
+            "element": "Fire",
+            "description": "A flicker of living flame, all fury and no caution.",
+            "traits": [
+                "frenzy"
+            ]
+        },
+        {
+            "name": "Frost Wisp",
+            "base_cost": 12,
+            "hp": 24,
+            "attack": 6,
+            "defense": 3,
+            "species": "Elemental",
+            "tier": 1,
+            "emoji": "❄️",
+            "element": "Water",
+            "description": "A drifting mote of rime that dulls every blade.",
+            "traits": [
+                "stone_skin"
+            ]
+        },
+        {
+            "name": "Gale Wisp",
+            "base_cost": 11,
+            "hp": 20,
+            "attack": 8,
+            "defense": 1,
+            "species": "Elemental",
+            "tier": 1,
+            "emoji": "🌬️",
+            "element": "Air",
+            "description": "A restless breeze that fights best in a flock.",
+            "traits": [
+                "swarm_tactics"
+            ]
+        },
+        {
+            "name": "Flame Elemental",
+            "base_cost": 34,
+            "hp": 55,
+            "attack": 18,
+            "defense": 4,
+            "species": "Elemental",
+            "tier": 2,
+            "emoji": "🔥",
+            "element": "Fire",
+            "description": "A roaring pillar of fire that scours whole parties.",
+            "traits": [
+                "fire_breath",
+                "frenzy"
+            ]
+        },
+        {
+            "name": "Tide Elemental",
+            "base_cost": 34,
+            "hp": 70,
+            "attack": 13,
+            "defense": 8,
+            "species": "Elemental",
+            "tier": 2,
+            "emoji": "🌊",
+            "element": "Water",
+            "description": "A patient wall of water that mends its own wounds.",
+            "traits": [
+                "stone_skin",
+                "regenerate_minor"
+            ]
+        },
+        {
+            "name": "Storm Elemental",
+            "base_cost": 32,
+            "hp": 60,
+            "attack": 16,
+            "defense": 5,
+            "species": "Elemental",
+            "tier": 2,
+            "emoji": "⚡",
+            "element": "Air",
+            "description": "Crackling winds that slip past any armor.",
+            "traits": [
+                "swarm_tactics",
+                "armor_pierce"
+            ]
+        },
+        {
+            "name": "Primal Elemental",
+            "base_cost": 95,
+            "hp": 150,
+            "attack": 24,
+            "defense": 12,
+            "species": "Elemental",
+            "tier": 3,
+            "emoji": "🌀",
+            "element": "Arcane",
+            "description": "Raw creation given form, wearing every element at once.",
+            "traits": [
+                "tempest",
+                "stone_skin"
+            ]
+        },
+        {
+            "name": "Animated Armor",
+            "base_cost": 16,
+            "hp": 35,
+            "attack": 5,
+            "defense": 5,
+            "species": "Construct",
+            "tier": 1,
+            "emoji": "🛡️",
+            "element": "Body",
+            "description": "An empty suit that steps forward so others need not.",
+            "traits": [
+                "taunt"
+            ]
+        },
+        {
+            "name": "Clay Golem",
+            "base_cost": 16,
+            "hp": 40,
+            "attack": 6,
+            "defense": 4,
+            "species": "Construct",
+            "tier": 1,
+            "emoji": "🧱",
+            "element": "Earth",
+            "description": "Slow, simple, and stubbornly hard to break.",
+            "traits": [
+                "stone_skin"
+            ]
+        },
+        {
+            "name": "Blade Sentinel",
+            "base_cost": 36,
+            "hp": 60,
+            "attack": 16,
+            "defense": 6,
+            "species": "Construct",
+            "tier": 2,
+            "emoji": "⚔️",
+            "element": "Body",
+            "description": "A whirl of enchanted steel that shears through plate.",
+            "traits": [
+                "armor_pierce"
+            ]
+        },
+        {
+            "name": "Stone Golem",
+            "base_cost": 38,
+            "hp": 90,
+            "attack": 10,
+            "defense": 12,
+            "species": "Construct",
+            "tier": 2,
+            "emoji": "🗿",
+            "element": "Earth",
+            "description": "A walking rampart carved from the dungeon itself.",
+            "traits": [
+                "taunt",
+                "stone_skin"
+            ]
+        },
+        {
+            "name": "Iron Colossus",
+            "base_cost": 100,
+            "hp": 200,
+            "attack": 16,
+            "defense": 20,
+            "species": "Construct",
+            "tier": 3,
+            "emoji": "🤖",
+            "element": "Earth",
+            "description": "A siege engine in the shape of a giant.",
+            "traits": [
+                "taunt",
+                "stone_skin"
+            ]
+        },
+        {
+            "name": "Goblin King",
+            "base_cost": 120,
+            "hp": 260,
+            "attack": 28,
+            "defense": 14,
+            "species": "Goblinoid",
+            "tier": 4,
+            "emoji": "👑",
+            "element": "Earth",
+            "description": "The horde made flesh. Where he stands, goblins do not flee.",
+            "traits": [
+                "pack_hunter",
+                "taunt"
+            ],
+            "boss_only": true
+        },
+        {
+            "name": "Slime Empress",
+            "base_cost": 120,
+            "hp": 300,
+            "attack": 22,
+            "defense": 16,
+            "species": "Slime",
+            "tier": 4,
+            "emoji": "👑",
+            "element": "Water",
+            "description": "Mother of oozes. Cut her down and her children answer.",
+            "traits": [
+                "split_on_death",
+                "regenerate_major"
+            ],
+            "boss_only": true
+        },
+        {
+            "name": "Grave King",
+            "base_cost": 130,
+            "hp": 280,
+            "attack": 30,
+            "defense": 18,
+            "species": "Undead",
+            "tier": 4,
+            "emoji": "👑",
+            "element": "Death",
+            "description": "Sovereign of the silent court, crowned in bone.",
+            "traits": [
+                "undead_resilience",
+                "shadow_bolt",
+                "life_steal"
+            ],
+            "boss_only": true
+        },
+        {
+            "name": "Elder Dragon",
+            "base_cost": 150,
+            "hp": 400,
+            "attack": 38,
+            "defense": 20,
+            "species": "Draconic",
+            "tier": 4,
+            "emoji": "🐲",
+            "element": "Fire",
+            "description": "The mountain that breathes. Kingdoms are named after its naps.",
+            "traits": [
+                "fire_breath",
+                "stone_skin"
+            ],
+            "boss_only": true
+        },
+        {
+            "name": "Fenrir",
+            "base_cost": 130,
+            "hp": 300,
+            "attack": 34,
+            "defense": 12,
+            "species": "Beast",
+            "tier": 4,
+            "emoji": "🐺",
+            "element": "Body",
+            "description": "The wolf at the end of the world, and the pack follows.",
+            "traits": [
+                "pack_hunter",
+                "armor_pierce",
+                "frenzy"
+            ],
+            "boss_only": true
+        },
+        {
+            "name": "Archfiend",
+            "base_cost": 140,
+            "hp": 320,
+            "attack": 36,
+            "defense": 14,
+            "species": "Demon",
+            "tier": 4,
+            "emoji": "👹",
+            "element": "Fire",
+            "description": "A duke of the abyss who signs contracts in other people's blood.",
+            "traits": [
+                "fire_breath",
+                "life_steal",
+                "mana_leech"
+            ],
+            "souls_cost": 8,
+            "boss_only": true
+        },
+        {
+            "name": "Elemental Overlord",
+            "base_cost": 140,
+            "hp": 310,
+            "attack": 30,
+            "defense": 16,
+            "species": "Elemental",
+            "tier": 4,
+            "emoji": "🌀",
+            "element": "Arcane",
+            "description": "The storm that thinks. Weather is its opening argument.",
+            "traits": [
+                "tempest",
+                "stone_skin"
+            ],
+            "boss_only": true
+        },
+        {
+            "name": "Ancient Guardian",
+            "base_cost": 150,
+            "hp": 380,
+            "attack": 28,
+            "defense": 24,
+            "species": "Construct",
+            "tier": 4,
+            "emoji": "🗿",
+            "element": "Earth",
+            "description": "Built by a civilization that trusted nothing to chance.",
+            "traits": [
+                "taunt",
+                "stone_skin"
+            ],
+            "boss_only": true
         }
     ],
     "species": [
@@ -468,6 +794,20 @@
             "starter": false,
             "unlock_cost": 400,
             "description": "Fiends bargained from below. Summoning costs souls as well as mana."
+        },
+        {
+            "name": "Elemental",
+            "display_name": "Elementals",
+            "starter": false,
+            "unlock_cost": 300,
+            "description": "Living weather. Strongest in rooms attuned to their element."
+        },
+        {
+            "name": "Construct",
+            "display_name": "Constructs",
+            "starter": false,
+            "unlock_cost": 350,
+            "description": "Tireless machines - slow, armored, and utterly loyal."
         }
     ]
 }

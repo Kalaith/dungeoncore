@@ -272,6 +272,45 @@ mod tests {
     }
 
     #[test]
+    fn every_species_has_a_boss_unique() {
+        for species in monsters::get_all_species() {
+            let unique: Vec<_> = monsters::get_monster_templates()
+                .into_iter()
+                .filter(|t| t.species == species.name && t.boss_only)
+                .collect();
+            assert_eq!(
+                unique.len(),
+                1,
+                "species '{}' should have exactly one boss unique, found {:?}",
+                species.name,
+                unique.iter().map(|t| &t.name).collect::<Vec<_>>()
+            );
+            assert_eq!(
+                unique[0].tier, 4,
+                "boss unique '{}' should be tier 4",
+                unique[0].name
+            );
+        }
+    }
+
+    #[test]
+    fn boss_uniques_are_reachable_by_evolution() {
+        for template in monsters::get_monster_templates() {
+            if template.boss_only {
+                let reachable = evolutions::get_evolution_trees()
+                    .values()
+                    .flatten()
+                    .any(|p| p.to_monster == template.name);
+                assert!(
+                    reachable,
+                    "boss unique '{}' has no evolution path leading to it",
+                    template.name
+                );
+            }
+        }
+    }
+
+    #[test]
     fn every_species_is_summonable_after_unlock() {
         // unlock_species grants the tier-1 roster, falling back to the
         // starting_monsters map (e.g. Draconic only has the tier-3 Dragon).

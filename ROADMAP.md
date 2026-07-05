@@ -130,14 +130,26 @@ Shipped in the first drop (15 → 27 monsters, 4 → 6 species):
 - [x] Slime identity rule: tier-2+ slimes split into a tier-1 at half HP on
       death (guarded by a no-tier-1-splitters test).
 
+Shipped in the second drop (27 → 47 monsters, 6 → 8 species):
+- [x] **Elemental** species (attunement-native: Ember/Frost/Gale Wisp →
+      Flame/Tide/Storm Elemental → Primal Elemental) and **Construct** species
+      (armored, no self-healing: Animated Armor/Clay Golem → Blade
+      Sentinel/Stone Golem → Iron Colossus). New `tempest` AoE active.
+- [x] Tier-4 **boss uniques**, one per species, reachable by evolving the
+      species' top tier: Goblin King, Slime Empress, Grave King, Elder Dragon,
+      Fenrir, Archfiend (8 souls), Elemental Overlord, Ancient Guardian.
+      `boss_only` templates can only be summoned in Boss rooms and skip the
+      boss-room 2× mana surcharge (they price it in).
+- [x] Max mana now grows +50 per new floor so tier-4 summons stay affordable
+      (was flat 200 forever — even the old Dragon was unaffordable in deep
+      boss rooms).
+- [x] Species selector modal scrolls (8 species overflowed the fixed list).
+
 Still to do in later drops:
-- [ ] More species: Elemental, Construct, Plant/Fungal, Insect swarm (target 8).
-- [ ] Tier 4 + boss uniques per species (Goblin King, Slime Empress…),
-      summonable only in Boss rooms.
 - [ ] Undead identity rule (no healing, cheap respawn) — needs a respawn-cost
       mechanic first; all respawns are currently free.
-- [ ] Species selector modal overflows at 6 species (fixed-height list; Demon/
-      Draconic fall below the fold) — needs scroll or grid.
+- [ ] Optional species beyond 8 (Plant/Fungal, Insect swarm) if content
+      breadth is wanted after playtesting.
 
 **Exit criteria:** two playthroughs with different species feel mechanically
 different, not just cosmetically.

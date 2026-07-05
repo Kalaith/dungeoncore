@@ -13,6 +13,7 @@ pub fn draw_species_selector(
     y: f32,
     w: f32,
     h: f32,
+    scroll: &mut f32,
 ) -> Option<String> {
     let panel = Rect::new(x, y, w, h);
     draw_panel(panel, Some("Choose Your Starter Race"), SOUL);
@@ -38,11 +39,28 @@ pub fn draw_species_selector(
     let mut selected = None;
     let card_h = 96.0;
     let gap = 10.0;
-    let mut cy = y + 64.0;
+    let list_top = y + 64.0;
+    let list_bottom = y + h - 14.0;
+
+    // Mouse-wheel scrolling: the list outgrew the modal at 8 species.
+    let total_h = species_list.len() as f32 * (card_h + gap) - gap;
+    let max_scroll = (total_h - (list_bottom - list_top)).max(0.0);
+    let mouse = vec2(mouse_position().0, mouse_position().1);
+    if panel.contains(mouse) {
+        let (_, wheel_y) = mouse_wheel();
+        if wheel_y.abs() > 0.0 {
+            *scroll = (*scroll - wheel_y * (card_h + gap)).clamp(0.0, max_scroll);
+        }
+    }
+    *scroll = scroll.clamp(0.0, max_scroll);
+
+    let mut cy = list_top - *scroll;
 
     for species in species_list {
-        if cy + card_h > y + h - 14.0 {
-            break;
+        // Skip cards fully or partially outside the visible list area.
+        if cy < list_top - 1.0 || cy + card_h > list_bottom {
+            cy += card_h + gap;
+            continue;
         }
 
         let cost = get_species_unlock_cost(&species.name).unwrap_or(0);

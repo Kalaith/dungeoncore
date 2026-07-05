@@ -72,6 +72,7 @@ async fn main() {
         let mut drawer_tab = DrawerTab::Monsters;
         let mut drawer_open = true;
         let mut upgrade_scroll = 0.0;
+        let mut species_scroll = 0.0;
         let mut t0 = get_time();
         let mut t1 = t0;
         let mut t2 = t0;
@@ -81,6 +82,7 @@ async fn main() {
                 &mut drawer_tab,
                 &mut drawer_open,
                 &mut upgrade_scroll,
+                &mut species_scroll,
                 &mut t0,
                 &mut t1,
                 &mut t2,
@@ -103,6 +105,7 @@ async fn main() {
     let mut drawer_tab = DrawerTab::Monsters;
     let mut drawer_open = true;
     let mut upgrade_scroll = 0.0;
+    let mut species_scroll = 0.0;
 
     loop {
         match screen {
@@ -185,6 +188,7 @@ async fn main() {
             &mut drawer_tab,
             &mut drawer_open,
             &mut upgrade_scroll,
+            &mut species_scroll,
             &mut last_time_advance,
             &mut last_adventure_tick,
             &mut last_save,
@@ -205,6 +209,7 @@ fn render_playing_frame(
     drawer_tab: &mut DrawerTab,
     drawer_open: &mut bool,
     upgrade_scroll: &mut f32,
+    species_scroll: &mut f32,
     last_time_advance: &mut f64,
     last_adventure_tick: &mut f64,
     last_save: &mut f64,
@@ -255,7 +260,7 @@ fn render_playing_frame(
         draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.7));
 
         if let Some(selected_species_id) =
-            draw_species_selector(state, modal_x, modal_y, modal_w, modal_h)
+            draw_species_selector(state, modal_x, modal_y, modal_w, modal_h, species_scroll)
         {
             // Unlock the selected species
             if let Err(e) = simulation::unlock_species(state, &selected_species_id) {
