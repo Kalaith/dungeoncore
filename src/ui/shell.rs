@@ -66,7 +66,6 @@ pub fn draw_top_hud(state: &GameState, rect: Rect) -> ControlAction {
         DungeonStatus::Open => ("Close Dungeon", ButtonTone::Danger, true),
         DungeonStatus::Closed => ("Open Dungeon", ButtonTone::Primary, true),
         DungeonStatus::Closing => ("Closing...", ButtonTone::Ghost, false),
-        DungeonStatus::Maintenance => ("Maintenance", ButtonTone::Ghost, false),
     };
     if draw_command_button(
         Rect::new(dungeon_x, control_y, dungeon_w, control_h),

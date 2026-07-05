@@ -1,10 +1,18 @@
 use crate::data::adventurers::get_victory_quotes;
 use crate::data::constants::RETREAT_THRESHOLD;
-use crate::game_state::{EffectKind, GameState, LogEntry};
+use crate::data::traits::get_trait;
+use crate::game_state::{EffectKind, GameState, LogEntry, Monster};
 
-/// Resolve combat between adventurers and monsters in a room
+/// Chance per combat tick that a room's trap upgrade fires.
+const TRAP_TRIGGER_CHANCE: f32 = 0.2;
+
+/// Resolve one combat tick between a party and the monsters in a room.
+///
+/// Damage model: every living combatant acts once per tick.
+/// Adventurers focus the front monster; monsters each strike a random
+/// adventurer. Damage = max(1, attack - defense/2), further shaped by
+/// room upgrades and monster traits. Deaths occur when HP reaches 0.
 pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
-    // Check if there are alive monsters
     let has_alive_monsters = state.floors[floor_idx].rooms[room_idx]
         .monsters
         .iter()
@@ -17,94 +25,201 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     let floor_num = state.floors[floor_idx].number;
     let room_pos = state.floors[floor_idx].rooms[room_idx].position;
 
-    // Get room upgrade multipliers
     let trap_mult = state.floors[floor_idx].rooms[room_idx].trap_multiplier();
     let reinforcement_mult = state.floors[floor_idx].rooms[room_idx].reinforcement_multiplier();
 
-    // Trap damage: if room has trap, deal extra damage to adventurers
+    // Phase 1: trap damage
     if trap_mult > 1.0 {
         apply_trap_damage(state, party_idx, floor_idx, room_idx, trap_mult);
     }
 
-    // Adjust combat probabilities based on reinforcement
-    // Reinforcement makes monsters harder to kill
-    let mut adventurer_death_chance = 0.3 * reinforcement_mult;
-    let mut monster_death_chance = 0.3 / reinforcement_mult;
+    // Phase 2: active abilities (e.g. Fire Breath on combat start)
+    resolve_abilities(state, party_idx, floor_idx, room_idx, floor_num, room_pos);
 
-    // Apply Monster Traits
-    // We need to check traits of ALIVE monsters in the room
-    // Note: We are iterating again, but doing it inside the combat loop for the specific room is okay
+    // Phase 3: adventurers strike the front monster
+    let adv_attacks: Vec<i32> = state.adventurer_parties[party_idx]
+        .members
+        .iter()
+        .filter(|a| a.alive)
+        .map(|a| a.scaled_stats.attack)
+        .collect();
 
-    // Phase 1: Ability Activation
-    // We need to borrow room and party disjointly to modify both
-    // and we need to collect logs to add them to state later (since state is split borrowed)
+    let mut monster_kills: Vec<(String, bool)> = Vec::new();
+    {
+        let room = &mut state.floors[floor_idx].rooms[room_idx];
+        for attack in adv_attacks {
+            let Some(monster) = room.monsters.iter_mut().find(|m| m.alive) else {
+                break;
+            };
+            let effective_def = monster.scaled_stats.defense as f32 * reinforcement_mult;
+            let taken_mult = monster_damage_taken_mult(monster);
+            let damage = ((attack as f32 - effective_def / 2.0).max(1.0) * taken_mult)
+                .round()
+                .max(1.0) as i32;
+            monster.hp -= damage;
+            if monster.hp <= 0 {
+                monster.hp = 0;
+                monster.alive = false;
+                monster_kills.push((monster.type_name.clone(), monster.is_boss));
+            }
+        }
+    }
+
+    // Phase 4: surviving monsters strike back
+    let monster_strikes: Vec<i32> = {
+        let room = &state.floors[floor_idx].rooms[room_idx];
+        let alive_count = room.monsters.iter().filter(|m| m.alive).count();
+        room.monsters
+            .iter()
+            .filter(|m| m.alive)
+            .map(|m| monster_attack_value(m, alive_count, reinforcement_mult))
+            .collect()
+    };
+
+    let mut adventurer_kills: Vec<(String, i32)> = Vec::new();
+    let mut damage_to_party = 0;
+    {
+        let party = &mut state.adventurer_parties[party_idx];
+        for attack in monster_strikes {
+            let alive_idxs: Vec<usize> = party
+                .members
+                .iter()
+                .enumerate()
+                .filter(|(_, a)| a.alive)
+                .map(|(i, _)| i)
+                .collect();
+            if alive_idxs.is_empty() {
+                break;
+            }
+            let victim_idx = alive_idxs
+                [macroquad_toolkit::rng::gen_range(0, alive_idxs.len())];
+            let victim = &mut party.members[victim_idx];
+            let damage = (attack as f32 - victim.scaled_stats.defense as f32 / 2.0)
+                .max(1.0)
+                .round() as i32;
+            victim.hp -= damage;
+            damage_to_party += damage;
+            if victim.hp <= 0 {
+                victim.hp = 0;
+                victim.alive = false;
+                party.casualties += 1;
+                adventurer_kills.push((victim.name.clone(), victim.level));
+            }
+        }
+    }
+
+    if damage_to_party > 0 && adventurer_kills.is_empty() {
+        state.push_effect(
+            floor_num,
+            room_pos,
+            format!("-{}", damage_to_party),
+            EffectKind::Damage,
+        );
+    }
+
+    reward_monster_kills(state, party_idx, floor_idx, room_idx, &monster_kills);
+    reward_adventurer_kills(state, party_idx, floor_idx, room_idx, &adventurer_kills);
+    check_retreat(state, party_idx);
+}
+
+/// Damage multiplier from a monster's defensive passive traits.
+fn monster_damage_taken_mult(monster: &Monster) -> f32 {
+    let mut mult = 1.0;
+    for trait_data in &monster.active_traits {
+        if let Some(def) = get_trait(&trait_data.id) {
+            if def.trait_type == "Passive"
+                && def.applies_to == "OnDefense"
+                && def.effect_type == "DamageReductionMult"
+            {
+                mult *= 1.0 - def.value;
+            }
+        }
+    }
+    mult
+}
+
+/// Effective attack including offensive passives and room reinforcement.
+fn monster_attack_value(monster: &Monster, allies_alive: usize, reinforcement_mult: f32) -> i32 {
+    let mut attack = monster.scaled_stats.attack as f32;
+    for trait_data in &monster.active_traits {
+        if let Some(def) = get_trait(&trait_data.id) {
+            if def.trait_type == "Passive"
+                && def.applies_to == "OnAttack"
+                && def.effect_type == "AttackBonus"
+                && def.scaling_type == "PerAlly"
+            {
+                attack += def.value * allies_alive.saturating_sub(1) as f32;
+            }
+        }
+    }
+    (attack * reinforcement_mult).round() as i32
+}
+
+/// Fire monsters' active abilities (currently OnCombatStart party damage).
+fn resolve_abilities(
+    state: &mut GameState,
+    party_idx: usize,
+    floor_idx: usize,
+    room_idx: usize,
+    floor_num: i32,
+    room_pos: usize,
+) {
     let mut combat_logs: Vec<LogEntry> = Vec::new();
     let mut ability_deaths = 0;
-    let mut ability_used: Option<(String, String, i32)> = None;
+    let mut ability_used: Option<(String, i32)> = None;
 
     {
-        // Disjoint borrows
         let floor = &mut state.floors[floor_idx];
         let room = &mut floor.rooms[room_idx];
         let party = &mut state.adventurer_parties[party_idx];
-        let monsters = &mut room.monsters;
 
-        for monster in monsters.iter_mut().filter(|m| m.alive) {
+        for monster in room.monsters.iter_mut().filter(|m| m.alive) {
             for trait_data in &mut monster.active_traits {
-                // Check cooldown
-                if trait_data.cooldown_timer <= 0 {
-                    if let Some(trait_def) = crate::data::traits::get_trait(&trait_data.id) {
-                        // Generic Active Ability Logic
-                        if trait_def.trait_type == "Active"
-                            && trait_def.applies_to == "OnCombatStart"
-                        {
-                            // Check effect type
-                            if trait_def.effect_type == "DamageFlat"
-                                && trait_def.target_type == "EnemyParty"
-                            {
-                                let damage = trait_def.value as i32;
-                                trait_data.cooldown_timer = trait_def.cooldown;
+                if trait_data.cooldown_timer > 0 {
+                    trait_data.cooldown_timer -= 1;
+                    continue;
+                }
+                let Some(trait_def) = get_trait(&trait_data.id) else {
+                    continue;
+                };
+                if trait_def.trait_type == "Active"
+                    && trait_def.applies_to == "OnCombatStart"
+                    && trait_def.effect_type == "DamageFlat"
+                    && trait_def.target_type == "EnemyParty"
+                {
+                    let damage = trait_def.value as i32;
+                    trait_data.cooldown_timer = trait_def.cooldown;
 
-                                // Deal damage to ALL adventurers in party
-                                let mut total_hits = 0;
-                                for adv in &mut party.members {
-                                    if adv.alive {
-                                        adv.hp -= damage;
-                                        total_hits += 1;
-                                        if adv.hp <= 0 {
-                                            adv.alive = false;
-                                            party.casualties += 1;
-                                            ability_deaths += 1;
-                                        }
-                                    }
-                                }
-
-                                if total_hits > 0 {
-                                    combat_logs.push(LogEntry::combat(format!(
-                                        "{} uses {}! Dealt {} damage to {} adventurers.",
-                                        monster.type_name, trait_def.name, damage, total_hits
-                                    )));
-                                    ability_used = Some((
-                                        monster.type_name.clone(),
-                                        trait_def.name.clone(),
-                                        damage,
-                                    ));
-                                }
+                    let mut total_hits = 0;
+                    for adv in &mut party.members {
+                        if adv.alive {
+                            adv.hp -= damage;
+                            total_hits += 1;
+                            if adv.hp <= 0 {
+                                adv.hp = 0;
+                                adv.alive = false;
+                                party.casualties += 1;
+                                ability_deaths += 1;
                             }
                         }
                     }
-                } else {
-                    trait_data.cooldown_timer -= 1;
+
+                    if total_hits > 0 {
+                        combat_logs.push(LogEntry::combat(format!(
+                            "{} uses {}! Dealt {} damage to {} adventurers.",
+                            monster.type_name, trait_def.name, damage, total_hits
+                        )));
+                        ability_used = Some((trait_def.name.clone(), damage));
+                    }
                 }
             }
         }
     }
 
-    // Apply deferred logs and effects
     for log in combat_logs {
         state.add_log(log);
     }
-    if let Some((_, ability_name, damage)) = ability_used {
+    if let Some((ability_name, damage)) = ability_used {
         state.push_effect(
             floor_num,
             room_pos,
@@ -116,66 +231,6 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
         state.total_deaths += ability_deaths;
         state.push_effect(floor_num, room_pos, "Slain!", EffectKind::AdventurerDown);
     }
-
-    // Phase 2: Standard Combat Attacks
-    // Recalculate chances (traits might have changed stats, or adventurers might have died)
-
-    // We iterate again to collect passive bonuses.
-    // This is read-only on monsters, so we can hold state?
-    // Actually we mutate state later if someone dies (adventurer_dies / monster_dies).
-    // So let's calculate the stats based on the Room immutable borrow?
-    // But `resolve_combat` calls `monster_dies` which takes `&mut GameState`.
-    // So we must finish all borrows before calling those.
-
-    let mut swarm_bonus = 0.0;
-    let mut total_defense_mult = 1.0;
-    let mut monster_count = 0;
-
-    // Scope for read-only monster analysis
-    {
-        let room = &state.floors[floor_idx].rooms[room_idx];
-        for monster in room.monsters.iter().filter(|m| m.alive) {
-            monster_count += 1;
-            for trait_data in &monster.active_traits {
-                if let Some(trait_def) = crate::data::traits::get_trait(&trait_data.id) {
-                    if trait_def.trait_type == "Passive" {
-                        if trait_def.effect_type == "DamageReductionMult"
-                            && trait_def.applies_to == "OnDefense"
-                        {
-                            total_defense_mult *= 1.0 - trait_def.value;
-                        }
-                        if trait_def.effect_type == "AttackBonus"
-                            && trait_def.applies_to == "OnAttack"
-                            && trait_def.target_type == "Self"
-                        {
-                            // Scaling Logic
-                            if trait_def.scaling_type == "PerAlly" {
-                                swarm_bonus += 0.01 * trait_def.value;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Apply swarm bonus
-    if monster_count > 1 {
-        adventurer_death_chance += swarm_bonus * (monster_count - 1) as f32;
-    }
-
-    monster_death_chance *= total_defense_mult;
-
-    let result = macroquad_toolkit::rng::rand();
-
-    if result < adventurer_death_chance {
-        // Adventurer takes fatal hit
-        adventurer_dies(state, party_idx, floor_idx, room_idx);
-    } else if result < adventurer_death_chance + monster_death_chance {
-        // Monster dies
-        monster_dies(state, party_idx, floor_idx, room_idx);
-    }
-    // else: stalemate, continue combat next tick
 }
 
 fn apply_trap_damage(
@@ -185,8 +240,7 @@ fn apply_trap_damage(
     room_idx: usize,
     trap_mult: f32,
 ) {
-    // 20% chance per tick for trap to trigger
-    if macroquad_toolkit::rng::chance(0.2) {
+    if !macroquad_toolkit::rng::chance(TRAP_TRIGGER_CHANCE) {
         return;
     }
 
@@ -206,6 +260,7 @@ fn apply_trap_damage(
             victim.hp -= damage;
 
             if victim.hp <= 0 {
+                victim.hp = 0;
                 victim.alive = false;
                 party.casualties += 1;
 
@@ -246,32 +301,84 @@ fn apply_trap_damage(
     }
 }
 
-fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
+/// Grant loot/souls for monsters slain this tick and narrate the kills.
+fn reward_monster_kills(
+    state: &mut GameState,
+    party_idx: usize,
+    floor_idx: usize,
+    room_idx: usize,
+    kills: &[(String, bool)],
+) {
+    if kills.is_empty() {
+        return;
+    }
+
+    let floor_num = state.floors[floor_idx].number;
+    let room_pos = state.floors[floor_idx].rooms[room_idx].position;
+    let treasure_mult = state.floors[floor_idx].rooms[room_idx].treasure_multiplier();
+
+    for (monster_name, is_boss) in kills {
+        let base_gold = if *is_boss { 50 } else { 20 };
+        let gold_reward = (base_gold as f32 * treasure_mult) as i32;
+        let soul_reward = if *is_boss { 1 } else { 0 };
+
+        state.adventurer_parties[party_idx].loot += gold_reward;
+        if soul_reward > 0 {
+            state.souls += soul_reward;
+        }
+
+        state.add_log(LogEntry::combat(format!(
+            "{} defeated on floor {}, room {}! +{} gold{}",
+            monster_name,
+            floor_num,
+            room_pos,
+            gold_reward,
+            if soul_reward > 0 {
+                format!(", +{} soul", soul_reward)
+            } else {
+                String::new()
+            }
+        )));
+        state.push_effect(
+            floor_num,
+            room_pos,
+            format!("{} down", monster_name),
+            EffectKind::MonsterDown,
+        );
+    }
+
+    // Victory quote
+    let victory_quotes = get_victory_quotes();
+    if macroquad_toolkit::rng::chance(0.2) && !victory_quotes.is_empty() {
+        let quote = &victory_quotes[macroquad_toolkit::rng::gen_range(0, victory_quotes.len())];
+        if let Some(adv) = state.adventurer_parties[party_idx]
+            .members
+            .iter()
+            .find(|a| a.alive)
+        {
+            state.add_log(LogEntry::adventure(format!(
+                "{} says: \"{}\"",
+                adv.name, quote
+            )));
+        }
+    }
+}
+
+/// Grant mana/XP for adventurers slain this tick and narrate the deaths.
+fn reward_adventurer_kills(
+    state: &mut GameState,
+    _party_idx: usize,
+    floor_idx: usize,
+    room_idx: usize,
+    kills: &[(String, i32)],
+) {
+    if kills.is_empty() {
+        return;
+    }
+
     let floor_num = state.floors[floor_idx].number;
 
-    // Find alive adventurer and kill them
-    let death_info = {
-        let party = &mut state.adventurer_parties[party_idx];
-        if let Some(victim_idx) = party.members.iter().position(|a| a.alive) {
-            let victim = &mut party.members[victim_idx];
-            let victim_name = victim.name.clone();
-            let victim_level = victim.level;
-            victim.alive = false;
-            party.casualties += 1;
-
-            let retreating = party.casualties >= RETREAT_THRESHOLD;
-            if retreating {
-                party.retreating = true;
-            }
-
-            Some((victim_name, victim_level, retreating))
-        } else {
-            None
-        }
-    };
-
-    if let Some((victim_name, victim_level, retreating)) = death_info {
-        // Award mana for adventurer death
+    for (victim_name, victim_level) in kills {
         let mana_gain = victim_level * 10;
         state.mana = (state.mana + mana_gain).min(state.max_mana);
         state.total_deaths += 1;
@@ -292,78 +399,23 @@ fn adventurer_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, ro
             victim_name, floor_num, mana_gain, xp_gain
         )));
         state.push_effect(floor_num, room_pos, "Slain!", EffectKind::AdventurerDown);
-
-        // Check retreat condition
-        if retreating {
-            state.add_log(LogEntry::adventure(
-                "Party is retreating due to heavy casualties!",
-            ));
-        }
     }
 }
 
-fn monster_dies(state: &mut GameState, party_idx: usize, floor_idx: usize, room_idx: usize) {
-    // Find alive monster
-    let monster_idx = match state.floors[floor_idx].rooms[room_idx]
-        .monsters
-        .iter()
-        .position(|m| m.alive)
-    {
-        Some(idx) => idx,
-        None => return,
-    };
-
-    let monster = &mut state.floors[floor_idx].rooms[room_idx].monsters[monster_idx];
-    let monster_name = monster.type_name.clone();
-    let is_boss = monster.is_boss;
-    monster.alive = false;
-
-    // Award rewards with treasure multiplier
-    let treasure_mult = state.floors[floor_idx].rooms[room_idx].treasure_multiplier();
-    let base_gold = if is_boss { 50 } else { 20 };
-    let gold_reward = (base_gold as f32 * treasure_mult) as i32;
-    let soul_reward = if is_boss { 1 } else { 0 };
-
-    state.adventurer_parties[party_idx].loot += gold_reward;
-    if soul_reward > 0 {
-        state.souls += soul_reward;
+/// Flag the party as retreating after heavy losses or a full wipe.
+fn check_retreat(state: &mut GameState, party_idx: usize) {
+    let party = &mut state.adventurer_parties[party_idx];
+    if party.retreating {
+        return;
     }
-
-    let floor_num = state.floors[floor_idx].number;
-    let room_pos = state.floors[floor_idx].rooms[room_idx].position;
-
-    state.add_log(LogEntry::combat(format!(
-        "{} defeated on floor {}, room {}! +{} gold{}",
-        monster_name,
-        floor_num,
-        room_pos,
-        gold_reward,
-        if soul_reward > 0 {
-            format!(", +{} soul", soul_reward)
-        } else {
-            String::new()
-        }
-    )));
-    state.push_effect(
-        floor_num,
-        room_pos,
-        format!("{} down", monster_name),
-        EffectKind::MonsterDown,
-    );
-
-    // Victory quote
-    let victory_quotes = get_victory_quotes();
-    if macroquad_toolkit::rng::chance(0.2) && !victory_quotes.is_empty() {
-        let quote = &victory_quotes[macroquad_toolkit::rng::gen_range(0, victory_quotes.len())];
-        if let Some(adv) = state.adventurer_parties[party_idx]
-            .members
-            .iter()
-            .find(|a| a.alive)
-        {
-            state.add_log(LogEntry::adventure(format!(
-                "{} says: \"{}\"",
-                adv.name, quote
-            )));
-        }
+    let no_survivors = party.members.iter().all(|a| !a.alive);
+    if no_survivors {
+        party.retreating = true;
+        state.add_log(LogEntry::adventure("The entire party has been wiped out!"));
+    } else if party.casualties >= RETREAT_THRESHOLD {
+        party.retreating = true;
+        state.add_log(LogEntry::adventure(
+            "Party is retreating due to heavy casualties!",
+        ));
     }
 }

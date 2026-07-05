@@ -194,7 +194,6 @@ pub enum DungeonStatus {
     Open,
     Closing,
     Closed,
-    Maintenance,
 }
 
 /// Kind of transient visual effect surfaced over a room

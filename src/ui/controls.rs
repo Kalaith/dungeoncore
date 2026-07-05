@@ -55,7 +55,6 @@ pub fn draw_controls(state: &GameState, x: f32, y: f32, w: f32) -> ControlAction
         DungeonStatus::Open => ("Close Dungeon", Color::from_hex(0xE74C3C)),
         DungeonStatus::Closed => ("Open Dungeon", Color::from_hex(0x27AE60)),
         DungeonStatus::Closing => ("Closing...", Color::from_hex(0xF39C12)),
-        DungeonStatus::Maintenance => ("Maintenance", Color::from_hex(0x666666)),
     };
     let status_style = ButtonStyle {
         normal: status_color,

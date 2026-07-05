@@ -70,9 +70,6 @@ pub fn toggle_dungeon_status(state: &mut GameState) {
             state.status = DungeonStatus::Open;
             state.add_log(LogEntry::system("Dungeon is now open to adventurers!"));
         }
-        DungeonStatus::Maintenance => {
-            // Can't toggle out of maintenance manually
-        }
     }
 }
 

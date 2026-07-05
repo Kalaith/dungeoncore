@@ -17,7 +17,7 @@ pub fn spawn_party(state: &mut GameState) {
         return;
     }
 
-    if macroquad_toolkit::rng::chance(ADVENTURER_SPAWN_CHANCE) {
+    if !macroquad_toolkit::rng::chance(ADVENTURER_SPAWN_CHANCE) {
         return;
     }
 
