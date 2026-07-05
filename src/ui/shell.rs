@@ -40,10 +40,18 @@ pub fn draw_top_hud(state: &GameState, rect: Rect) -> ControlAction {
     draw_text_fit(
         "DUNGEON CORE",
         title_rect.x + 62.0,
-        title_rect.y + title_rect.h * 0.5 + 8.0,
+        title_rect.y + title_rect.h * 0.5 + 2.0,
         title_rect.w - 66.0,
         24.0,
         TEXT,
+    );
+    draw_text_fit(
+        "[C] Codex",
+        title_rect.x + 62.0,
+        title_rect.y + title_rect.h * 0.5 + 22.0,
+        title_rect.w - 66.0,
+        11.0,
+        TEXT_DIM,
     );
 
     // Right-hand control cluster: speed selector + dungeon toggle.

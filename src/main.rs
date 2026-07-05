@@ -76,6 +76,8 @@ async fn main() {
         let mut species_scroll = 0.0;
         let mut defender_scroll = 0.0;
         let mut heroes_scroll = 0.0;
+        let mut show_codex = false;
+        let mut codex_scroll = 0.0;
         let mut t0 = get_time();
         let mut t1 = t0;
         let mut t2 = t0;
@@ -89,6 +91,8 @@ async fn main() {
                 &mut species_scroll,
                 &mut defender_scroll,
                 &mut heroes_scroll,
+                &mut show_codex,
+                &mut codex_scroll,
                 &mut t0,
                 &mut t1,
                 &mut t2,
@@ -115,6 +119,8 @@ async fn main() {
     let mut species_scroll = 0.0;
     let mut defender_scroll = 0.0;
     let mut heroes_scroll = 0.0;
+    let mut show_codex = false;
+    let mut codex_scroll = 0.0;
 
     loop {
         match screen {
@@ -201,6 +207,8 @@ async fn main() {
             &mut species_scroll,
             &mut defender_scroll,
             &mut heroes_scroll,
+            &mut show_codex,
+            &mut codex_scroll,
             &mut last_time_advance,
             &mut last_adventure_tick,
             &mut last_save,
@@ -225,6 +233,8 @@ fn render_playing_frame(
     species_scroll: &mut f32,
     defender_scroll: &mut f32,
     heroes_scroll: &mut f32,
+    show_codex: &mut bool,
+    codex_scroll: &mut f32,
     last_time_advance: &mut f64,
     last_adventure_tick: &mut f64,
     last_save: &mut f64,
@@ -505,6 +515,15 @@ fn render_playing_frame(
     }
     if simulate {
         tutorial::advance(state);
+    }
+
+    // Codex overlay: opened with 'C', drawn last so it sits over everything.
+    if !*show_codex && is_key_pressed(KeyCode::C) {
+        *show_codex = true;
+        *codex_scroll = 0.0;
+    }
+    if *show_codex && draw_codex(state, sw, sh, codex_scroll) {
+        *show_codex = false;
     }
 }
 

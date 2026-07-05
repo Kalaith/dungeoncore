@@ -191,63 +191,53 @@ different, not just cosmetically.
 monsters; Rogue parties counter it, alarms and attunements deepen the build
 space.
 
-## Phase 4 — Adventurer depth (the opposing content)
+## Phase 4 — Adventurer depth (DONE 2026-07-06)
 
-### 4a. Adventurer roster — persistent, viewable heroes (REQUESTED — do first)
-
-Adventurers stop being disposable: the dungeon keeps a ledger of everyone
-who has ever walked in, and the player can browse it.
-
-- [ ] **Persistent registry**: `GameState.known_adventurers: Vec<HeroRecord>`
-      keyed by stable id. Recorded per hero: name, class, level, XP,
-      **delves** (times entered the dungeon), kills scored, gold escaped
-      with, status (Alive / Inside / Dead on floor N, day D). Persisted in
-      the save.
-- [ ] **Returning survivors**: when a party spawns, some slots draw from
-      living registry heroes instead of rolling new names. Survivors gain
-      XP between raids and level up — a hero you let escape twice comes
-      back level 4 with better equipment (loadout already scales by level).
-- [ ] **Roster UI**: a HEROES view (drawer tab or HUD button) listing known
-      adventurers — name, class, level, delves, status — sortable, with a
-      detail card (kill count, gold stolen, cause of death). Doubles as a
-      trophy wall: dead heroes stay in the ledger as a graveyard.
-- [ ] Hooks for later: grudge flag (survivor of a near-wipe returns
-      stronger and targets the room that hurt them), rivalries, named-hero
-      elite raids at high threat tiers (feeds Phase 5), bounties.
+### 4a. Persistent, viewable heroes (requested)
+- [x] `GameState.known_adventurers: Vec<HeroRecord>` — every hero who enters
+      is logged with name, class, race, level/XP, delves, kills, gold stolen,
+      and status (Alive / Inside / Dead on floor N, day D). Persisted.
+- [x] Returning survivors: ~half of each party's slots draw from living
+      veterans, who bank XP on escape and level up (to L10), returning
+      stronger via the level-scaled loadout.
+- [x] Kill attribution credits the hero who lands the killing blow.
+- [x] HEROES drawer tab: scrollable roster sorted raiders → veterans →
+      graves, with delves, kills, and cause of death.
 
 ### 4b. Variety and behavior
+- [x] Races (Human/Elf/Dwarf/Halfling) with stat modifiers in JSON.
+- [x] New classes: Ranger (Nature), Paladin (Spirit), Alchemist (Fire).
+- [x] Party AI: retreat threshold varies by composition — Halflings bail
+      early, Dwarves and Paladins hold; siege fanatics never break.
 
-- [ ] Adventurer races: Human (balanced), Elf (high attack, low HP, trap
-      detection), Dwarf (high defense, trap-immune-ish), Halfling (steals extra
-      gold, retreats early). Race + class grid multiplies variety from 4 to 16
-      loadouts using the equipment/stat plumbing that already exists.
-- [ ] New classes: Ranger (targets back-line monster), Paladin (element:
-      Spirit, resists Death/Blood), Alchemist (throws elemental flasks).
-- [ ] Party AI: greed vs caution (loot targets vs retreat thresholds per
-      race/class), so watching a raid tells a story.
+Deferred hooks: grudges/rivalries/bounties (data is in place for them).
 
-## Phase 5 — Threat, raids, endgame
+## Phase 5 — Threat, raids, endgame (DONE 2026-07-06)
+- [x] Threat scales party level/size (low threat = larger weak bands, high
+      threat = small elite squads).
+- [x] Core HP; tier-4 **siege**: one overwhelming elite party marches past
+      looting to assault the core. The core's wards strike back, so a
+      wounded siege can still be repelled at the heart. Core destroyed →
+      game-over overlay with run stats and restart.
+- [x] Repelling a siege → **Prestige**: +core HP, +max mana, threat resets,
+      the long game continues (siege elites scale with prestige count).
+- [x] Soul-bought permanent **core powers** (Build tab): Deep Roots
+      (+mana regen), Bulwark Core (+250 core HP), Dread Aura (invaders break
+      one casualty sooner).
+- [x] Reputation dial via threat-scaled party shape.
 
-- [ ] Make threat real: each tier raises party level/size ranges; tier 3 sends
-      elite hero squads; tier 4 sends the army — a scripted multi-party siege
-      targeting the core room. Core has HP; if it falls, run ends.
-- [ ] Surviving the tier-4 siege = prestige event: reset with a permanent core
-      perk (new species discount, +mana regen …) — the long-term loop.
-- [ ] Dungeon-level upgrades (spend souls): core skills like Fear Aura (raise
-      retreat threshold), Illusion Floor (fake treasure), Deep Roots (mana).
-- [ ] Reputation as a dial, not just a doom meter: low threat = many weak
-      greedy parties (farm gold), high threat = few elite parties (farm souls).
-      Player steers via open/close and kill/release decisions.
+Deferred: Illusion Floor and other flavor core skills (the framework is in
+place — just more `CORE_POWERS` entries).
 
-## Phase 6 — Presentation & retention polish
-
-- [ ] Monster/trap icons (image_prompts.json is already prepped for asset
-      generation; the UI currently uses emoji).
-- [ ] Bestiary/codex screen: discovered monsters, evolution trees, element
-      wheel — doubles as the missing reference documentation.
-- [ ] Raid summary panel after each party leaves (kills, loot lost/gained,
-      XP earned) instead of log-only.
-- [ ] Sound hooks (macroquad audio): combat hits, trap triggers, evolution.
+## Phase 6 — Presentation & retention polish (partial DONE 2026-07-06)
+- [x] Bestiary/**Codex** screen (press C): element effectiveness wheel +
+      every discovered monster with tier, species, element, stats, traits.
+      Doubles as the reference documentation.
+- [ ] Raid summary panel after each party leaves — the event log narrates
+      this today; a dedicated card is a nice-to-have.
+- [ ] Monster/trap icons — needs generated art (image_prompts.json is
+      prepped); the UI uses emoji, which read fine.
+- [ ] Sound hooks — needs audio assets.
 
 ---
 

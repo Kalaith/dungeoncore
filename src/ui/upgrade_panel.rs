@@ -713,7 +713,7 @@ fn room_icon_letter(room_type: &RoomType) -> &'static str {
     }
 }
 
-fn draw_close_button(rect: Rect) -> bool {
+pub fn draw_close_button(rect: Rect) -> bool {
     let hovered = rect.contains(vec2(mouse_position().0, mouse_position().1));
     draw_card(
         rect,
