@@ -22,6 +22,36 @@ pub enum DrawerTab {
     Evolution,
 }
 
+/// Sections within the Traps tab, so each upgrade family gets its own list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpgradeSection {
+    Traps,
+    Loot,
+    Buffs,
+    Shrines,
+}
+
+impl UpgradeSection {
+    fn label(self) -> &'static str {
+        match self {
+            UpgradeSection::Traps => "Traps",
+            UpgradeSection::Loot => "Loot",
+            UpgradeSection::Buffs => "Buffs",
+            UpgradeSection::Shrines => "Shrines",
+        }
+    }
+
+    /// Which upgrade-template types this section lists.
+    fn matches(self, upgrade_type: &str) -> bool {
+        match self {
+            UpgradeSection::Traps => upgrade_type == "trap",
+            UpgradeSection::Loot => upgrade_type == "treasure",
+            UpgradeSection::Buffs => upgrade_type == "reinforcement" || upgrade_type == "evolution",
+            UpgradeSection::Shrines => upgrade_type == "attunement",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum DrawerAction {
     None,
@@ -38,6 +68,7 @@ pub fn draw_side_drawer(
     rect: Rect,
     active_tab: &mut DrawerTab,
     open: &mut bool,
+    upgrade_section: &mut UpgradeSection,
 ) -> DrawerAction {
     let mut action = DrawerAction::None;
     draw_panel(rect, None, ARCANE);
@@ -70,7 +101,7 @@ pub fn draw_side_drawer(
             }
         }
         DrawerTab::Traps => {
-            if let Some(upgrade) = draw_traps_tab(state, content) {
+            if let Some(upgrade) = draw_traps_tab(state, content, upgrade_section) {
                 action = DrawerAction::SelectUpgrade(upgrade);
             }
         }
@@ -251,15 +282,54 @@ fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> {
     selected
 }
 
-fn draw_traps_tab(state: &GameState, rect: Rect) -> Option<String> {
+fn draw_traps_tab(
+    state: &GameState,
+    rect: Rect,
+    section: &mut UpgradeSection,
+) -> Option<String> {
     let mut selected = None;
     draw_section_title(rect, "TRAPS & LOOT", "Outfit a room.");
 
-    let upgrades = crate::data::upgrades::get_all_upgrades();
-    let available_h = (rect.h - 138.0).max(0.0);
-    let row_h = (available_h / upgrades.len().max(1) as f32).clamp(46.0, 64.0);
+    // Section chips: each upgrade family gets its own list.
+    let chip_h = 26.0;
+    let chip_gap = 6.0;
+    let chip_w = (rect.w - chip_gap) / 2.0;
+    for (idx, option) in [
+        UpgradeSection::Traps,
+        UpgradeSection::Loot,
+        UpgradeSection::Buffs,
+        UpgradeSection::Shrines,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let col = (idx % 2) as f32;
+        let row = (idx / 2) as f32;
+        let chip = Rect::new(
+            rect.x + col * (chip_w + chip_gap),
+            rect.y + 56.0 + row * (chip_h + chip_gap),
+            chip_w,
+            chip_h,
+        );
+        let tone = if *section == option {
+            ButtonTone::Primary
+        } else {
+            ButtonTone::Ghost
+        };
+        if draw_command_button(chip, option.label(), tone, true) {
+            *section = option;
+        }
+    }
+
+    let upgrades: Vec<_> = crate::data::upgrades::get_all_upgrades()
+        .into_iter()
+        .filter(|t| section.matches(&t.upgrade_type))
+        .collect();
+    let list_top = rect.y + 56.0 + (chip_h + chip_gap) * 2.0 + 8.0;
+    let available_h = (rect.y + rect.h - 68.0 - list_top).max(0.0);
+    let row_h = (available_h / upgrades.len().max(1) as f32 - 6.0).clamp(46.0, 64.0);
     let row_gap = 6.0;
-    let mut y = rect.y + 72.0;
+    let mut y = list_top;
     for template in &upgrades {
         if y + row_h > rect.y + rect.h - 68.0 {
             break;

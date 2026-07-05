@@ -70,6 +70,7 @@ async fn main() {
         let mut cap_state = create_new_game();
         seed_capture_scene(&mut cap_state, &config.scene);
         let mut drawer_tab = DrawerTab::Monsters;
+        let mut upgrade_section = UpgradeSection::Traps;
         let mut drawer_open = true;
         let mut upgrade_scroll = 0.0;
         let mut species_scroll = 0.0;
@@ -80,6 +81,7 @@ async fn main() {
             render_playing_frame(
                 &mut cap_state,
                 &mut drawer_tab,
+                &mut upgrade_section,
                 &mut drawer_open,
                 &mut upgrade_scroll,
                 &mut species_scroll,
@@ -103,6 +105,7 @@ async fn main() {
     let mut last_adventure_tick = get_time();
     let mut last_save = get_time();
     let mut drawer_tab = DrawerTab::Monsters;
+    let mut upgrade_section = UpgradeSection::Traps;
     let mut drawer_open = true;
     let mut upgrade_scroll = 0.0;
     let mut species_scroll = 0.0;
@@ -186,6 +189,7 @@ async fn main() {
         render_playing_frame(
             &mut state,
             &mut drawer_tab,
+            &mut upgrade_section,
             &mut drawer_open,
             &mut upgrade_scroll,
             &mut species_scroll,
@@ -207,6 +211,7 @@ async fn main() {
 fn render_playing_frame(
     state: &mut GameState,
     drawer_tab: &mut DrawerTab,
+    upgrade_section: &mut UpgradeSection,
     drawer_open: &mut bool,
     upgrade_scroll: &mut f32,
     species_scroll: &mut f32,
@@ -306,7 +311,7 @@ fn render_playing_frame(
         DRAWER_COLLAPSED_WIDTH
     };
     let drawer_rect = Rect::new(OUTER_MARGIN, body_top, drawer_w, body_h);
-    match draw_side_drawer(state, drawer_rect, drawer_tab, drawer_open) {
+    match draw_side_drawer(state, drawer_rect, drawer_tab, drawer_open, upgrade_section) {
         DrawerAction::SelectMonster(monster) => {
             if state.selected_monster.as_ref() == Some(&monster) {
                 state.selected_monster = None;
