@@ -374,16 +374,19 @@ fn render_playing_frame(
     match draw_dungeon_board(state, dungeon_rect) {
         DungeonAction::RoomSelected(floor_num, room_pos) => {
             if let Some(ref monster_name) = state.selected_monster.clone() {
+                // Selection stays armed on success so more can be placed with
+                // further clicks; it clears on failure (no mana, bad room) or
+                // by re-clicking the drawer entry.
                 if let Err(e) = simulation::place_monster(state, floor_num, room_pos, monster_name) {
                     state.add_log(game_state::LogEntry::system(e));
+                    state.selected_monster = None;
                 }
-                state.selected_monster = None;
             } else if let Some(ref upgrade_name) = state.selected_upgrade.clone() {
                 if let Err(e) = simulation::apply_upgrade(state, floor_num, room_pos, upgrade_name)
                 {
                     state.add_log(game_state::LogEntry::system(e));
+                    state.selected_upgrade = None;
                 }
-                state.selected_upgrade = None;
             } else if state.selected_room == Some((floor_num, room_pos)) {
                 state.selected_room = None;
                 *upgrade_scroll = 0.0;

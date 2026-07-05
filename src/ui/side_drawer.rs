@@ -270,7 +270,7 @@ fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> {
             TEXT,
         );
         draw_text_fit(
-            "Select a combat room.",
+            "Click rooms to place; reclick entry to stop.",
             hint.x + 10.0,
             hint.y + 39.0,
             hint.w - 20.0,
@@ -357,7 +357,7 @@ fn draw_traps_tab(
             TEXT,
         );
         draw_text_fit(
-            "Select a combat room.",
+            "Click rooms to place; reclick entry to stop.",
             hint.x + 10.0,
             hint.y + 39.0,
             hint.w - 20.0,
