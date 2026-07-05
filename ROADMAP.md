@@ -191,15 +191,36 @@ viable strategy.
 
 ## Phase 4 — Adventurer depth (the opposing content)
 
+### 4a. Adventurer roster — persistent, viewable heroes (REQUESTED — do first)
+
+Adventurers stop being disposable: the dungeon keeps a ledger of everyone
+who has ever walked in, and the player can browse it.
+
+- [ ] **Persistent registry**: `GameState.known_adventurers: Vec<HeroRecord>`
+      keyed by stable id. Recorded per hero: name, class, level, XP,
+      **delves** (times entered the dungeon), kills scored, gold escaped
+      with, status (Alive / Inside / Dead on floor N, day D). Persisted in
+      the save.
+- [ ] **Returning survivors**: when a party spawns, some slots draw from
+      living registry heroes instead of rolling new names. Survivors gain
+      XP between raids and level up — a hero you let escape twice comes
+      back level 4 with better equipment (loadout already scales by level).
+- [ ] **Roster UI**: a HEROES view (drawer tab or HUD button) listing known
+      adventurers — name, class, level, delves, status — sortable, with a
+      detail card (kill count, gold stolen, cause of death). Doubles as a
+      trophy wall: dead heroes stay in the ledger as a graveyard.
+- [ ] Hooks for later: grudge flag (survivor of a near-wipe returns
+      stronger and targets the room that hurt them), rivalries, named-hero
+      elite raids at high threat tiers (feeds Phase 5), bounties.
+
+### 4b. Variety and behavior
+
 - [ ] Adventurer races: Human (balanced), Elf (high attack, low HP, trap
       detection), Dwarf (high defense, trap-immune-ish), Halfling (steals extra
       gold, retreats early). Race + class grid multiplies variety from 4 to 16
       loadouts using the equipment/stat plumbing that already exists.
 - [ ] New classes: Ranger (targets back-line monster), Paladin (element:
       Spirit, resists Death/Blood), Alchemist (throws elemental flasks).
-- [ ] Named recurring heroes: survivors persist, level up between raids, and
-      come back with grudges — dungeon-keeper genre's best trick, and
-      `Adventurer { experience, level }` fields are already there.
 - [ ] Party AI: greed vs caution (loot targets vs retreat thresholds per
       race/class), so watching a raid tells a story.
 
