@@ -117,6 +117,53 @@ pub fn place_monster(
     Ok(())
 }
 
+/// Dismiss a placed monster, refunding half its summon mana.
+pub fn remove_monster(
+    state: &mut GameState,
+    floor_num: i32,
+    room_pos: usize,
+    monster_id: u64,
+) -> Result<(), String> {
+    if !state.adventurer_parties.is_empty() {
+        return Err("Cannot dismiss monsters while adventurers are in the dungeon!".into());
+    }
+
+    let floor = state
+        .floors
+        .iter_mut()
+        .find(|f| f.number == floor_num)
+        .ok_or("Floor not found")?;
+    let room = floor
+        .rooms
+        .iter_mut()
+        .find(|r| r.position == room_pos)
+        .ok_or("Room not found")?;
+
+    let idx = room
+        .monsters
+        .iter()
+        .position(|m| m.id == monster_id)
+        .ok_or("Monster not found in this room")?;
+    let monster = room.monsters.remove(idx);
+
+    // Refund half of what the summon cost at this floor/room (souls are spent
+    // essence and stay spent).
+    let refund = get_monster_template(&monster.type_name)
+        .map(|template| {
+            let boss_surcharge = room.room_type == RoomType::Boss && !template.boss_only;
+            get_monster_mana_cost(template.base_cost, floor_num, boss_surcharge) / 2
+        })
+        .unwrap_or(0);
+    state.mana = (state.mana + refund).min(state.max_mana);
+
+    state.add_log(LogEntry::building(format!(
+        "Dismissed {} from floor {}, room {}. Refunded {} mana.",
+        monster.type_name, floor_num, room_pos, refund
+    )));
+
+    Ok(())
+}
+
 /// Respawn all dead monsters (only when no adventurers present)
 pub fn respawn_monsters(state: &mut GameState) {
     if !state.adventurer_parties.is_empty() {

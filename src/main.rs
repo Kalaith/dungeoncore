@@ -425,6 +425,13 @@ fn render_playing_frame(
                     }
                 }
             }
+            UpgradeAction::DismissMonster(monster_id) => {
+                if let Some((floor, pos)) = state.selected_room {
+                    if let Err(e) = simulation::remove_monster(state, floor, pos, monster_id) {
+                        state.add_log(game_state::LogEntry::system(e));
+                    }
+                }
+            }
             UpgradeAction::Close => {
                 state.selected_room = None;
                 state.selected_monster = None;

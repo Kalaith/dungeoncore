@@ -14,6 +14,7 @@ pub enum UpgradeAction {
     None,
     Apply(String),
     Remove(crate::game_state::RoomUpgradeType),
+    DismissMonster(u64),
     Close,
 }
 
@@ -49,7 +50,7 @@ pub fn draw_upgrade_panel(
     }
 
     if let Some(room) = selected_room(state) {
-        y_cursor = draw_selected_room(state, room, inner, y_cursor + 10.0);
+        y_cursor = draw_selected_room(state, room, inner, y_cursor + 10.0, &mut action);
         if room.room_type == RoomType::Normal || room.room_type == RoomType::Boss {
             draw_upgrade_choices(
                 state,
@@ -167,7 +168,13 @@ fn draw_selected_monster(state: &GameState, monster_name: &str, bounds: Rect, y:
     y + rect.h
 }
 
-fn draw_selected_room(state: &GameState, room: &Room, bounds: Rect, y: f32) -> f32 {
+fn draw_selected_room(
+    state: &GameState,
+    room: &Room,
+    bounds: Rect,
+    y: f32,
+    action: &mut UpgradeAction,
+) -> f32 {
     let rect = Rect::new(bounds.x, y, bounds.w, 238.0);
     let tone = room_color(room);
     draw_card(
@@ -253,11 +260,13 @@ fn draw_selected_room(state: &GameState, room: &Room, bounds: Rect, y: f32) -> f
         rect.w - 24.0,
         "DEFENDER PROGRESSION",
     );
-    draw_monster_progress_rows(
+    if let Some(monster_id) = draw_monster_progress_rows(
         state,
         room,
         Rect::new(rect.x + 12.0, rect.y + 212.0, rect.w - 24.0, 24.0),
-    );
+    ) {
+        *action = UpgradeAction::DismissMonster(monster_id);
+    }
 
     y + rect.h
 }
@@ -373,7 +382,7 @@ fn draw_upgrade_catalog(
     }
 }
 
-fn draw_monster_progress_rows(state: &GameState, room: &Room, rect: Rect) {
+fn draw_monster_progress_rows(state: &GameState, room: &Room, rect: Rect) -> Option<u64> {
     if room.monsters.is_empty() {
         draw_text_fit(
             "No defenders placed.",
@@ -383,9 +392,11 @@ fn draw_monster_progress_rows(state: &GameState, room: &Room, rect: Rect) {
             11.0,
             TEXT_DIM,
         );
-        return;
+        return None;
     }
 
+    let mut dismissed = None;
+    let can_dismiss = state.adventurer_parties.is_empty();
     let row_w = rect.w / room.monsters.len().min(3) as f32;
     for (idx, monster) in room.monsters.iter().take(3).enumerate() {
         let row = Rect::new(rect.x + idx as f32 * row_w, rect.y, row_w - 5.0, rect.h);
@@ -394,12 +405,32 @@ fn draw_monster_progress_rows(state: &GameState, room: &Room, rect: Rect) {
             &monster.type_name,
             row.x,
             row.y + 10.0,
-            row.w,
+            row.w - 18.0,
             10.0,
             if monster.alive { TEXT } else { TEXT_DIM },
         );
-        draw_text_fit(&status, row.x, row.y + 23.0, row.w, 9.0, color);
+        draw_text_fit(&status, row.x, row.y + 23.0, row.w - 18.0, 9.0, color);
+
+        // Dismiss control: refunds half the summon cost.
+        let x_rect = Rect::new(row.x + row.w - 16.0, row.y + 4.0, 16.0, 16.0);
+        let hovered = can_dismiss && x_rect.contains(vec2(mouse_position().0, mouse_position().1));
+        draw_centered_text(
+            "x",
+            x_rect,
+            12.0,
+            if hovered {
+                DANGER
+            } else if can_dismiss {
+                TEXT_MUTED
+            } else {
+                TEXT_DIM
+            },
+        );
+        if can_dismiss && was_clicked_rect(x_rect) {
+            dismissed = Some(monster.id);
+        }
     }
+    dismissed
 }
 
 fn draw_upgrade_row(state: &GameState, upgrade: &UpgradeTemplate, rect: Rect) -> bool {
