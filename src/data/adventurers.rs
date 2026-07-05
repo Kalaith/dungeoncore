@@ -7,6 +7,9 @@ pub struct AdventurerClass {
     pub hp: i32,
     pub attack: i32,
     pub defense: i32,
+    /// Damage element for combat matchups; empty means neutral.
+    #[serde(default)]
+    pub element: String,
 }
 
 /// Dialogue quotes

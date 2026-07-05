@@ -82,24 +82,30 @@ mana regen or add mana-on-damage.
 **Exit criteria:** tier/stat differences visibly change fight outcomes; traits
 fire and show in the log; asset JSON is test-covered.
 
-## Phase 1 — Elements as a real system
+## Phase 1 — Elements as a real system (DONE 2026-07-05)
 
-Elements already exist as data (`Fire, Water, Earth, Air, Nature, Spirit,
-Body, Arcane, Bone, Blood, Death…`). Consolidate to ~8 and give them rules.
+- [x] `assets/elements.json`: 9 elements — Fire/Water/Nature/Earth/Air in a
+      balanced 2-strong/2-weak pentagram, Spirit>Death>Arcane triangle, Body
+      neutral. One-directional `strong_against` lists (weakness derived as the
+      inverse, so a matchup can never be strong both ways).
+      `element_multiplier(atk, def)` in `src/data/elements.rs` (1.5×/0.67×/1×).
+- [x] Consolidated monster elements (Bone, Blood → Death); adventurer classes
+      got damage elements (Warrior=Body, Rogue=Air, Mage=Arcane, Cleric=Spirit
+      — Cleric now counters undead, undead counter Mages).
+- [x] Room element attunement: new `attunement` upgrade type (Fire Shrine,
+      Spring Altar, Standing Stones, Ossuary) — matching-element monsters in
+      the room get ×1.3 attack and defense.
+- [x] Feedback: "Strong hit!" / "Resisted" floating effects when the party has
+      an elemental edge (or lacks one); party damage numbers get "!" when
+      monsters hit a weak class. Element name shows on monster drawer rows.
+- [x] Matrix integrity tests: no self-strength, no mutual strength, all
+      references valid.
 
-- [ ] `assets/elements.json`: element list + effectiveness matrix (1.5× strong,
-      0.67× weak, 1.0 neutral). Loader + `element_multiplier(atk, def)` in data
-      layer.
-- [ ] Monsters keep their element; give each adventurer class a damage element
-      (Warrior=Body, Mage=Arcane, Cleric=Spirit, Rogue=Air) and later per-hero
-      variance.
-- [ ] Room element attunement: a new upgrade type that tints a room (Fire
-      shrine etc.) boosting matching monsters — makes placement a puzzle.
-- [ ] UI: element badge on monster chips, effectiveness feedback in combat log
-      and floating effects ("2× !").
+Deferred to later phases: per-hero element variance, elemental trap combos
+(Phase 3).
 
-**Exit criteria:** placing a Water monster against a Fire-heavy party is a
-visibly better choice.
+**Exit criteria met:** matchups shift damage 1.5×/0.67× both directions, and
+attuned rooms make same-element placement strictly better.
 
 ## Phase 2 — Monster & species expansion
 

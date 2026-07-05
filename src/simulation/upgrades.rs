@@ -163,5 +163,6 @@ pub fn upgrade_type_icon(upgrade_type: &RoomUpgradeType) -> &'static str {
         RoomUpgradeType::Treasure => "💰",
         RoomUpgradeType::Reinforcement => "🛡️",
         RoomUpgradeType::Evolution => "🧬",
+        RoomUpgradeType::Attunement => "🔮",
     }
 }

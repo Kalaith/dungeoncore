@@ -1,0 +1,49 @@
+{
+    "elements": [
+        {
+            "id": "Fire",
+            "emoji": "🔥",
+            "strong_against": ["Nature", "Air"]
+        },
+        {
+            "id": "Water",
+            "emoji": "💧",
+            "strong_against": ["Fire", "Earth"]
+        },
+        {
+            "id": "Nature",
+            "emoji": "🌿",
+            "strong_against": ["Water", "Earth"]
+        },
+        {
+            "id": "Earth",
+            "emoji": "⛰️",
+            "strong_against": ["Fire", "Air"]
+        },
+        {
+            "id": "Air",
+            "emoji": "🌪️",
+            "strong_against": ["Water", "Nature"]
+        },
+        {
+            "id": "Spirit",
+            "emoji": "✨",
+            "strong_against": ["Death"]
+        },
+        {
+            "id": "Death",
+            "emoji": "💀",
+            "strong_against": ["Arcane"]
+        },
+        {
+            "id": "Arcane",
+            "emoji": "🔮",
+            "strong_against": ["Spirit"]
+        },
+        {
+            "id": "Body",
+            "emoji": "💪",
+            "strong_against": []
+        }
+    ]
+}

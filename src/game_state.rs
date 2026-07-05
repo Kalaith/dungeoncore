@@ -24,6 +24,7 @@ pub enum RoomUpgradeType {
     Treasure,
     Reinforcement,
     Evolution,
+    Attunement,
 }
 
 /// Room upgrade applied to a room
@@ -33,6 +34,9 @@ pub struct RoomUpgrade {
     pub name: String,
     pub effect: String,
     pub multiplier: f32,
+    /// Element this upgrade is keyed to (Attunement only)
+    #[serde(default)]
+    pub element: Option<String>,
 }
 
 /// Active trait instance on a monster
@@ -115,6 +119,17 @@ impl Room {
         match &self.upgrade {
             Some(u) if u.upgrade_type == RoomUpgradeType::Evolution => u.multiplier,
             _ => 1.0,
+        }
+    }
+
+    /// Element attunement of this room: (element, stat multiplier for
+    /// monsters of that element), if an attunement upgrade is installed.
+    pub fn attunement(&self) -> Option<(&str, f32)> {
+        match &self.upgrade {
+            Some(u) if u.upgrade_type == RoomUpgradeType::Attunement => {
+                u.element.as_deref().map(|e| (e, u.multiplier))
+            }
+            _ => None,
         }
     }
 }

@@ -1,5 +1,6 @@
 pub mod adventurers;
 pub mod constants;
+pub mod elements;
 pub mod equipment;
 pub mod evolutions;
 pub mod monsters;
@@ -115,6 +116,96 @@ mod tests {
                 "starting monster '{}' has no template",
                 starter
             );
+        }
+    }
+
+    #[test]
+    fn elements_json_parses() {
+        assert!(!elements::get_all_elements().is_empty());
+    }
+
+    #[test]
+    fn element_matrix_is_consistent() {
+        let all = elements::get_all_elements();
+        let ids: Vec<&str> = all.iter().map(|e| e.id.as_str()).collect();
+        for element in &all {
+            for target in &element.strong_against {
+                assert!(
+                    ids.contains(&target.as_str()),
+                    "element '{}' strong against unknown element '{}'",
+                    element.id,
+                    target
+                );
+                assert_ne!(
+                    &element.id, target,
+                    "element '{}' cannot be strong against itself",
+                    element.id
+                );
+                let other = all.iter().find(|e| &e.id == target).unwrap();
+                assert!(
+                    !other.strong_against.contains(&element.id),
+                    "elements '{}' and '{}' are strong against each other",
+                    element.id,
+                    target
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn element_multiplier_sanity() {
+        assert_eq!(elements::element_multiplier("Fire", "Nature"), elements::STRONG_MULT);
+        assert_eq!(elements::element_multiplier("Nature", "Fire"), elements::WEAK_MULT);
+        assert_eq!(elements::element_multiplier("Body", "Fire"), 1.0);
+        assert_eq!(elements::element_multiplier("", "Fire"), 1.0);
+        assert_eq!(elements::element_multiplier("Nonsense", "Fire"), 1.0);
+    }
+
+    #[test]
+    fn monsters_and_classes_use_known_elements() {
+        for template in monsters::get_monster_templates() {
+            if let Some(element) = &template.element {
+                assert!(
+                    elements::get_element(element).is_some(),
+                    "monster '{}' has unknown element '{}'",
+                    template.name,
+                    element
+                );
+            }
+        }
+        for class in adventurers::get_adventurer_classes() {
+            assert!(
+                elements::get_element(&class.element).is_some(),
+                "class '{}' has unknown element '{}'",
+                class.name,
+                class.element
+            );
+        }
+    }
+
+    #[test]
+    fn upgrades_use_known_types_and_elements() {
+        const KNOWN_TYPES: [&str; 5] =
+            ["trap", "treasure", "reinforcement", "evolution", "attunement"];
+        for upgrade in upgrades::get_all_upgrades() {
+            assert!(
+                KNOWN_TYPES.contains(&upgrade.upgrade_type.as_str()),
+                "upgrade '{}' has unknown type '{}' (parse_upgrade_type would silently fall back to Trap)",
+                upgrade.name,
+                upgrade.upgrade_type
+            );
+            if upgrade.upgrade_type == "attunement" {
+                let element = upgrade
+                    .element
+                    .as_deref()
+                    .unwrap_or_else(|| panic!("attunement '{}' missing element", upgrade.name));
+                assert!(
+                    elements::get_element(element).is_some(),
+                    "attunement '{}' keyed to unknown element '{}'",
+                    upgrade.name,
+                    element
+                );
+            }
         }
     }
 

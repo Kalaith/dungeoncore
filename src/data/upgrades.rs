@@ -11,6 +11,9 @@ pub struct UpgradeTemplate {
     pub multiplier: f32,
     pub gold_cost: i32,
     pub souls_cost: i32,
+    /// Element this upgrade is keyed to (attunement only)
+    #[serde(default)]
+    pub element: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -48,6 +51,7 @@ pub fn parse_upgrade_type(type_str: &str) -> RoomUpgradeType {
         "treasure" => RoomUpgradeType::Treasure,
         "reinforcement" => RoomUpgradeType::Reinforcement,
         "evolution" => RoomUpgradeType::Evolution,
+        "attunement" => RoomUpgradeType::Attunement,
         _ => RoomUpgradeType::Trap, // Default fallback
     }
 }
@@ -60,6 +64,7 @@ impl UpgradeTemplate {
             name: self.name.clone(),
             effect: self.effect.clone(),
             multiplier: self.multiplier,
+            element: self.element.clone(),
         }
     }
 }

@@ -1,5 +1,6 @@
 use crate::data::adventurers::get_victory_quotes;
 use crate::data::constants::RETREAT_THRESHOLD;
+use crate::data::elements::element_multiplier;
 use crate::data::traits::get_trait;
 use crate::game_state::{EffectKind, GameState, LogEntry, Monster};
 
@@ -36,24 +37,42 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     // Phase 2: active abilities (e.g. Fire Breath on combat start)
     resolve_abilities(state, party_idx, floor_idx, room_idx, floor_num, room_pos);
 
+    // Room element attunement boosts monsters of the matching element.
+    let attunement: Option<(String, f32)> = state.floors[floor_idx].rooms[room_idx]
+        .attunement()
+        .map(|(element, mult)| (element.to_string(), mult));
+
     // Phase 3: adventurers strike the front monster
-    let adv_attacks: Vec<i32> = state.adventurer_parties[party_idx]
+    let adv_attacks: Vec<(i32, String)> = state.adventurer_parties[party_idx]
         .members
         .iter()
         .filter(|a| a.alive)
-        .map(|a| a.scaled_stats.attack)
+        .map(|a| (a.scaled_stats.attack, adventurer_element(&a.class_name)))
         .collect();
 
     let mut monster_kills: Vec<(String, bool)> = Vec::new();
+    let mut party_hit_strong = false;
+    let mut party_hit_weak = false;
     {
         let room = &mut state.floors[floor_idx].rooms[room_idx];
-        for attack in adv_attacks {
+        for (attack, adv_element) in &adv_attacks {
             let Some(monster) = room.monsters.iter_mut().find(|m| m.alive) else {
                 break;
             };
-            let effective_def = monster.scaled_stats.defense as f32 * reinforcement_mult;
+            let mon_element = monster_element(&monster.type_name);
+            let attune_mult = attunement_mult(&attunement, &mon_element);
+            let effective_def =
+                monster.scaled_stats.defense as f32 * reinforcement_mult * attune_mult;
             let taken_mult = monster_damage_taken_mult(monster);
-            let damage = ((attack as f32 - effective_def / 2.0).max(1.0) * taken_mult)
+            let elem_mult = element_multiplier(adv_element, &mon_element);
+            if elem_mult > 1.0 {
+                party_hit_strong = true;
+            } else if elem_mult < 1.0 {
+                party_hit_weak = true;
+            }
+            let damage = ((*attack as f32 - effective_def / 2.0).max(1.0)
+                * taken_mult
+                * elem_mult)
                 .round()
                 .max(1.0) as i32;
             monster.hp -= damage;
@@ -65,22 +84,36 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
         }
     }
 
+    if party_hit_strong {
+        state.push_effect(floor_num, room_pos, "Strong hit!", EffectKind::Ability);
+    } else if party_hit_weak {
+        state.push_effect(floor_num, room_pos, "Resisted", EffectKind::Ability);
+    }
+
     // Phase 4: surviving monsters strike back
-    let monster_strikes: Vec<i32> = {
+    let monster_strikes: Vec<(i32, String)> = {
         let room = &state.floors[floor_idx].rooms[room_idx];
         let alive_count = room.monsters.iter().filter(|m| m.alive).count();
         room.monsters
             .iter()
             .filter(|m| m.alive)
-            .map(|m| monster_attack_value(m, alive_count, reinforcement_mult))
+            .map(|m| {
+                let element = monster_element(&m.type_name);
+                let attune_mult = attunement_mult(&attunement, &element);
+                (
+                    monster_attack_value(m, alive_count, reinforcement_mult * attune_mult),
+                    element,
+                )
+            })
             .collect()
     };
 
     let mut adventurer_kills: Vec<(String, i32)> = Vec::new();
     let mut damage_to_party = 0;
+    let mut monster_hit_strong = false;
     {
         let party = &mut state.adventurer_parties[party_idx];
-        for attack in monster_strikes {
+        for (attack, mon_element) in monster_strikes {
             let alive_idxs: Vec<usize> = party
                 .members
                 .iter()
@@ -94,9 +127,15 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
             let victim_idx = alive_idxs
                 [macroquad_toolkit::rng::gen_range(0, alive_idxs.len())];
             let victim = &mut party.members[victim_idx];
-            let damage = (attack as f32 - victim.scaled_stats.defense as f32 / 2.0)
-                .max(1.0)
-                .round() as i32;
+            let elem_mult =
+                element_multiplier(&mon_element, &adventurer_element(&victim.class_name));
+            if elem_mult > 1.0 {
+                monster_hit_strong = true;
+            }
+            let damage = ((attack as f32 - victim.scaled_stats.defense as f32 / 2.0).max(1.0)
+                * elem_mult)
+                .round()
+                .max(1.0) as i32;
             victim.hp -= damage;
             damage_to_party += damage;
             if victim.hp <= 0 {
@@ -112,7 +151,11 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
         state.push_effect(
             floor_num,
             room_pos,
-            format!("-{}", damage_to_party),
+            format!(
+                "-{}{}",
+                damage_to_party,
+                if monster_hit_strong { "!" } else { "" }
+            ),
             EffectKind::Damage,
         );
     }
@@ -120,6 +163,28 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     reward_monster_kills(state, party_idx, floor_idx, room_idx, &monster_kills);
     reward_adventurer_kills(state, party_idx, floor_idx, room_idx, &adventurer_kills);
     check_retreat(state, party_idx);
+}
+
+/// Damage element of an adventurer, from their class. Empty = neutral.
+fn adventurer_element(class_name: &str) -> String {
+    crate::data::adventurers::get_adventurer_class(class_name)
+        .map(|c| c.element)
+        .unwrap_or_default()
+}
+
+/// Element of a monster, from its template. Empty = neutral.
+fn monster_element(type_name: &str) -> String {
+    crate::data::monsters::get_monster_template(type_name)
+        .and_then(|t| t.element)
+        .unwrap_or_default()
+}
+
+/// Stat multiplier a room attunement grants to a monster of `element`.
+fn attunement_mult(attunement: &Option<(String, f32)>, element: &str) -> f32 {
+    match attunement {
+        Some((attuned, mult)) if !element.is_empty() && attuned == element => *mult,
+        _ => 1.0,
+    }
 }
 
 /// Damage multiplier from a monster's defensive passive traits.

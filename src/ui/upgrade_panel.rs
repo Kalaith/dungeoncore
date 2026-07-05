@@ -442,6 +442,11 @@ fn upgrade_preview(upgrade: &UpgradeTemplate) -> String {
         "treasure" => format!("Gold drops x{:.2}", upgrade.multiplier),
         "reinforcement" => format!("Monster survival x{:.2}", upgrade.multiplier),
         "evolution" => format!("Monster XP x{:.2}", upgrade.multiplier),
+        "attunement" => format!(
+            "{} monsters x{:.2}",
+            upgrade.element.as_deref().unwrap_or("Attuned"),
+            upgrade.multiplier
+        ),
         _ => upgrade.effect.clone(),
     }
 }
@@ -462,6 +467,14 @@ fn room_upgrade_preview(upgrade: &crate::game_state::RoomUpgrade) -> String {
         }
         crate::game_state::RoomUpgradeType::Evolution => {
             format!("{} Monster XP x{:.2}", upgrade.effect, upgrade.multiplier)
+        }
+        crate::game_state::RoomUpgradeType::Attunement => {
+            format!(
+                "{} {} monsters x{:.2}",
+                upgrade.effect,
+                upgrade.element.as_deref().unwrap_or("Attuned"),
+                upgrade.multiplier
+            )
         }
     }
 }
@@ -632,6 +645,7 @@ fn upgrade_color(upgrade_type: &str) -> Color {
         "treasure" => TREASURE,
         "reinforcement" => EMERALD,
         "evolution" => SOUL,
+        "attunement" => ARCANE,
         _ => TEXT_MUTED,
     }
 }

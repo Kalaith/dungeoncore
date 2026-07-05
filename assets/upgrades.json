@@ -87,6 +87,42 @@
             "multiplier": 2.0,
             "gold_cost": 100,
             "souls_cost": 2
+        },
+        {
+            "type": "attunement",
+            "name": "Fire Shrine",
+            "effect": "Fire monsters in this room fight 30% harder",
+            "multiplier": 1.3,
+            "gold_cost": 60,
+            "souls_cost": 1,
+            "element": "Fire"
+        },
+        {
+            "type": "attunement",
+            "name": "Spring Altar",
+            "effect": "Water monsters in this room fight 30% harder",
+            "multiplier": 1.3,
+            "gold_cost": 60,
+            "souls_cost": 1,
+            "element": "Water"
+        },
+        {
+            "type": "attunement",
+            "name": "Standing Stones",
+            "effect": "Earth monsters in this room fight 30% harder",
+            "multiplier": 1.3,
+            "gold_cost": 60,
+            "souls_cost": 1,
+            "element": "Earth"
+        },
+        {
+            "type": "attunement",
+            "name": "Ossuary",
+            "effect": "Death monsters in this room fight 30% harder",
+            "multiplier": 1.3,
+            "gold_cost": 60,
+            "souls_cost": 1,
+            "element": "Death"
         }
     ]
 }

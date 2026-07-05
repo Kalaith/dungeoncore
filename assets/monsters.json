@@ -174,7 +174,7 @@
             "species": "Undead",
             "tier": 1,
             "emoji": "💀",
-            "element": "Bone",
+            "element": "Death",
             "description": "A pile of bones held together by dark magic.",
             "traits": [
                 "undead_resilience"
@@ -189,7 +189,7 @@
             "species": "Undead",
             "tier": 2,
             "emoji": "🧛",
-            "element": "Blood",
+            "element": "Death",
             "description": "A blood-sucking aristocrat of the night.",
             "traits": [
                 "regenerate_minor",
