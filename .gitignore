@@ -12,4 +12,3 @@ dist/
 *.history
 .vscode
 .gemini
-docs/verification/*.png

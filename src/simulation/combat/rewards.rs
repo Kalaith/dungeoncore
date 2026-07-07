@@ -1,0 +1,105 @@
+//! Loot, mana, soul, and monster-XP payouts for kills resolved during a tick.
+
+use crate::data::adventurers::get_victory_quotes;
+use crate::game_state::{EffectKind, GameState, LogEntry};
+
+/// Grant loot/souls for monsters slain this tick and narrate the kills.
+pub(super) fn reward_monster_kills(
+    state: &mut GameState,
+    party_idx: usize,
+    floor_idx: usize,
+    room_idx: usize,
+    kills: &[(String, bool)],
+) {
+    if kills.is_empty() {
+        return;
+    }
+
+    let floor_num = state.floors[floor_idx].number;
+    let room_pos = state.floors[floor_idx].rooms[room_idx].position;
+    let treasure_mult = state.floors[floor_idx].rooms[room_idx].treasure_multiplier();
+
+    for (monster_name, is_boss) in kills {
+        let base_gold = if *is_boss { 50 } else { 20 };
+        let gold_reward = (base_gold as f32 * treasure_mult) as i32;
+        let soul_reward = if *is_boss { 1 } else { 0 };
+
+        state.adventurer_parties[party_idx].loot += gold_reward;
+        if soul_reward > 0 {
+            state.souls += soul_reward;
+        }
+
+        state.add_log(LogEntry::combat(format!(
+            "{} defeated on floor {}, room {}! +{} gold{}",
+            monster_name,
+            floor_num,
+            room_pos,
+            gold_reward,
+            if soul_reward > 0 {
+                format!(", +{} soul", soul_reward)
+            } else {
+                String::new()
+            }
+        )));
+        state.push_effect(
+            floor_num,
+            room_pos,
+            format!("{} down", monster_name),
+            EffectKind::MonsterDown,
+        );
+    }
+
+    // Victory quote
+    let victory_quotes = get_victory_quotes();
+    if macroquad_toolkit::rng::chance(0.2) && !victory_quotes.is_empty() {
+        let quote = &victory_quotes[macroquad_toolkit::rng::gen_range(0, victory_quotes.len())];
+        if let Some(adv) = state.adventurer_parties[party_idx]
+            .members
+            .iter()
+            .find(|a| a.alive)
+        {
+            state.add_log(LogEntry::adventure(format!(
+                "{} says: \"{}\"",
+                adv.name, quote
+            )));
+        }
+    }
+}
+
+/// Grant mana/XP for adventurers slain this tick and narrate the deaths.
+pub(super) fn reward_adventurer_kills(
+    state: &mut GameState,
+    _party_idx: usize,
+    floor_idx: usize,
+    room_idx: usize,
+    kills: &[(String, i32)],
+) {
+    if kills.is_empty() {
+        return;
+    }
+
+    let floor_num = state.floors[floor_idx].number;
+
+    for (victim_name, victim_level) in kills {
+        let mana_gain = victim_level * 10;
+        state.mana = (state.mana + mana_gain).min(state.max_mana);
+        state.total_deaths += 1;
+
+        // Award XP to all surviving monsters in the room
+        let room = &mut state.floors[floor_idx].rooms[room_idx];
+        let room_pos = room.position;
+        let evolution_mult = room.evolution_multiplier();
+        let base_xp = victim_level * 5;
+        let xp_gain = (base_xp as f32 * evolution_mult) as i32;
+
+        for monster in room.monsters.iter_mut().filter(|m| m.alive) {
+            monster.experience += xp_gain;
+        }
+
+        state.add_log(LogEntry::combat(format!(
+            "{} has fallen on floor {}! +{} mana, +{} XP to monsters",
+            victim_name, floor_num, mana_gain, xp_gain
+        )));
+        state.push_effect(floor_num, room_pos, "Slain!", EffectKind::AdventurerDown);
+    }
+}
