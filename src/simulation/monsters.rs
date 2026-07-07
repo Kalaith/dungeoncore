@@ -291,8 +291,7 @@ pub fn process_evolution_unlocks(state: &mut GameState) {
     for floor in &state.floors {
         for room in &floor.rooms {
             for monster in &room.monsters {
-                for path in
-                    crate::data::evolutions::get_evolutions_for_monster(&monster.type_name)
+                for path in crate::data::evolutions::get_evolutions_for_monster(&monster.type_name)
                 {
                     let earned = monster.experience >= path.experience_required
                         && room.floor_number >= path.conditions.min_floor;

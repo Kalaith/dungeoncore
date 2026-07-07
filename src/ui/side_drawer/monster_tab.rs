@@ -19,8 +19,7 @@ pub(super) fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> 
     let templates: Vec<MonsterTemplate> = get_monster_templates()
         .into_iter()
         .filter(|t| {
-            state.unlocked_species.contains(&t.species)
-                && state.unlocked_monsters.contains(&t.name)
+            state.unlocked_species.contains(&t.species) && state.unlocked_monsters.contains(&t.name)
         })
         .collect();
     let available_h = (rect.h - 138.0).max(0.0);
@@ -111,7 +110,11 @@ fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect
             template.tier,
             get_species_display_name(&template.species),
             template.element.as_deref().unwrap_or("Neutral"),
-            if template.boss_only { " • Boss room" } else { "" },
+            if template.boss_only {
+                " • Boss room"
+            } else {
+                ""
+            },
             traits
         )
     } else {

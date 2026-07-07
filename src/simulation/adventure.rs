@@ -267,9 +267,7 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
 
     if next_room_pos > max_room_pos {
         // A siege party at the bottom assaults the core itself.
-        if state.adventurer_parties[party_idx].sieging
-            && current_floor >= target_floor
-        {
+        if state.adventurer_parties[party_idx].sieging && current_floor >= target_floor {
             let party_spent = super::endgame::assault_core(state, party_idx);
             // Repel only if the core survived; if it fell, the run is over.
             if party_spent && !state.game_over {

@@ -116,12 +116,24 @@ pub(super) fn draw_heroes_tab(state: &GameState, rect: Rect, scroll: &mut f32) {
                 hero.race, hero.class_name, hero.delves, hero.kills
             ),
         };
-        draw_text_fit(&detail, row.x + 10.0, row.y + 31.0, row.w - 20.0, 9.0, TEXT_MUTED);
+        draw_text_fit(
+            &detail,
+            row.x + 10.0,
+            row.y + 31.0,
+            row.w - 20.0,
+            9.0,
+            TEXT_MUTED,
+        );
     }
 
     if order.len() > visible {
         draw_text_fit_right(
-            &format!("{}-{} of {}", first + 1, (first + visible).min(order.len()), order.len()),
+            &format!(
+                "{}-{} of {}",
+                first + 1,
+                (first + visible).min(order.len()),
+                order.len()
+            ),
             rect.x + rect.w,
             rect.y + rect.h - 2.0,
             rect.w,

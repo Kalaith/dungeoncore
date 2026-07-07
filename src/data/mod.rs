@@ -154,8 +154,14 @@ mod tests {
 
     #[test]
     fn element_multiplier_sanity() {
-        assert_eq!(elements::element_multiplier("Fire", "Nature"), elements::STRONG_MULT);
-        assert_eq!(elements::element_multiplier("Nature", "Fire"), elements::WEAK_MULT);
+        assert_eq!(
+            elements::element_multiplier("Fire", "Nature"),
+            elements::STRONG_MULT
+        );
+        assert_eq!(
+            elements::element_multiplier("Nature", "Fire"),
+            elements::WEAK_MULT
+        );
         assert_eq!(elements::element_multiplier("Body", "Fire"), 1.0);
         assert_eq!(elements::element_multiplier("", "Fire"), 1.0);
         assert_eq!(elements::element_multiplier("Nonsense", "Fire"), 1.0);
@@ -186,11 +192,7 @@ mod tests {
     #[test]
     fn core_powers_are_soul_priced() {
         for power in crate::simulation::endgame::CORE_POWERS.iter() {
-            assert!(
-                power.cost > 0,
-                "core power '{}' must cost souls",
-                power.id
-            );
+            assert!(power.cost > 0, "core power '{}' must cost souls", power.id);
             assert!(!power.name.is_empty() && !power.description.is_empty());
         }
     }
@@ -214,8 +216,13 @@ mod tests {
 
     #[test]
     fn upgrades_use_known_types_and_elements() {
-        const KNOWN_TYPES: [&str; 5] =
-            ["trap", "treasure", "reinforcement", "evolution", "attunement"];
+        const KNOWN_TYPES: [&str; 5] = [
+            "trap",
+            "treasure",
+            "reinforcement",
+            "evolution",
+            "attunement",
+        ];
         for upgrade in upgrades::get_all_upgrades() {
             assert!(
                 KNOWN_TYPES.contains(&upgrade.upgrade_type.as_str()),

@@ -51,8 +51,14 @@ pub fn draw_upgrade_panel(
     }
 
     if let Some(room) = selected_room(state) {
-        y_cursor =
-            draw_selected_room(state, room, inner, y_cursor + 10.0, defender_scroll, &mut action);
+        y_cursor = draw_selected_room(
+            state,
+            room,
+            inner,
+            y_cursor + 10.0,
+            defender_scroll,
+            &mut action,
+        );
         if room.room_type == RoomType::Normal || room.room_type == RoomType::Boss {
             draw_upgrade_choices(
                 state,

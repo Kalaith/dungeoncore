@@ -118,7 +118,12 @@ pub(super) fn resolve_trap(
                 "{} drinks the party's magic: +{} mana.",
                 trap.name, gain
             )));
-            state.push_effect(floor_num, room_pos, format!("+{} mana", gain), EffectKind::Loot);
+            state.push_effect(
+                floor_num,
+                room_pos,
+                format!("+{} mana", gain),
+                EffectKind::Loot,
+            );
         }
         "GoldSteal" => {
             let party = &mut state.adventurer_parties[party_idx];
@@ -130,7 +135,12 @@ pub(super) fn resolve_trap(
                     "{} pockets {} gold from the party's haul.",
                     trap.name, steal
                 )));
-                state.push_effect(floor_num, room_pos, format!("+{}g", steal), EffectKind::Loot);
+                state.push_effect(
+                    floor_num,
+                    room_pos,
+                    format!("+{}g", steal),
+                    EffectKind::Loot,
+                );
             }
         }
         // "Damage" plus legacy traps from old saves (empty effect_kind,
@@ -145,10 +155,8 @@ pub(super) fn resolve_trap(
                 let party = &mut state.adventurer_parties[party_idx];
                 random_alive_idx(party).map(|idx| {
                     let victim = &mut party.members[idx];
-                    let elem_mult = element_multiplier(
-                        &trap_element,
-                        &adventurer_element(&victim.class_name),
-                    );
+                    let elem_mult =
+                        element_multiplier(&trap_element, &adventurer_element(&victim.class_name));
                     let damage = (base * attune_boost * elem_mult).round().max(1.0) as i32;
                     victim.hp -= damage;
                     if victim.hp <= 0 {

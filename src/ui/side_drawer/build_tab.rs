@@ -71,7 +71,14 @@ pub(super) fn draw_build_tab(state: &GameState, rect: Rect) -> BuildTabAction {
 
     // Permanent, soul-bought core powers below the build controls.
     let mut y = card.y + card.h + 70.0;
-    draw_text_fit(&format!("CORE POWERS · {} souls", state.souls), rect.x, y, rect.w, 10.0, SOUL);
+    draw_text_fit(
+        &format!("CORE POWERS · {} souls", state.souls),
+        rect.x,
+        y,
+        rect.w,
+        10.0,
+        SOUL,
+    );
     y += 14.0;
     for power in crate::simulation::endgame::CORE_POWERS.iter() {
         if y + 46.0 > rect.y + rect.h {
@@ -86,7 +93,14 @@ pub(super) fn draw_build_tab(state: &GameState, rect: Rect) -> BuildTabAction {
             Color::new(accent.r, accent.g, accent.b, 0.06),
             Color::new(accent.r, accent.g, accent.b, 0.24),
         );
-        draw_text_fit(power.name, row.x + 10.0, row.y + 16.0, row.w - 60.0, 12.0, TEXT);
+        draw_text_fit(
+            power.name,
+            row.x + 10.0,
+            row.y + 16.0,
+            row.w - 60.0,
+            12.0,
+            TEXT,
+        );
         draw_text_fit(
             power.description,
             row.x + 10.0,
@@ -103,7 +117,12 @@ pub(super) fn draw_build_tab(state: &GameState, rect: Rect) -> BuildTabAction {
             );
         } else {
             let btn = Rect::new(row.x + row.w - 54.0, row.y + 8.0, 48.0, 28.0);
-            if draw_command_button(btn, &format!("{}s", power.cost), ButtonTone::Arcane, affordable) {
+            if draw_command_button(
+                btn,
+                &format!("{}s", power.cost),
+                ButtonTone::Arcane,
+                affordable,
+            ) {
                 return BuildTabAction::BuyPower(power.id.to_string());
             }
         }

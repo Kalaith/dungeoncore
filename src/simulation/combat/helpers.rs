@@ -6,8 +6,7 @@ use crate::game_state::{ActiveTrait, AdventurerParty, Monster};
 /// Whether a monster has a passive trait with the given effect type.
 pub(super) fn has_passive(monster: &Monster, effect_type: &str) -> bool {
     monster.active_traits.iter().any(|t| {
-        get_trait(&t.id)
-            .is_some_and(|d| d.trait_type == "Passive" && d.effect_type == effect_type)
+        get_trait(&t.id).is_some_and(|d| d.trait_type == "Passive" && d.effect_type == effect_type)
     })
 }
 

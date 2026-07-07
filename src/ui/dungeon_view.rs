@@ -251,7 +251,8 @@ fn current_objective(state: &GameState) -> String {
             if !has_defender {
                 "Build a room and place a defender, then open the dungeon up top.".to_string()
             } else {
-                "Dungeon is closed. Open it (top bar) when you're ready for adventurers.".to_string()
+                "Dungeon is closed. Open it (top bar) when you're ready for adventurers."
+                    .to_string()
             }
         }
         DungeonStatus::Closing => "Closing... adventurers are finishing their run.".to_string(),

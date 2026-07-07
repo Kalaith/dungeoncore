@@ -109,7 +109,10 @@ pub fn advance(state: &mut GameState) {
         return;
     }
     if step_complete(state, idx) {
-        state.add_log(LogEntry::building(format!("Tutorial: {} \u{2713}", STEPS[idx].title)));
+        state.add_log(LogEntry::building(format!(
+            "Tutorial: {} \u{2713}",
+            STEPS[idx].title
+        )));
         state.tutorial_step += 1;
         if state.tutorial_step as usize >= STEPS.len() {
             state.tutorial_active = false;

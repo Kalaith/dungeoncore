@@ -342,7 +342,14 @@ fn render_playing_frame(
         DRAWER_COLLAPSED_WIDTH
     };
     let drawer_rect = Rect::new(OUTER_MARGIN, body_top, drawer_w, body_h);
-    match draw_side_drawer(state, drawer_rect, drawer_tab, drawer_open, upgrade_section, heroes_scroll) {
+    match draw_side_drawer(
+        state,
+        drawer_rect,
+        drawer_tab,
+        drawer_open,
+        upgrade_section,
+        heroes_scroll,
+    ) {
         DrawerAction::SelectMonster(monster) => {
             if state.selected_monster.as_ref() == Some(&monster) {
                 state.selected_monster = None;
@@ -408,7 +415,8 @@ fn render_playing_frame(
                 // Selection stays armed on success so more can be placed with
                 // further clicks; it clears on failure (no mana, bad room) or
                 // by re-clicking the drawer entry.
-                if let Err(e) = simulation::place_monster(state, floor_num, room_pos, monster_name) {
+                if let Err(e) = simulation::place_monster(state, floor_num, room_pos, monster_name)
+                {
                     state.add_log(game_state::LogEntry::system(e));
                     state.selected_monster = None;
                 }
@@ -642,8 +650,17 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
 
             // Seed the hero ledger so the HEROES tab has content to show.
             use game_state::{HeroRecord, HeroStatus};
-            let seed_hero = |id, name: &str, class: &str, race: &str, level, delves, kills,
-                             gold, status, df, dd| HeroRecord {
+            let seed_hero = |id,
+                             name: &str,
+                             class: &str,
+                             race: &str,
+                             level,
+                             delves,
+                             kills,
+                             gold,
+                             status,
+                             df,
+                             dd| HeroRecord {
                 id,
                 name: name.to_string(),
                 class_name: class.to_string(),
@@ -658,14 +675,76 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
                 death_day: dd,
             };
             state.known_adventurers = vec![
-                seed_hero(100, "Aldric", "Warrior", "Human", 2, 1, 0, 0, HeroStatus::Inside, 0, 0),
-                seed_hero(101, "Bryn", "Warrior", "Dwarf", 2, 1, 0, 0, HeroStatus::Inside, 0, 0),
-                seed_hero(200, "Sable", "Rogue", "Halfling", 4, 5, 12, 180, HeroStatus::Alive, 0, 0),
-                seed_hero(201, "Wren", "Ranger", "Elf", 3, 3, 6, 90, HeroStatus::Alive, 0, 0),
-                seed_hero(300, "Mordred", "Mage", "Human", 2, 2, 3, 40, HeroStatus::Dead, 2, 3),
+                seed_hero(
+                    100,
+                    "Aldric",
+                    "Warrior",
+                    "Human",
+                    2,
+                    1,
+                    0,
+                    0,
+                    HeroStatus::Inside,
+                    0,
+                    0,
+                ),
+                seed_hero(
+                    101,
+                    "Bryn",
+                    "Warrior",
+                    "Dwarf",
+                    2,
+                    1,
+                    0,
+                    0,
+                    HeroStatus::Inside,
+                    0,
+                    0,
+                ),
+                seed_hero(
+                    200,
+                    "Sable",
+                    "Rogue",
+                    "Halfling",
+                    4,
+                    5,
+                    12,
+                    180,
+                    HeroStatus::Alive,
+                    0,
+                    0,
+                ),
+                seed_hero(
+                    201,
+                    "Wren",
+                    "Ranger",
+                    "Elf",
+                    3,
+                    3,
+                    6,
+                    90,
+                    HeroStatus::Alive,
+                    0,
+                    0,
+                ),
+                seed_hero(
+                    300,
+                    "Mordred",
+                    "Mage",
+                    "Human",
+                    2,
+                    2,
+                    3,
+                    40,
+                    HeroStatus::Dead,
+                    2,
+                    3,
+                ),
             ];
 
-            state.add_log(LogEntry::adventure("New adventurer party enters! (3 members)"));
+            state.add_log(LogEntry::adventure(
+                "New adventurer party enters! (3 members)",
+            ));
             state.add_log(LogEntry::combat(
                 "Goblin uses Ambush! Dealt 12 damage to 3 adventurers.",
             ));

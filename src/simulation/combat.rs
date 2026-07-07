@@ -76,7 +76,13 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
             .members
             .iter()
             .filter(|a| a.alive)
-            .map(|a| (a.id, a.scaled_stats.attack, adventurer_element(&a.class_name)))
+            .map(|a| {
+                (
+                    a.id,
+                    a.scaled_stats.attack,
+                    adventurer_element(&a.class_name),
+                )
+            })
             .collect()
     };
 
@@ -104,9 +110,7 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
             } else if elem_mult < 1.0 {
                 party_hit_weak = true;
             }
-            let damage = ((*attack as f32 - effective_def / 2.0).max(1.0)
-                * taken_mult
-                * elem_mult)
+            let damage = ((*attack as f32 - effective_def / 2.0).max(1.0) * taken_mult * elem_mult)
                 .round()
                 .max(1.0) as i32;
             monster.hp -= damage;
@@ -197,8 +201,7 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
             if alive_idxs.is_empty() {
                 break;
             }
-            let victim_idx = alive_idxs
-                [macroquad_toolkit::rng::gen_range(0, alive_idxs.len())];
+            let victim_idx = alive_idxs[macroquad_toolkit::rng::gen_range(0, alive_idxs.len())];
             let victim = &mut party.members[victim_idx];
             let elem_mult =
                 element_multiplier(&strike.element, &adventurer_element(&victim.class_name));
