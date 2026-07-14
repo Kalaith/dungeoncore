@@ -1,7 +1,7 @@
 //! Loot, mana, soul, and monster-XP payouts for kills resolved during a tick.
 
 use crate::data::adventurers::get_victory_quotes;
-use crate::game_state::{EffectKind, GameState, LogEntry};
+use crate::game_state::{EffectAnchor, EffectKind, GameState, LogEntry};
 
 /// Grant loot/souls for monsters slain this tick and narrate the kills.
 pub(super) fn reward_monster_kills(
@@ -44,11 +44,12 @@ pub(super) fn reward_monster_kills(
                 String::new()
             }
         )));
-        state.push_effect(
+        state.push_effect_at(
             floor_num,
             room_pos,
             format!("{} down", monster_name),
             EffectKind::MonsterDown,
+            EffectAnchor::Defenders,
         );
     }
 
@@ -104,6 +105,12 @@ pub(super) fn reward_adventurer_kills(
             "{} has fallen on floor {}! +{} mana, +{} XP to monsters",
             victim_name, floor_num, mana_gain, xp_gain
         )));
-        state.push_effect(floor_num, room_pos, "Slain!", EffectKind::AdventurerDown);
+        state.push_effect_at(
+            floor_num,
+            room_pos,
+            "Slain!",
+            EffectKind::AdventurerDown,
+            EffectAnchor::Invaders,
+        );
     }
 }

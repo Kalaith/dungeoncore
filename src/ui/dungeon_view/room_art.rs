@@ -4,7 +4,7 @@
 use macroquad::prelude::*;
 use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
 
-use crate::game_state::{Adventurer, EffectKind, GameState, Monster, Room, RoomType};
+use crate::game_state::{Adventurer, EffectAnchor, EffectKind, GameState, Monster, Room, RoomType};
 use crate::ui::theme::*;
 
 use super::icons::{
@@ -245,18 +245,28 @@ fn hp_bar_color(ratio: f32) -> Color {
 }
 
 /// Render active floating effects anchored to this room, rising and fading out.
+/// Effects stack and rise within their anchor side (defenders left, invaders
+/// right, neutral centre) so a fight reads as two sides trading blows.
 fn draw_room_effects(state: &GameState, room: &Room, rect: Rect) {
-    for (stack, effect) in state
+    let mut stack_by_anchor: [i32; 3] = [0, 0, 0];
+    for effect in state
         .effects
         .iter()
         .filter(|e| e.floor == room.floor_number && e.room == room.position)
-        .enumerate()
     {
+        let (anchor_idx, anchor_x) = match effect.anchor {
+            EffectAnchor::Defenders => (0usize, rect.x + rect.w * 0.30),
+            EffectAnchor::Invaders => (1usize, rect.x + rect.w * 0.70),
+            EffectAnchor::Center => (2usize, rect.x + rect.w * 0.5),
+        };
+        let stack = stack_by_anchor[anchor_idx];
+        stack_by_anchor[anchor_idx] += 1;
+
         let life = (effect.ttl / effect.max_ttl).clamp(0.0, 1.0);
         let rise = (1.0 - life) * 28.0 + stack as f32 * 15.0;
         let color = effect_color(effect.kind);
         let faded = Color::new(color.r, color.g, color.b, life);
-        let cx = rect.x + rect.w * 0.5;
+        let cx = anchor_x;
         let cy = rect.y + rect.h * 0.36 - rise;
         // Shadow for legibility over busy art.
         draw_centered_text(

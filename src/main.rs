@@ -720,8 +720,30 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
                     sieging: false,
                 });
 
-                state.push_effect(floor, pos, "-12", EffectKind::Damage);
-                state.push_effect(floor, pos, "Slain!", EffectKind::AdventurerDown);
+                // Both sides trading blows: defenders take a strong hit on the
+                // left, the party takes damage and loses one on the right.
+                use game_state::EffectAnchor;
+                state.push_effect_at(
+                    floor,
+                    pos,
+                    "Strong hit!",
+                    EffectKind::Ability,
+                    EffectAnchor::Defenders,
+                );
+                state.push_effect_at(
+                    floor,
+                    pos,
+                    "-12",
+                    EffectKind::Damage,
+                    EffectAnchor::Invaders,
+                );
+                state.push_effect_at(
+                    floor,
+                    pos,
+                    "Slain!",
+                    EffectKind::AdventurerDown,
+                    EffectAnchor::Invaders,
+                );
 
                 // Show the room inspector (defender list + upgrade catalog).
                 state.selected_room = Some((floor, pos));

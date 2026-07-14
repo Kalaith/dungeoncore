@@ -31,13 +31,15 @@ The single founder complaint across every playtest: "what's happening isn't clea
 The combat engine computes targeting, elements, traits, conditions, and trap procs
 every tick — and surfaces it as log lines and floating strings.
 
-- [~] **Live combat visualization.** HP bars on every combatant, damage numbers
+- [x] **Live combat visualization.** HP bars on every combatant, damage numbers
       anchored to units (not floating in space), a visible "who is hitting whom"
       indication, rooms flashing/highlighting while fighting. The per-tick data
       already exists in `simulation/combat.rs` — this is rendering work, not sim work.
-      *(Partial: HP bars on defenders/invaders shipped; room-flash pulse and
-      floating damage numbers already existed. Still open: damage numbers anchored
-      to specific units, explicit who-hits-whom indication.)*
+      *(Done: HP bars on defenders/invaders; combat effects now side-anchored —
+      hits on defenders rise over the left zone, damage/deaths on invaders over
+      the right — giving a clear who-hits-whom read; room-flash pulse and element
+      feedback already existed. Possible future polish: per-disc anchoring and
+      target lines, but the two-sides-trading-blows read is in.)*
 - [ ] **Party token movement.** Adventurer parties visibly walk room-to-room
       through the dungeon instead of teleporting between combat resolutions.
       This one change makes the dungeon read as a *place*.

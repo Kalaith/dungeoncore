@@ -14,7 +14,7 @@ pub use traps::rearm_traps;
 
 use crate::data::constants::RETREAT_THRESHOLD;
 use crate::data::elements::element_multiplier;
-use crate::game_state::{EffectKind, GameState, LogEntry};
+use crate::game_state::{EffectAnchor, EffectKind, GameState, LogEntry};
 
 use abilities::{resolve_abilities, tick_conditions};
 use helpers::{
@@ -67,7 +67,13 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     let snared = state.adventurer_parties[party_idx].snared_ticks > 0;
     if snared {
         state.adventurer_parties[party_idx].snared_ticks -= 1;
-        state.push_effect(floor_num, room_pos, "Snared!", EffectKind::Ability);
+        state.push_effect_at(
+            floor_num,
+            room_pos,
+            "Snared!",
+            EffectKind::Ability,
+            EffectAnchor::Invaders,
+        );
     }
     let adv_attacks: Vec<(u64, i32, String)> = if snared {
         Vec::new()
@@ -137,13 +143,32 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
             "The slain monster splits — a {} emerges!",
             spawn_name
         )));
-        state.push_effect(floor_num, room_pos, "Split!", EffectKind::Ability);
+        state.push_effect_at(
+            floor_num,
+            room_pos,
+            "Split!",
+            EffectKind::Ability,
+            EffectAnchor::Defenders,
+        );
     }
 
+    // These describe the party's attacks landing (or not) on the defenders.
     if party_hit_strong {
-        state.push_effect(floor_num, room_pos, "Strong hit!", EffectKind::Ability);
+        state.push_effect_at(
+            floor_num,
+            room_pos,
+            "Strong hit!",
+            EffectKind::Ability,
+            EffectAnchor::Defenders,
+        );
     } else if party_hit_weak {
-        state.push_effect(floor_num, room_pos, "Resisted", EffectKind::Ability);
+        state.push_effect_at(
+            floor_num,
+            room_pos,
+            "Resisted",
+            EffectKind::Ability,
+            EffectAnchor::Defenders,
+        );
     }
 
     // Phase 4: surviving monsters strike back (harder if an alarm was tripped)
@@ -256,7 +281,8 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
     }
 
     if damage_to_party > 0 && adventurer_kills.is_empty() {
-        state.push_effect(
+        // The party is the one taking these hits — float it over their side.
+        state.push_effect_at(
             floor_num,
             room_pos,
             format!(
@@ -265,6 +291,7 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
                 if monster_hit_strong { "!" } else { "" }
             ),
             EffectKind::Damage,
+            EffectAnchor::Invaders,
         );
     }
 

@@ -306,6 +306,17 @@ pub enum EffectKind {
     Loot,
 }
 
+/// Which side of the room a floating effect belongs over, so damage/deaths
+/// rise above the units actually involved rather than all stacking centre.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum EffectAnchor {
+    Center,
+    /// The defenders' (monster) side — left zone.
+    Defenders,
+    /// The invaders' (adventurer) side — right zone.
+    Invaders,
+}
+
 /// A short-lived floating effect anchored to a room (not persisted)
 #[derive(Clone, Debug)]
 pub struct RoomEffect {
@@ -313,6 +324,7 @@ pub struct RoomEffect {
     pub room: usize,
     pub text: String,
     pub kind: EffectKind,
+    pub anchor: EffectAnchor,
     pub ttl: f32,
     pub max_ttl: f32,
 }
@@ -574,7 +586,7 @@ impl GameState {
         }
     }
 
-    /// Spawn a short-lived floating effect over a room
+    /// Spawn a short-lived floating effect centred over a room.
     pub fn push_effect(
         &mut self,
         floor: i32,
@@ -582,12 +594,26 @@ impl GameState {
         text: impl Into<String>,
         kind: EffectKind,
     ) {
+        self.push_effect_at(floor, room, text, kind, EffectAnchor::Center);
+    }
+
+    /// Spawn a floating effect over a specific side of a room, so damage and
+    /// deaths appear above the units they concern.
+    pub fn push_effect_at(
+        &mut self,
+        floor: i32,
+        room: usize,
+        text: impl Into<String>,
+        kind: EffectKind,
+        anchor: EffectAnchor,
+    ) {
         const EFFECT_TTL: f32 = 1.6;
         self.effects.push(RoomEffect {
             floor,
             room,
             text: text.into(),
             kind,
+            anchor,
             ttl: EFFECT_TTL,
             max_ttl: EFFECT_TTL,
         });
