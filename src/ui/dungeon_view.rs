@@ -219,6 +219,15 @@ fn placement_state(state: &GameState, room: &Room) -> PlacementState {
 }
 
 fn adventurer_count_in_room(state: &GameState, room: &Room) -> usize {
+    adventurers_in_room(state, room).len()
+}
+
+/// The living adventurers currently standing in a room (from any non-retreating
+/// party present), so the board can draw each one with its own health bar.
+fn adventurers_in_room<'a>(
+    state: &'a GameState,
+    room: &Room,
+) -> Vec<&'a crate::game_state::Adventurer> {
     state
         .adventurer_parties
         .iter()
@@ -227,8 +236,8 @@ fn adventurer_count_in_room(state: &GameState, room: &Room) -> usize {
                 && party.current_room == room.position
                 && !party.retreating
         })
-        .map(|party| party.members.iter().filter(|member| member.alive).count())
-        .sum()
+        .flat_map(|party| party.members.iter().filter(|member| member.alive))
+        .collect()
 }
 
 fn current_objective(state: &GameState) -> String {

@@ -4,13 +4,13 @@
 use macroquad::prelude::*;
 use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
 
-use crate::game_state::{EffectKind, GameState, Monster, Room, RoomType};
+use crate::game_state::{Adventurer, EffectKind, GameState, Monster, Room, RoomType};
 use crate::ui::theme::*;
 
 use super::icons::{
     draw_combat_art, draw_core_art, draw_dashed_border, draw_entrance_art, draw_room_icon,
 };
-use super::{adventurer_count_in_room, BuildPreview, PlacementState};
+use super::{adventurers_in_room, BuildPreview, PlacementState};
 
 pub(super) fn draw_room_tile(
     state: &GameState,
@@ -20,9 +20,9 @@ pub(super) fn draw_room_tile(
 ) -> bool {
     let hovered = is_hovered_rect(rect);
     let selected = state.selected_room == Some((room.floor_number, room.position));
-    let adventurers = adventurer_count_in_room(state, room);
+    let adventurers = adventurers_in_room(state, room);
     let alive = room.monsters.iter().filter(|monster| monster.alive).count();
-    let fighting = adventurers > 0 && alive > 0;
+    let fighting = !adventurers.is_empty() && alive > 0;
     let (fill, border, icon_color, title) = room_tone(room);
     let mut draw_rect = rect;
     if hovered {
@@ -96,11 +96,11 @@ pub(super) fn draw_room_tile(
     // Per-unit icons: defenders on the left, adventurers on the right.
     let strip = Rect::new(
         draw_rect.x + 8.0,
-        draw_rect.y + draw_rect.h - 24.0,
+        draw_rect.y + draw_rect.h - 26.0,
         draw_rect.w - 16.0,
-        20.0,
+        22.0,
     );
-    draw_room_units(room, strip, adventurers);
+    draw_room_units(room, strip, &adventurers, fighting);
 
     // Floating combat feedback (damage numbers, kills) rising over the room.
     draw_room_effects(state, room, draw_rect);
@@ -109,11 +109,14 @@ pub(super) fn draw_room_tile(
 }
 
 /// Draw one icon per unit in the room: monster defenders (with their initial)
-/// on the left, adventurers on the right. Overflow collapses into a "+N" tag.
-fn draw_room_units(room: &Room, strip: Rect, adventurers: usize) {
+/// on the left, adventurers on the right. Living units carry a health bar so a
+/// raid reads as a fight — defenders and invaders trading HP — not a count.
+/// Overflow collapses into a "+N" tag.
+fn draw_room_units(room: &Room, strip: Rect, adventurers: &[&Adventurer], fighting: bool) {
     let radius = 7.0;
     let step = radius * 2.0 + 3.0;
-    let cy = strip.y + strip.h * 0.5;
+    // Leave headroom below each disc for its health bar.
+    let cy = strip.y + radius + 1.0;
 
     if room.room_type == RoomType::Normal || room.room_type == RoomType::Boss {
         // Alive defenders first so they read clearly, then fallen ones.
@@ -136,6 +139,9 @@ fn draw_room_units(room: &Room, strip: Rect, adventurers: usize) {
                 .map(|c| c.to_ascii_uppercase().to_string())
                 .unwrap_or_else(|| "?".to_string());
             draw_icon_disc(vec2(x, cy), radius, color, &initial);
+            if monster.alive && (fighting || monster.hp < monster.max_hp) {
+                draw_unit_hp_bar(vec2(x, cy), radius, monster.hp, monster.max_hp);
+            }
             x += step;
             drawn += 1;
         }
@@ -151,18 +157,21 @@ fn draw_room_units(room: &Room, strip: Rect, adventurers: usize) {
         }
     }
 
-    if adventurers > 0 {
+    if !adventurers.is_empty() {
         let zone_w = strip.w * 0.36;
         let max_icons = ((zone_w / step).floor() as usize).max(1);
-        let shown = adventurers.min(max_icons);
+        let shown = adventurers.len().min(max_icons);
         let mut x = strip.x + strip.w - radius - 1.0;
-        for _ in 0..shown {
+        for adventurer in adventurers.iter().take(shown) {
             draw_icon_disc(vec2(x, cy), radius, WARNING, "A");
+            if fighting || adventurer.hp < adventurer.max_hp {
+                draw_unit_hp_bar(vec2(x, cy), radius, adventurer.hp, adventurer.max_hp);
+            }
             x -= step;
         }
-        if adventurers > shown {
+        if adventurers.len() > shown {
             draw_text_fit_right(
-                &format!("+{}", adventurers - shown),
+                &format!("+{}", adventurers.len() - shown),
                 x + radius,
                 cy + 4.0,
                 28.0,
@@ -170,6 +179,34 @@ fn draw_room_units(room: &Room, strip: Rect, adventurers: usize) {
                 WARNING,
             );
         }
+    }
+}
+
+/// A compact health bar tucked under a unit disc. Colour shifts green → amber →
+/// red as the unit loses HP, so the state of a fight is readable at a glance.
+fn draw_unit_hp_bar(center: Vec2, radius: f32, hp: i32, max_hp: i32) {
+    let ratio = if max_hp > 0 {
+        (hp as f32 / max_hp as f32).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let w = radius * 2.2;
+    let h = 3.0;
+    let x = center.x - w * 0.5;
+    let y = center.y + radius + 1.0;
+    draw_rectangle(x, y, w, h, Color::new(0.0, 0.0, 0.0, 0.66));
+    draw_rectangle(x, y, w * ratio, h, hp_bar_color(ratio));
+    draw_rectangle_lines(x, y, w, h, 1.0, Color::new(0.0, 0.0, 0.0, 0.5));
+}
+
+/// Health-fraction colour: healthy green, wounded amber, critical red.
+fn hp_bar_color(ratio: f32) -> Color {
+    if ratio > 0.6 {
+        EMERALD
+    } else if ratio > 0.3 {
+        WARNING
+    } else {
+        DANGER
     }
 }
 
