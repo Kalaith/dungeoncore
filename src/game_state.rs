@@ -460,6 +460,10 @@ pub struct GameState {
     /// Permanent soul-bought core powers (ids).
     #[serde(default)]
     pub core_powers: Vec<String>,
+    /// Recharge remaining (real seconds) on the active Core Smite lever.
+    /// Transient — a fresh session always starts ready.
+    #[serde(skip)]
+    pub core_smite_cooldown: f32,
     /// The core has fallen; the run is over (not persisted meaningfully).
     #[serde(default)]
     pub game_over: bool,
@@ -536,6 +540,7 @@ impl GameState {
             siege_active: false,
             prestige: 0,
             core_powers: Vec::new(),
+            core_smite_cooldown: 0.0,
             game_over: false,
             tutorial_active: true,
             tutorial_step: 0,
@@ -650,6 +655,13 @@ impl GameState {
             effect.ttl -= dt;
         }
         self.effects.retain(|effect| effect.ttl > 0.0);
+    }
+
+    /// Recharge the Core Smite lever in real time toward readiness.
+    pub fn decay_smite_cooldown(&mut self, dt: f32) {
+        if self.core_smite_cooldown > 0.0 {
+            self.core_smite_cooldown = (self.core_smite_cooldown - dt).max(0.0);
+        }
     }
 
     /// Advance corridor-travel animations for parties on the move.

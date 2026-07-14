@@ -88,9 +88,16 @@ every tick — and surfaces it as log lines and floating strings.
 
 ## Tier 2 — Player agency & the shape of a full game
 
-- [ ] **Mid-raid agency (at least one lever).** A core spell or manual trap
+- [x] **Mid-raid agency (at least one lever).** A core spell or manual trap
       trigger on cooldown so raids aren't pure spectator. Legend of Keepers is the
       model: watch *and slightly steer*.
+      *(Done: "Core Smite" — a mana-fuelled active the player casts mid-raid via
+      a contextual button (top-right of the dungeon board) or the [Q] hotkey. It
+      sears the deepest invading party for depth/prestige-scaled damage, pays the
+      usual death-mana + threat income and feeds the raid summary, on a 16s
+      real-time cooldown with a legible recharge bar. Works on siege parties too.
+      Lives in `simulation/core_spell.rs` + `ui/core_spell_button.rs`. Future
+      levers: manual trap triggers, a targeted single-room cast.)*
 - [ ] **Spatial strategy.** The dungeon is currently a linear queue of rooms.
       Branching paths, choke points, and sequence-dependent rooms (snare-before-
       damage, alarm-empowers-downstream) would make layout a real puzzle — the

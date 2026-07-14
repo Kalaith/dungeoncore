@@ -246,9 +246,11 @@ fn render_playing_frame(
     draw_game_background(sw, sh);
 
     if simulate {
-        // Age transient combat effects and party-travel animations each frame.
+        // Age transient combat effects and party-travel animations each frame,
+        // and recharge the Core Smite lever in real time.
         state.decay_effects(get_frame_time());
         state.decay_party_moves(get_frame_time());
+        state.decay_smite_cooldown(get_frame_time());
 
         // === Time-based Updates ===
 
@@ -507,6 +509,24 @@ fn render_playing_frame(
             36.0,
         ),
     );
+
+    // Mid-raid agency: the Core Smite lever. Only shown while invaders are in
+    // the dungeon; fires on click or the [Q] hotkey, with the cast surfacing its
+    // own feedback (recharging / no mana) via the log.
+    if core_spell_visible(state) {
+        let smite_rect = Rect::new(
+            dungeon_rect.x + dungeon_rect.w - CORE_SPELL_BTN_W - 24.0,
+            dungeon_rect.y + 24.0 + 36.0 + 10.0,
+            CORE_SPELL_BTN_W,
+            CORE_SPELL_BTN_H,
+        );
+        let clicked = draw_core_spell_button(state, smite_rect);
+        if simulate && (clicked || is_key_pressed(KeyCode::Q)) {
+            if let Err(e) = simulation::core_spell::cast_core_smite(state) {
+                state.add_log(game_state::LogEntry::system(e));
+            }
+        }
+    }
 
     // Post-raid summary card: shows what the last raid cost and earned until
     // the player dismisses it (or the next raid replaces it).

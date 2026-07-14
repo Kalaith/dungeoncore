@@ -1,4 +1,5 @@
 pub mod controls;
+pub mod core_spell_button;
 pub mod dungeon_view;
 pub mod event_toast;
 pub mod game_log;
@@ -13,6 +14,7 @@ pub mod tutorial;
 pub mod upgrade_panel;
 
 pub use controls::*;
+pub use core_spell_button::*;
 pub use dungeon_view::*;
 pub use event_toast::*;
 pub use overlays::*;
