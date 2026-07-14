@@ -2,60 +2,272 @@ use crate::game_state::{
     Adventurer, AdventurerParty, GameState, HeroRecord, HeroStatus, LogEntry, Stats,
 };
 
-/// A soul-bought permanent core power.
+/// What awakening a core power does. Stat effects (`CoreHp`, `MaxMana`) are
+/// baked in the moment the power is bought; the rest are *passive* and summed
+/// from all owned powers wherever the sim reads them (regen, retreat, smite).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum CorePowerEffect {
+    /// Immediate, permanent core-HP increase.
+    CoreHp(i32),
+    /// Immediate, permanent max-mana increase.
+    MaxMana(i32),
+    /// Permanent bonus to hourly mana regeneration.
+    ManaRegen(f32),
+    /// Invaders break this many casualties sooner (stacks).
+    Dread(i32),
+    /// Bonus flat damage added to every Core Smite.
+    SmiteDamage(i32),
+    /// Seconds shaved off the Core Smite cooldown.
+    SmiteCooldown(f32),
+}
+
+/// A soul-bought permanent core power, a node in the core-power tree.
 pub struct CorePower {
     pub id: &'static str,
     pub name: &'static str,
     pub description: &'static str,
     pub cost: i32,
+    /// Depth in the tree (0 = root); drives row layout in the UI.
+    pub tier: u8,
+    /// Powers that must already be owned before this one can be awakened.
+    pub requires: &'static [&'static str],
+    pub effect: CorePowerEffect,
 }
 
-/// The catalog of core powers the dungeon heart can awaken.
-pub const CORE_POWERS: [CorePower; 3] = [
+use CorePowerEffect::*;
+
+/// The core-power tree. Three roots (kept by id for save compatibility) branch
+/// into an economy line (regen/mana), a bulwark line (core HP), and an
+/// offense line that empowers the Core Smite lever — so repeated prestiges can
+/// specialise in different directions.
+pub const CORE_POWERS: [CorePower; 15] = [
+    // --- Roots (tier 0) ---------------------------------------------------
     CorePower {
         id: "deep_roots",
         name: "Deep Roots",
         description: "The core drinks deeper: +1 mana regen forever.",
         cost: 3,
+        tier: 0,
+        requires: &[],
+        effect: ManaRegen(1.0),
     },
     CorePower {
         id: "bulwark_core",
         name: "Bulwark Core",
         description: "Reinforce the heart: +250 core HP.",
         cost: 4,
+        tier: 0,
+        requires: &[],
+        effect: CoreHp(250),
     },
     CorePower {
         id: "dread_aura",
         name: "Dread Aura",
         description: "Invaders lose their nerve one casualty sooner.",
         cost: 3,
+        tier: 0,
+        requires: &[],
+        effect: Dread(1),
+    },
+    // --- Tier 1 -----------------------------------------------------------
+    CorePower {
+        id: "wellspring",
+        name: "Wellspring",
+        description: "The roots run deeper still: +1 more mana regen.",
+        cost: 5,
+        tier: 1,
+        requires: &["deep_roots"],
+        effect: ManaRegen(1.0),
+    },
+    CorePower {
+        id: "mana_font",
+        name: "Mana Font",
+        description: "Widen the reservoir: +150 max mana.",
+        cost: 4,
+        tier: 1,
+        requires: &["deep_roots"],
+        effect: MaxMana(150),
+    },
+    CorePower {
+        id: "iron_heart",
+        name: "Iron Heart",
+        description: "Plate the heart: +400 core HP.",
+        cost: 6,
+        tier: 1,
+        requires: &["bulwark_core"],
+        effect: CoreHp(400),
+    },
+    CorePower {
+        id: "searing_smite",
+        name: "Searing Smite",
+        description: "Core Smite sears hotter: +20 smite damage.",
+        cost: 4,
+        tier: 1,
+        requires: &["dread_aura"],
+        effect: SmiteDamage(20),
+    },
+    CorePower {
+        id: "quickening",
+        name: "Quickening",
+        description: "The heart recovers faster: -4s Core Smite cooldown.",
+        cost: 5,
+        tier: 1,
+        requires: &["dread_aura"],
+        effect: SmiteCooldown(4.0),
+    },
+    // --- Tier 2 -----------------------------------------------------------
+    CorePower {
+        id: "aquifer",
+        name: "Aquifer",
+        description: "Tap the deep aquifer: +2 mana regen.",
+        cost: 8,
+        tier: 2,
+        requires: &["wellspring"],
+        effect: ManaRegen(2.0),
+    },
+    CorePower {
+        id: "grand_reservoir",
+        name: "Grand Reservoir",
+        description: "A vast store of power: +300 max mana.",
+        cost: 7,
+        tier: 2,
+        requires: &["mana_font"],
+        effect: MaxMana(300),
+    },
+    CorePower {
+        id: "adamant_heart",
+        name: "Adamant Heart",
+        description: "All but unbreakable: +750 core HP.",
+        cost: 9,
+        tier: 2,
+        requires: &["iron_heart"],
+        effect: CoreHp(750),
+    },
+    CorePower {
+        id: "cataclysm",
+        name: "Cataclysm",
+        description: "Ruinous force: +45 Core Smite damage.",
+        cost: 8,
+        tier: 2,
+        requires: &["searing_smite"],
+        effect: SmiteDamage(45),
+    },
+    CorePower {
+        id: "terror_incarnate",
+        name: "Terror Incarnate",
+        description: "Naked fear: invaders break one more casualty sooner.",
+        cost: 7,
+        tier: 2,
+        requires: &["dread_aura"],
+        effect: Dread(1),
+    },
+    // --- Tier 3 (capstones) ----------------------------------------------
+    CorePower {
+        id: "eternal_wellspring",
+        name: "Eternal Wellspring",
+        description: "An unending flood of power: +3 mana regen.",
+        cost: 12,
+        tier: 3,
+        requires: &["aquifer"],
+        effect: ManaRegen(3.0),
+    },
+    CorePower {
+        id: "worldbreaker",
+        name: "Worldbreaker",
+        description: "The heart's judgement is swift: -4s Core Smite cooldown.",
+        cost: 12,
+        tier: 3,
+        requires: &["cataclysm", "quickening"],
+        effect: SmiteCooldown(4.0),
     },
 ];
 
-/// Purchase a permanent core power with souls.
+/// Look up a power by id.
+pub fn core_power(id: &str) -> Option<&'static CorePower> {
+    CORE_POWERS.iter().find(|p| p.id == id)
+}
+
+/// Powers currently owned by the dungeon.
+fn owned_powers(state: &GameState) -> impl Iterator<Item = &'static CorePower> + '_ {
+    CORE_POWERS
+        .iter()
+        .filter(move |p| state.has_core_power(p.id))
+}
+
+/// Are all of a power's prerequisites already owned?
+pub fn prereqs_met(state: &GameState, power: &CorePower) -> bool {
+    power.requires.iter().all(|req| state.has_core_power(req))
+}
+
+/// Summed permanent mana-regen bonus from owned core powers.
+pub fn core_mana_regen_bonus(state: &GameState) -> f32 {
+    owned_powers(state)
+        .filter_map(|p| match p.effect {
+            ManaRegen(v) => Some(v),
+            _ => None,
+        })
+        .sum()
+}
+
+/// Summed "invaders break sooner" bonus from owned core powers.
+pub fn core_dread_bonus(state: &GameState) -> i32 {
+    owned_powers(state)
+        .filter_map(|p| match p.effect {
+            Dread(v) => Some(v),
+            _ => None,
+        })
+        .sum()
+}
+
+/// Summed flat Core Smite damage bonus from owned core powers.
+pub fn core_smite_damage_bonus(state: &GameState) -> i32 {
+    owned_powers(state)
+        .filter_map(|p| match p.effect {
+            SmiteDamage(v) => Some(v),
+            _ => None,
+        })
+        .sum()
+}
+
+/// Summed Core Smite cooldown reduction (seconds) from owned core powers.
+pub fn core_smite_cooldown_reduction(state: &GameState) -> f32 {
+    owned_powers(state)
+        .filter_map(|p| match p.effect {
+            SmiteCooldown(v) => Some(v),
+            _ => None,
+        })
+        .sum()
+}
+
+/// Purchase a permanent core power with souls. Fails if already owned, if any
+/// prerequisite is missing, or if souls are short.
 pub fn buy_core_power(state: &mut GameState, id: &str) -> Result<(), String> {
     if state.has_core_power(id) {
         return Err("That core power is already awakened.".into());
     }
-    let power = CORE_POWERS
-        .iter()
-        .find(|p| p.id == id)
-        .ok_or("Unknown core power")?;
+    let power = core_power(id).ok_or("Unknown core power")?;
+
+    for req in power.requires {
+        if !state.has_core_power(req) {
+            let req_name = core_power(req).map(|p| p.name).unwrap_or(req);
+            return Err(format!("Awaken {} first.", req_name));
+        }
+    }
+
     if state.souls < power.cost {
         return Err(format!("Not enough souls! Need {}.", power.cost));
     }
     state.souls -= power.cost;
     state.core_powers.push(id.to_string());
 
-    // Apply immediate, permanent effects.
-    match id {
-        "bulwark_core" => {
-            state.core_max_hp += 250;
-            state.core_hp += 250;
+    // Bake in immediate stat effects; passive effects are read at runtime.
+    match power.effect {
+        CoreHp(n) => {
+            state.core_max_hp += n;
+            state.core_hp += n;
         }
-        "deep_roots" => { /* applied each hour in regen */ }
-        "dread_aura" => { /* read at retreat check */ }
-        _ => {}
+        MaxMana(n) => state.max_mana += n,
+        ManaRegen(_) | Dread(_) | SmiteDamage(_) | SmiteCooldown(_) => {}
     }
 
     state.add_log(LogEntry::system(format!(
@@ -297,5 +509,62 @@ mod tests {
         assert!(s.has_core_power("bulwark_core"));
         // Can't buy twice.
         assert!(buy_core_power(&mut s, "bulwark_core").is_err());
+    }
+
+    #[test]
+    fn tier_two_power_gated_behind_prerequisite() {
+        let mut s = GameState::new();
+        s.souls = 100;
+        // Aquifer needs Wellspring, which needs Deep Roots.
+        assert!(buy_core_power(&mut s, "aquifer").is_err());
+        buy_core_power(&mut s, "deep_roots").unwrap();
+        assert!(buy_core_power(&mut s, "aquifer").is_err());
+        buy_core_power(&mut s, "wellspring").unwrap();
+        assert!(buy_core_power(&mut s, "aquifer").is_ok());
+    }
+
+    #[test]
+    fn regen_bonus_sums_across_owned_powers() {
+        let mut s = GameState::new();
+        s.souls = 100;
+        assert_eq!(core_mana_regen_bonus(&s), 0.0);
+        buy_core_power(&mut s, "deep_roots").unwrap();
+        buy_core_power(&mut s, "wellspring").unwrap();
+        assert_eq!(core_mana_regen_bonus(&s), 2.0);
+    }
+
+    #[test]
+    fn smite_bonuses_stack_and_max_mana_bakes_in() {
+        let mut s = GameState::new();
+        s.souls = 100;
+        buy_core_power(&mut s, "dread_aura").unwrap();
+        buy_core_power(&mut s, "searing_smite").unwrap();
+        buy_core_power(&mut s, "cataclysm").unwrap();
+        assert_eq!(core_smite_damage_bonus(&s), 65);
+        // Dread stacks: dread_aura only so far.
+        assert_eq!(core_dread_bonus(&s), 1);
+        // MaxMana effect is baked in at purchase time.
+        let mana_before = s.max_mana;
+        buy_core_power(&mut s, "deep_roots").unwrap();
+        buy_core_power(&mut s, "mana_font").unwrap();
+        assert_eq!(s.max_mana, mana_before + 150);
+    }
+
+    #[test]
+    fn tree_prerequisites_reference_real_shallower_nodes() {
+        for power in CORE_POWERS.iter() {
+            for req in power.requires {
+                let dep = core_power(req)
+                    .unwrap_or_else(|| panic!("{} requires unknown '{}'", power.id, req));
+                assert!(
+                    dep.tier < power.tier,
+                    "{} (tier {}) must require a shallower node, not {} (tier {})",
+                    power.id,
+                    power.tier,
+                    dep.id,
+                    dep.tier
+                );
+            }
+        }
     }
 }

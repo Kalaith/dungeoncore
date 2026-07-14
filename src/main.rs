@@ -78,6 +78,8 @@ async fn main() {
         let mut heroes_scroll = 0.0;
         let mut show_codex = false;
         let mut codex_scroll = 0.0;
+        // The `coretree` scene boots straight into the core-power tree overlay.
+        let mut show_core_tree = config.scene == "coretree";
         let mut t0 = get_time();
         let mut t1 = t0;
         let mut t2 = t0;
@@ -93,6 +95,7 @@ async fn main() {
                 &mut heroes_scroll,
                 &mut show_codex,
                 &mut codex_scroll,
+                &mut show_core_tree,
                 &mut t0,
                 &mut t1,
                 &mut t2,
@@ -121,6 +124,7 @@ async fn main() {
     let mut heroes_scroll = 0.0;
     let mut show_codex = false;
     let mut codex_scroll = 0.0;
+    let mut show_core_tree = false;
 
     loop {
         match screen {
@@ -209,6 +213,7 @@ async fn main() {
             &mut heroes_scroll,
             &mut show_codex,
             &mut codex_scroll,
+            &mut show_core_tree,
             &mut last_time_advance,
             &mut last_adventure_tick,
             &mut last_save,
@@ -235,6 +240,7 @@ fn render_playing_frame(
     heroes_scroll: &mut f32,
     show_codex: &mut bool,
     codex_scroll: &mut f32,
+    show_core_tree: &mut bool,
     last_time_advance: &mut f64,
     last_adventure_tick: &mut f64,
     last_save: &mut f64,
@@ -382,11 +388,7 @@ fn render_playing_frame(
                 state.add_log(game_state::LogEntry::system(e));
             }
         }
-        DrawerAction::BuyCorePower(id) => {
-            if let Err(e) = simulation::endgame::buy_core_power(state, &id) {
-                state.add_log(game_state::LogEntry::system(e));
-            }
-        }
+        DrawerAction::OpenCorePowers => *show_core_tree = true,
         DrawerAction::ResetGame => {
             *state = create_new_game();
             let _ = persistence::save_game(state);
@@ -559,8 +561,25 @@ fn render_playing_frame(
         tutorial::advance(state);
     }
 
+    // Core Power tree overlay: opened with 'P' or the BUILD-tab button. Drawn
+    // before the Codex so 'C'/'P' don't fight over the same frame.
+    if !*show_core_tree && !*show_codex && is_key_pressed(KeyCode::P) {
+        *show_core_tree = true;
+    }
+    if *show_core_tree {
+        match draw_core_tree(state, sw, sh) {
+            CoreTreeResult::Buy(id) => {
+                if let Err(e) = simulation::endgame::buy_core_power(state, &id) {
+                    state.add_log(game_state::LogEntry::system(e));
+                }
+            }
+            CoreTreeResult::Close => *show_core_tree = false,
+            CoreTreeResult::None => {}
+        }
+    }
+
     // Codex overlay: opened with 'C', drawn last so it sits over everything.
-    if !*show_codex && is_key_pressed(KeyCode::C) {
+    if !*show_codex && !*show_core_tree && is_key_pressed(KeyCode::C) {
         *show_codex = true;
         *codex_scroll = 0.0;
         state.tutorial_codex_seen = true;
@@ -701,6 +720,20 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
                 // Half-way through the glide (progress = 1 - 0.3/0.6 = 0.5).
                 move_anim: 0.3,
             });
+        }
+        "coretree" => {
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = false;
+            // A few prestiges in: souls to spend and an economy line partly
+            // awakened, so the tree shows owned / available / locked states.
+            state.prestige = 3;
+            state.souls = 30;
+            let _ = simulation::endgame::buy_core_power(state, "deep_roots");
+            let _ = simulation::endgame::buy_core_power(state, "dread_aura");
+            let _ = simulation::endgame::buy_core_power(state, "wellspring");
+            let _ = simulation::endgame::buy_core_power(state, "searing_smite");
         }
         "siege" => {
             if let Some(species) = first_starter_species() {

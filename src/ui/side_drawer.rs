@@ -72,7 +72,7 @@ pub enum DrawerAction {
     SelectUpgrade(String),
     ProcessEvolutions,
     UnlockSpecies(String),
-    BuyCorePower(String),
+    OpenCorePowers,
     ResetGame,
 }
 
@@ -80,7 +80,7 @@ pub enum DrawerAction {
 pub enum BuildTabAction {
     None,
     Build,
-    BuyPower(String),
+    OpenCorePowers,
 }
 
 pub fn draw_side_drawer(
@@ -113,7 +113,7 @@ pub fn draw_side_drawer(
     match active_tab {
         DrawerTab::Build => match draw_build_tab(state, content) {
             BuildTabAction::Build => action = DrawerAction::BuildRoom,
-            BuildTabAction::BuyPower(id) => action = DrawerAction::BuyCorePower(id),
+            BuildTabAction::OpenCorePowers => action = DrawerAction::OpenCorePowers,
             BuildTabAction::None => {}
         },
         DrawerTab::Monsters => {

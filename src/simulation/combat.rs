@@ -330,9 +330,9 @@ fn party_nerve(party: &crate::game_state::AdventurerParty) -> i32 {
 
 /// Flag the party as retreating after heavy losses or a full wipe.
 fn check_retreat(state: &mut GameState, party_idx: usize) {
-    // Dread Aura core power unnerves invaders one casualty sooner. Siege
+    // Dread core powers unnerve invaders, breaking them sooner (stacks). Siege
     // parties are fanatics and never break early.
-    let dread = state.has_core_power("dread_aura");
+    let dread = crate::simulation::endgame::core_dread_bonus(state);
     let party = &mut state.adventurer_parties[party_idx];
     if party.retreating {
         return;
@@ -341,7 +341,7 @@ fn check_retreat(state: &mut GameState, party_idx: usize) {
     let nerve = if party.sieging {
         99
     } else {
-        (party_nerve(party) - dread as i32).max(1)
+        (party_nerve(party) - dread).max(1)
     };
     if no_survivors {
         party.retreating = true;

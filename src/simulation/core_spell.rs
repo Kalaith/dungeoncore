@@ -16,9 +16,20 @@ pub const CORE_SMITE_MANA_COST: i32 = 40;
 const SMITE_BASE_DAMAGE: i32 = 28;
 
 /// Damage a single smite deals to each struck invader, scaling with how deep
-/// and prestigious the dungeon has grown (mirrors the core's own siege wrath).
+/// and prestigious the dungeon has grown (mirrors the core's own siege wrath)
+/// plus any offense core powers (Searing Smite, Cataclysm).
 pub fn smite_damage(state: &GameState) -> i32 {
-    SMITE_BASE_DAMAGE + state.total_floors * 6 + state.prestige * 10
+    SMITE_BASE_DAMAGE
+        + state.total_floors * 6
+        + state.prestige * 10
+        + crate::simulation::endgame::core_smite_damage_bonus(state)
+}
+
+/// The Core Smite cooldown after core-power reductions (Quickening,
+/// Worldbreaker), floored so it can never trivialize the lever.
+pub fn smite_cooldown(state: &GameState) -> f32 {
+    (CORE_SMITE_COOLDOWN - crate::simulation::endgame::core_smite_cooldown_reduction(state))
+        .max(4.0)
 }
 
 /// Is Core Smite recharged and ready to fire?
@@ -59,7 +70,7 @@ pub fn cast_core_smite(state: &mut GameState) -> Result<(), String> {
     };
 
     state.mana -= CORE_SMITE_MANA_COST;
-    state.core_smite_cooldown = CORE_SMITE_COOLDOWN;
+    state.core_smite_cooldown = smite_cooldown(state);
 
     let damage = smite_damage(state);
     let floor = state.adventurer_parties[party_idx].current_floor;

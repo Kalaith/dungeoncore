@@ -69,8 +69,15 @@ pub(super) fn draw_build_tab(state: &GameState, rect: Rect) -> BuildTabAction {
         return BuildTabAction::Build;
     }
 
-    // Permanent, soul-bought core powers below the build controls.
-    let mut y = card.y + card.h + 70.0;
+    // Permanent, soul-bought core powers live in their own tree overlay so the
+    // branching tech tree has room to breathe. Summarise progress and offer the
+    // entry point here.
+    let owned = crate::simulation::endgame::CORE_POWERS
+        .iter()
+        .filter(|p| state.has_core_power(p.id))
+        .count();
+    let total = crate::simulation::endgame::CORE_POWERS.len();
+    let y = card.y + card.h + 78.0;
     draw_text_fit(
         &format!("CORE POWERS · {} souls", state.souls),
         rect.x,
@@ -79,54 +86,21 @@ pub(super) fn draw_build_tab(state: &GameState, rect: Rect) -> BuildTabAction {
         10.0,
         SOUL,
     );
-    y += 14.0;
-    for power in crate::simulation::endgame::CORE_POWERS.iter() {
-        if y + 46.0 > rect.y + rect.h {
-            break;
-        }
-        let owned = state.has_core_power(power.id);
-        let affordable = state.souls >= power.cost;
-        let row = Rect::new(rect.x, y, rect.w, 44.0);
-        let accent = if owned { EMERALD } else { SOUL };
-        draw_card(
-            row,
-            Color::new(accent.r, accent.g, accent.b, 0.06),
-            Color::new(accent.r, accent.g, accent.b, 0.24),
-        );
-        draw_text_fit(
-            power.name,
-            row.x + 10.0,
-            row.y + 16.0,
-            row.w - 60.0,
-            12.0,
-            TEXT,
-        );
-        draw_text_fit(
-            power.description,
-            row.x + 10.0,
-            row.y + 33.0,
-            row.w - 60.0,
-            9.0,
-            TEXT_MUTED,
-        );
-        if owned {
-            draw_pill(
-                Rect::new(row.x + row.w - 52.0, row.y + 6.0, 44.0, 16.0),
-                "OWNED",
-                EMERALD,
-            );
-        } else {
-            let btn = Rect::new(row.x + row.w - 54.0, row.y + 8.0, 48.0, 28.0);
-            if draw_command_button(
-                btn,
-                &format!("{}s", power.cost),
-                ButtonTone::Arcane,
-                affordable,
-            ) {
-                return BuildTabAction::BuyPower(power.id.to_string());
-            }
-        }
-        y += 50.0;
+    draw_text_fit(
+        &format!("{owned}/{total} awakened"),
+        rect.x,
+        y + 16.0,
+        rect.w,
+        11.0,
+        TEXT_MUTED,
+    );
+    if draw_command_button(
+        Rect::new(rect.x, y + 26.0, rect.w, 40.0),
+        "Core Power Tree  [P]",
+        ButtonTone::Arcane,
+        true,
+    ) {
+        return BuildTabAction::OpenCorePowers;
     }
 
     BuildTabAction::None

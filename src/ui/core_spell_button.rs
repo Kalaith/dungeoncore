@@ -8,9 +8,7 @@ use macroquad::prelude::*;
 use macroquad_toolkit::input::is_hovered_rect;
 
 use crate::game_state::GameState;
-use crate::simulation::core_spell::{
-    is_ready, smite_target, CORE_SMITE_COOLDOWN, CORE_SMITE_MANA_COST,
-};
+use crate::simulation::core_spell::{is_ready, smite_cooldown, smite_target, CORE_SMITE_MANA_COST};
 
 use super::theme::*;
 
@@ -100,7 +98,7 @@ pub fn draw_core_spell_button(state: &GameState, rect: Rect) -> bool {
 
     // Recharge bar along the bottom edge while cooling down.
     if !ready {
-        let filled = 1.0 - (state.core_smite_cooldown / CORE_SMITE_COOLDOWN).clamp(0.0, 1.0);
+        let filled = 1.0 - (state.core_smite_cooldown / smite_cooldown(state)).clamp(0.0, 1.0);
         draw_rectangle(
             rect.x + 2.0,
             rect.y + rect.h - 4.0,

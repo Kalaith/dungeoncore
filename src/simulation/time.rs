@@ -17,12 +17,8 @@ pub fn advance_time(state: &mut GameState) {
         .sum();
     let adventurer_bonus = adventurer_count as f32 * 0.5;
 
-    // Deep Roots core power: a permanent regen bonus.
-    let core_power_bonus = if state.has_core_power("deep_roots") {
-        1.0
-    } else {
-        0.0
-    };
+    // Core-power tree: summed permanent regen bonus (Deep Roots, Wellspring…).
+    let core_power_bonus = crate::simulation::endgame::core_mana_regen_bonus(state);
 
     // Mana regeneration (rounded so fractional bonuses aren't lost)
     let regen = 1.0 + state.deep_core_bonus + adventurer_bonus + core_power_bonus;

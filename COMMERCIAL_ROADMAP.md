@@ -105,9 +105,17 @@ every tick — and surfaces it as log lines and floating strings.
 - [ ] **A shaped destination.** Prestige is an uncapped scaler with no arc. Add
       named prestige tiers, a milestone/achievement track, and/or a soft
       "ascension" win state. Commercial players need a reason to say "I finished it."
-- [ ] **Expanded core-power tree.** 3 soul-bought powers is too shallow to carry
+- [x] **Expanded core-power tree.** 3 soul-bought powers is too shallow to carry
       the prestige loop; the `CORE_POWERS` framework already supports more —
       build a branching tree (10–20 nodes) so repeated prestiges diverge.
+      *(Done: 15-node tree across 4 tiers, three lines that diverge — economy
+      (regen/max-mana), bulwark (core HP), and offense that empowers the new Core
+      Smite lever (+damage, -cooldown). Structured `CorePowerEffect` enum with
+      prerequisite gating; passive effects (regen, dread, smite) summed via
+      aggregates wired into `time.rs`, `combat.rs`, and `core_spell.rs`; stat
+      effects baked in on purchase. New `ui/core_tree.rs` overlay ([P] or the
+      BUILD-tab button) renders the tree with owned/available/locked states and
+      prereq connectors. Original 3 ids kept for save compatibility.)*
 - [ ] **Difficulty options / modes.** One fixed difficulty today. Minimum: 2–3
       difficulty presets. Strong candidates for a management game: endless mode
       vs. structured campaign, challenge modifiers, seeded runs.
