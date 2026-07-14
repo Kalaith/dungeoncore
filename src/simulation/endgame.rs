@@ -150,6 +150,8 @@ pub fn maybe_launch_siege(state: &mut GameState) {
         snared_ticks: 0,
         alarmed: false,
         sieging: true,
+        prev_room: 0,
+        move_anim: 0.0,
     });
     state.siege_active = true;
 

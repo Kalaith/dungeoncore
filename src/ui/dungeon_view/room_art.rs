@@ -417,6 +417,21 @@ pub(super) fn draw_future_room_tile(state: &GameState, rect: Rect, plan: &BuildP
     was_clicked_rect(rect)
 }
 
+/// Draw a party marker gliding along a corridor connector at `progress` (0..1),
+/// so a party visibly crosses from one room to the next instead of teleporting.
+pub(super) fn draw_party_transit(connector: Rect, progress: f32) {
+    let cx = connector.x + connector.w * progress;
+    let cy = connector.y + connector.h * 0.5;
+    // A short motion trail behind the marker sells the direction of travel.
+    draw_circle(
+        cx - 5.0,
+        cy,
+        4.0,
+        Color::new(WARNING.r, WARNING.g, WARNING.b, 0.16),
+    );
+    draw_icon_disc(vec2(cx, cy), 6.5, WARNING, "A");
+}
+
 pub(super) fn draw_connector(rect: Rect, ghost: bool) {
     let alpha = if ghost { 0.32 } else { 0.70 };
     let fill = Color::new(0.110, 0.145, 0.195, alpha);

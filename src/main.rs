@@ -246,8 +246,9 @@ fn render_playing_frame(
     draw_game_background(sw, sh);
 
     if simulate {
-        // Age transient combat effects each frame.
+        // Age transient combat effects and party-travel animations each frame.
         state.decay_effects(get_frame_time());
+        state.decay_party_moves(get_frame_time());
 
         // === Time-based Updates ===
 
@@ -628,6 +629,59 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
             // The player is mid-placement with a Fire monster selected.
             state.selected_monster = Some("Ember Wisp".to_string());
         }
+        "transit" => {
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = false;
+            let _ = simulation::add_room(state, None);
+            let _ = simulation::add_room(state, None);
+            let monster = state.unlocked_monsters.first().cloned();
+            if let (Some(monster), Some((floor, pos))) = (monster, find_combat_room(state)) {
+                let _ = simulation::place_monster(state, floor, pos, &monster);
+            }
+            state.status = DungeonStatus::Open;
+            state.total_deaths = 14;
+            // A party frozen mid-corridor between the entrance and room 1.
+            let members = (0..3u64)
+                .map(|i| Adventurer {
+                    id: 200 + i,
+                    name: ["Dain", "Eara", "Fitz"][i as usize].to_string(),
+                    class_name: "Ranger".to_string(),
+                    race: "Elf".to_string(),
+                    level: 2,
+                    hp: 34,
+                    max_hp: 40,
+                    alive: true,
+                    experience: 0,
+                    gold: 0,
+                    equipment: Equipment::default(),
+                    conditions: Vec::new(),
+                    scaled_stats: Stats {
+                        hp: 40,
+                        attack: 8,
+                        defense: 3,
+                    },
+                })
+                .collect();
+            state.adventurer_parties.push(AdventurerParty {
+                id: 1,
+                members,
+                current_floor: 1,
+                current_room: 1,
+                retreating: false,
+                casualties: 0,
+                loot: 0,
+                entry_time: 6,
+                target_floor: 1,
+                snared_ticks: 0,
+                alarmed: false,
+                sieging: false,
+                prev_room: 0,
+                // Half-way through the glide (progress = 1 - 0.3/0.6 = 0.5).
+                move_anim: 0.3,
+            });
+        }
         "siege" => {
             if let Some(species) = first_starter_species() {
                 let _ = simulation::unlock_species(state, &species);
@@ -725,6 +779,8 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
                     snared_ticks: 0,
                     alarmed: false,
                     sieging: false,
+                    prev_room: 0,
+                    move_anim: 0.0,
                 });
 
                 // Both sides trading blows: defenders take a strong hit on the

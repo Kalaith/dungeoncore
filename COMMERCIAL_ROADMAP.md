@@ -27,6 +27,13 @@ indistinguishable from a missing one.
 
 ## Tier 1 — Raid legibility (the game-maker; nothing else lands without it)
 
+> **✅ Tier 1 complete (2026-07-14).** All seven items below shipped: HP bars on
+> combatants, side-anchored combat effects (who-hits-whom), post-raid summary
+> card, element-coloured unit icons, at-placement matchup hints, dramatized
+> threat meter + siege screen-state, a tutorial beat teaching the elements, and
+> corridor party-movement. The raid is now watchable and the systems are
+> legible. Next: Tier 2 (player agency & the shape of a full game).
+
 The single founder complaint across every playtest: "what's happening isn't clear."
 The combat engine computes targeting, elements, traits, conditions, and trap procs
 every tick — and surfaces it as log lines and floating strings.
@@ -40,9 +47,13 @@ every tick — and surfaces it as log lines and floating strings.
       the right — giving a clear who-hits-whom read; room-flash pulse and element
       feedback already existed. Possible future polish: per-disc anchoring and
       target lines, but the two-sides-trading-blows read is in.)*
-- [ ] **Party token movement.** Adventurer parties visibly walk room-to-room
+- [x] **Party token movement.** Adventurer parties visibly walk room-to-room
       through the dungeon instead of teleporting between combat resolutions.
       This one change makes the dungeon read as a *place*.
+      *(Done: advancing a party kicks off a 0.6s corridor glide — a party marker
+      rides the connector between rooms while the party is hidden from the
+      destination until it arrives. Future polish: full within-room-to-within-
+      room interpolation and cross-floor descent animation.)*
 - [x] **Post-raid summary card.** After each party dies/retreats: who died and to
       what, damage by room/monster, MVP defender, income earned, loot lost.
       Deferred from Phase 6; it's the cheap half of legibility.

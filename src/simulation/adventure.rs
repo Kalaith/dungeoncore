@@ -155,6 +155,8 @@ pub fn spawn_party(state: &mut GameState) {
         snared_ticks: 0,
         alarmed: false,
         sieging: false,
+        prev_room: 0,
+        move_anim: 0.0,
     };
 
     // Fresh raid: clear the prior summary card and start a new income tally.
@@ -316,7 +318,10 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
             }
         }
     } else {
-        // Advance to next room
+        // Advance to next room, kicking off the corridor-travel animation so
+        // the party visibly walks from its old room to the new one.
+        state.adventurer_parties[party_idx].prev_room = current_room;
+        state.adventurer_parties[party_idx].move_anim = crate::game_state::PARTY_MOVE_SECONDS;
         state.adventurer_parties[party_idx].current_room = next_room_pos;
         state.add_log(LogEntry::adventure(format!(
             "Party advances to room {} on floor {}",

@@ -15,7 +15,7 @@ mod icons;
 mod room_art;
 
 use backdrop::{draw_board_surface, draw_floor_rail, draw_room_route_backplate};
-use room_art::{draw_connector, draw_future_room_tile, draw_room_tile};
+use room_art::{draw_connector, draw_future_room_tile, draw_party_transit, draw_room_tile};
 
 const BASE_ROOM_W: f32 = 156.0;
 const BASE_ROOM_H: f32 = 122.0;
@@ -182,10 +182,12 @@ fn draw_floor_rooms(
         x += tile_w;
 
         if drawn_nodes < total_nodes {
-            draw_connector(
-                Rect::new(x, tile_y + tile_h * 0.36, connector_w, tile_h * 0.28),
-                false,
-            );
+            let connector = Rect::new(x, tile_y + tile_h * 0.36, connector_w, tile_h * 0.28);
+            draw_connector(connector, false);
+            // A party crossing this corridor rides the connector between rooms.
+            if let Some(progress) = party_transit_progress(state, floor.number, room.position) {
+                draw_party_transit(connector, progress);
+            }
             x += connector_w;
         }
     }
@@ -263,6 +265,8 @@ fn adventurer_count_in_room(state: &GameState, room: &Room) -> usize {
 
 /// The living adventurers currently standing in a room (from any non-retreating
 /// party present), so the board can draw each one with its own health bar.
+/// Parties mid-corridor (`move_anim > 0`) are excluded — they're drawn gliding
+/// along the connector instead, so they don't pop into the destination early.
 fn adventurers_in_room<'a>(
     state: &'a GameState,
     room: &Room,
@@ -274,9 +278,28 @@ fn adventurers_in_room<'a>(
             party.current_floor == room.floor_number
                 && party.current_room == room.position
                 && !party.retreating
+                && party.move_anim <= 0.0
         })
         .flat_map(|party| party.members.iter().filter(|member| member.alive))
         .collect()
+}
+
+/// If a party is currently travelling the corridor leaving `from_pos` on this
+/// floor, the 0..1 progress of that glide (0 = just left, 1 = arriving).
+fn party_transit_progress(state: &GameState, floor_number: i32, from_pos: usize) -> Option<f32> {
+    state.adventurer_parties.iter().find_map(|party| {
+        if party.current_floor == floor_number
+            && party.move_anim > 0.0
+            && party.prev_room == from_pos
+            && party.current_room == from_pos + 1
+            && !party.retreating
+        {
+            let t = 1.0 - party.move_anim / crate::game_state::PARTY_MOVE_SECONDS;
+            Some(t.clamp(0.0, 1.0))
+        } else {
+            None
+        }
+    })
 }
 
 fn current_objective(state: &GameState) -> String {

@@ -4,6 +4,11 @@ use serde::{Deserialize, Serialize};
 /// muster a siege. Also the denominator of the HUD's "dread" progress meter.
 pub const SIEGE_THREAT_DEATHS: i32 = 100;
 
+/// Seconds a party spends visibly travelling the corridor between two rooms.
+/// Comfortably shorter than the 2s combat tick so the glide always completes
+/// before the party fights in its new room.
+pub const PARTY_MOVE_SECONDS: f32 = 0.6;
+
 /// Combat stats for monsters and adventurers
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Stats {
@@ -286,6 +291,13 @@ pub struct AdventurerParty {
     /// Part of the tier-4 siege: marches on the core instead of looting.
     #[serde(default)]
     pub sieging: bool,
+    /// Room the party is currently animating out of (only meaningful while
+    /// `move_anim > 0`). Transient — movement is a cosmetic tween.
+    #[serde(skip)]
+    pub prev_room: usize,
+    /// Seconds of corridor-travel animation remaining; 0 when settled in a room.
+    #[serde(skip)]
+    pub move_anim: f32,
 }
 
 /// Dungeon operational status
@@ -638,6 +650,15 @@ impl GameState {
             effect.ttl -= dt;
         }
         self.effects.retain(|effect| effect.ttl > 0.0);
+    }
+
+    /// Advance corridor-travel animations for parties on the move.
+    pub fn decay_party_moves(&mut self, dt: f32) {
+        for party in &mut self.adventurer_parties {
+            if party.move_anim > 0.0 {
+                party.move_anim = (party.move_anim - dt).max(0.0);
+            }
+        }
     }
 
     /// Whether a permanent core power has been purchased.
