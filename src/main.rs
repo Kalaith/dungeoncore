@@ -590,6 +590,32 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
             state.tutorial_step = 0;
             state.status = DungeonStatus::Closed;
         }
+        "placement" => {
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = false;
+            let _ = simulation::add_room(state, None);
+            // Attune the first combat room to Fire so the synergy hint shows.
+            if let Some((floor, pos)) = find_combat_room(state) {
+                if let Some(f) = state.floors.iter_mut().find(|f| f.number == floor) {
+                    if let Some(r) = f.rooms.iter_mut().find(|r| r.position == pos) {
+                        r.upgrades.push(game_state::RoomUpgrade {
+                            upgrade_type: game_state::RoomUpgradeType::Attunement,
+                            name: "Fire Shrine".to_string(),
+                            effect: "Fire attunement".to_string(),
+                            multiplier: 1.3,
+                            element: Some("Fire".to_string()),
+                            effect_kind: String::new(),
+                            disarmed: false,
+                        });
+                    }
+                }
+            }
+            state.status = DungeonStatus::Closed;
+            // The player is mid-placement with a Fire monster selected.
+            state.selected_monster = Some("Ember Wisp".to_string());
+        }
         "summary" => {
             if let Some(species) = first_starter_species() {
                 let _ = simulation::unlock_species(state, &species);

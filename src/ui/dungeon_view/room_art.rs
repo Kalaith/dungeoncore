@@ -72,6 +72,22 @@ pub(super) fn draw_room_tile(
                 "Place",
                 EMERALD,
             );
+            // Synergy hint: this room's attunement matches the selected
+            // monster's element, so placing here grants the attunement bonus.
+            if let Some(selected) = &state.selected_monster {
+                if let (Some(elem), Some((room_elem, _))) = (
+                    crate::data::monsters::monster_element_id(selected),
+                    room.attunement(),
+                ) {
+                    if elem.as_str() == room_elem {
+                        draw_pill(
+                            Rect::new(draw_rect.x + 6.0, draw_rect.y + 6.0, 76.0, 16.0),
+                            "Attuned",
+                            element_color(&elem),
+                        );
+                    }
+                }
+            }
         }
         PlacementState::Invalid => {
             draw_rectangle(

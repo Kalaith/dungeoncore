@@ -50,10 +50,14 @@ every tick — and surfaces it as log lines and floating strings.
       request). Placed monsters render as individual units.
       *(Done: per-unit discs coloured by element with a class/monster initial cue;
       invaders labelled by class. Full sprite art is a Tier-3 item.)*
-- [ ] **Matchup hints at decision time.** Element strong/weak badges while placing
+- [x] **Matchup hints at decision time.** Element strong/weak badges while placing
       monsters/traps; "counters Mage"-style tags; attunement synergy shown on
       hover. The Codex wheel is reference material — the funnel needs it at the
       moment of choice.
+      *(Done: placement badge shows the selected monster's element and what it's
+      strong against; rooms whose attunement matches show an "Attuned" synergy
+      pill. Still open: live "counters the current invaders" tags during a raid,
+      and applying the same to trap placement.)*
 - [ ] **Dramatized threat & siege.** Threat as visible mounting dread ("the realm
       marches in N days" countdown), a screen-state change + distinct presentation
       when the siege lands, not a log line reading "THE SIEGE BEGINS".

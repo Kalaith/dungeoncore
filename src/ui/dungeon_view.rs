@@ -65,11 +65,7 @@ pub fn draw_dungeon_board(state: &GameState, rect: Rect) -> DungeonAction {
     );
 
     if let Some(monster) = &state.selected_monster {
-        draw_pill(
-            Rect::new(rect.x + rect.w - 360.0, rect.y + 28.0, 184.0, 38.0),
-            &format!("PLACING {}", monster.to_uppercase()),
-            SOUL,
-        );
+        draw_placement_badge(state, monster, rect);
     }
 
     let content = Rect::new(rect.x + 10.0, rect.y + 76.0, rect.w - 20.0, rect.h - 86.0);
@@ -204,6 +200,49 @@ fn draw_floor_rooms(
     }
 
     action
+}
+
+/// While placing a monster, teach its matchup at the moment of choice: its
+/// element (colour-coded) and what that element is strong against. The Codex
+/// wheel is reference material; this puts the same knowledge in the funnel.
+fn draw_placement_badge(_state: &GameState, monster: &str, rect: Rect) {
+    let badge = Rect::new(rect.x + rect.w - 360.0, rect.y + 22.0, 200.0, 46.0);
+    let element = crate::data::monsters::monster_element_id(monster);
+    let accent = element.as_deref().map(element_color).unwrap_or(SOUL);
+
+    draw_card(
+        badge,
+        Color::new(accent.r, accent.g, accent.b, 0.12),
+        Color::new(accent.r, accent.g, accent.b, 0.52),
+    );
+    draw_text_fit(
+        &format!("PLACING {}", monster.to_uppercase()),
+        badge.x + 12.0,
+        badge.y + 19.0,
+        badge.w - 20.0,
+        13.0,
+        accent,
+    );
+    let sub = match element.as_deref() {
+        Some(elem) => {
+            let strong = crate::data::elements::get_element(elem)
+                .map(|def| def.strong_against.join(", "))
+                .filter(|list| !list.is_empty());
+            match strong {
+                Some(list) => format!("{elem} · strong vs {list}"),
+                None => format!("{elem} · neutral element"),
+            }
+        }
+        None => "No element".to_string(),
+    };
+    draw_text_fit(
+        &sub,
+        badge.x + 12.0,
+        badge.y + 37.0,
+        badge.w - 20.0,
+        10.0,
+        TEXT_MUTED,
+    );
 }
 
 fn placement_state(state: &GameState, room: &Room) -> PlacementState {
