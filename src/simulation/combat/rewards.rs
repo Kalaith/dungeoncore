@@ -27,7 +27,10 @@ pub(super) fn reward_monster_kills(
         state.adventurer_parties[party_idx].loot += gold_reward;
         if soul_reward > 0 {
             state.souls += soul_reward;
+            state.raid_tally().souls_gained += soul_reward;
         }
+        // This monster was one of the dungeon's own defenders, now fallen.
+        state.raid_tally().defenders_lost += 1;
 
         state.add_log(LogEntry::combat(format!(
             "{} defeated on floor {}, room {}! +{} gold{}",
@@ -84,6 +87,7 @@ pub(super) fn reward_adventurer_kills(
         let mana_gain = victim_level * 10;
         state.mana = (state.mana + mana_gain).min(state.max_mana);
         state.total_deaths += 1;
+        state.raid_tally().mana_gained += mana_gain;
 
         // Award XP to all surviving monsters in the room
         let room = &mut state.floors[floor_idx].rooms[room_idx];

@@ -157,6 +157,10 @@ pub fn spawn_party(state: &mut GameState) {
         sieging: false,
     };
 
+    // Fresh raid: clear the prior summary card and start a new income tally.
+    state.last_raid_summary = None;
+    state.current_raid = Some(Default::default());
+
     state.add_log(LogEntry::adventure(format!(
         "New adventurer party enters! ({} members)",
         party.members.len()
@@ -288,6 +292,7 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
             // Completed exploration, retreat with loot
             let loot = state.adventurer_parties[party_idx].loot;
             state.gold += loot;
+            state.raid_tally().gold_gained += loot;
             state.adventurer_parties[party_idx].retreating = true;
             state.add_log(LogEntry::adventure(format!(
                 "Party completed exploration! +{} gold",
@@ -367,6 +372,26 @@ fn settle_departing_party(state: &mut GameState, party_idx: usize) {
         .iter()
         .map(|m| (m.id, m.alive))
         .collect();
+
+    // Snapshot a summary card of the raid the dungeon just weathered.
+    let party_size = member_ids.len() as i32;
+    let survivors = member_ids.iter().filter(|(_, alive)| *alive).count() as i32;
+    let slain = party_size - survivors;
+    let tally = state.current_raid.take().unwrap_or_default();
+    state.last_raid_summary = Some(crate::game_state::RaidSummary {
+        outcome: if survivors == 0 {
+            crate::game_state::RaidOutcome::Wiped
+        } else {
+            crate::game_state::RaidOutcome::Repelled
+        },
+        party_size,
+        slain,
+        survivors,
+        mana_gained: tally.mana_gained,
+        souls_gained: tally.souls_gained,
+        gold_gained: tally.gold_gained,
+        defenders_lost: tally.defenders_lost,
+    });
 
     for (id, alive) in member_ids {
         if alive {

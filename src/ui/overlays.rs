@@ -2,10 +2,97 @@ use macroquad::prelude::*;
 
 use crate::data::elements::get_all_elements;
 use crate::data::monsters::{get_monster_templates, get_species_display_name};
-use crate::game_state::GameState;
+use crate::game_state::{GameState, RaidOutcome, RaidSummary};
 
 use super::theme::*;
 use super::upgrade_panel::draw_close_button;
+
+/// A compact post-raid summary card floating over the dungeon board: the
+/// outcome, the casualties the dungeon inflicted, and the income it banked —
+/// so the player can *see* whether the build worked. Returns true when
+/// dismissed.
+pub fn draw_raid_summary(summary: &RaidSummary, area: Rect) -> bool {
+    let w = 300.0_f32.min(area.w - 24.0);
+    let h = 184.0;
+    let x = area.x + (area.w - w) * 0.5;
+    let y = area.y + 16.0;
+    let card = Rect::new(x, y, w, h);
+
+    let (title, accent) = match summary.outcome {
+        RaidOutcome::Wiped => ("Party Wiped Out", EMERALD),
+        RaidOutcome::Repelled if summary.gold_gained > 0 => ("Adventurers Escaped", TREASURE),
+        RaidOutcome::Repelled => ("Raid Repelled", WARNING),
+    };
+
+    draw_panel(card, Some("Raid Report"), accent);
+    draw_text_fit(
+        title,
+        card.x + 14.0,
+        card.y + 52.0,
+        card.w - 28.0,
+        18.0,
+        accent,
+    );
+    draw_text_fit(
+        &format!(
+            "{} of {} adventurers slain · {} escaped",
+            summary.slain, summary.party_size, summary.survivors
+        ),
+        card.x + 14.0,
+        card.y + 71.0,
+        card.w - 28.0,
+        11.0,
+        TEXT_MUTED,
+    );
+    draw_line(
+        card.x + 14.0,
+        card.y + 82.0,
+        card.x + card.w - 14.0,
+        card.y + 82.0,
+        1.0,
+        BORDER_MUTED,
+    );
+
+    // Income the dungeon banked, plus what it cost in defenders.
+    let rows = [
+        ("Mana earned", format!("+{}", summary.mana_gained), MANA),
+        ("Gold banked", format!("+{}", summary.gold_gained), TREASURE),
+        (
+            "Souls harvested",
+            format!("+{}", summary.souls_gained),
+            SOUL,
+        ),
+        (
+            "Defenders lost",
+            summary.defenders_lost.to_string(),
+            if summary.defenders_lost > 0 {
+                DANGER
+            } else {
+                TEXT_MUTED
+            },
+        ),
+    ];
+    let mut ry = card.y + 96.0;
+    for (label, value, color) in &rows {
+        draw_text_fit(label, card.x + 16.0, ry, card.w * 0.6, 11.0, TEXT_MUTED);
+        draw_text_fit_right(
+            value,
+            card.x + card.w - 16.0,
+            ry,
+            card.w * 0.36,
+            12.0,
+            *color,
+        );
+        ry += 15.0;
+    }
+
+    draw_command_button(
+        Rect::new(card.x + 14.0, card.y + card.h - 30.0, card.w - 28.0, 22.0),
+        "Dismiss",
+        ButtonTone::Ghost,
+        true,
+    )
+}
 
 /// Full-screen bestiary/codex: the element wheel and every monster the
 /// dungeon has discovered. Returns true when the player closes it.

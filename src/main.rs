@@ -507,6 +507,14 @@ fn render_playing_frame(
         ),
     );
 
+    // Post-raid summary card: shows what the last raid cost and earned until
+    // the player dismisses it (or the next raid replaces it).
+    if let Some(summary) = state.last_raid_summary.clone() {
+        if draw_raid_summary(&summary, dungeon_rect) {
+            state.last_raid_summary = None;
+        }
+    }
+
     draw_event_log(state, log_rect);
 
     // Onboarding tutorial: highlight the relevant panel and advance as the
@@ -581,6 +589,30 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
             state.tutorial_active = true;
             state.tutorial_step = 0;
             state.status = DungeonStatus::Closed;
+        }
+        "summary" => {
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = false;
+            let _ = simulation::add_room(state, None);
+            let monster = state.unlocked_monsters.first().cloned();
+            if let (Some(monster), Some((floor, pos))) = (monster, find_combat_room(state)) {
+                let _ = simulation::place_monster(state, floor, pos, &monster);
+            }
+            state.status = DungeonStatus::Open;
+            state.total_deaths = 14;
+            // A concluded raid, so the post-raid summary card is on screen.
+            state.last_raid_summary = Some(game_state::RaidSummary {
+                outcome: game_state::RaidOutcome::Wiped,
+                party_size: 4,
+                slain: 4,
+                survivors: 0,
+                mana_gained: 60,
+                souls_gained: 1,
+                gold_gained: 0,
+                defenders_lost: 1,
+            });
         }
         _ => {
             if let Some(species) = first_starter_species() {

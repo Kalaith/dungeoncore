@@ -313,6 +313,39 @@ pub struct RoomEffect {
     pub max_ttl: f32,
 }
 
+/// How a raid ended, from the dungeon's point of view.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RaidOutcome {
+    /// No adventurer left the dungeon alive.
+    Wiped,
+    /// Survivors fled or escaped with loot.
+    Repelled,
+}
+
+/// Running income tally for the active raid (transient). Snapshotted into a
+/// [`RaidSummary`] when the party departs, then discarded.
+#[derive(Clone, Debug, Default)]
+pub struct RaidTally {
+    pub mana_gained: i32,
+    pub souls_gained: i32,
+    pub gold_gained: i32,
+    pub defenders_lost: i32,
+}
+
+/// The result of a concluded raid, shown to the player as a summary card until
+/// dismissed or replaced by the next raid (transient — not persisted).
+#[derive(Clone, Debug)]
+pub struct RaidSummary {
+    pub outcome: RaidOutcome,
+    pub party_size: i32,
+    pub slain: i32,
+    pub survivors: i32,
+    pub mana_gained: i32,
+    pub souls_gained: i32,
+    pub gold_gained: i32,
+    pub defenders_lost: i32,
+}
+
 /// Log entry type
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LogEntry {
@@ -422,6 +455,12 @@ pub struct GameState {
     pub selected_upgrade: Option<String>,
     #[serde(skip)]
     pub effects: Vec<RoomEffect>,
+    /// Income accumulating over the raid currently in progress.
+    #[serde(skip)]
+    pub current_raid: Option<RaidTally>,
+    /// The most recently concluded raid, shown as a summary card.
+    #[serde(skip)]
+    pub last_raid_summary: Option<RaidSummary>,
 
     // Log
     pub log: Vec<LogEntry>,
@@ -474,6 +513,8 @@ impl GameState {
             selected_monster: None,
             selected_upgrade: None,
             effects: Vec::new(),
+            current_raid: None,
+            last_raid_summary: None,
             log: vec![LogEntry::system(
                 "Welcome to Dungeon Core! Choose a starter race to awaken your first defenders.",
             )],
@@ -549,6 +590,11 @@ impl GameState {
         if self.effects.len() > 48 {
             self.effects.remove(0);
         }
+    }
+
+    /// Mutable accumulator for the raid in progress, created on first use.
+    pub fn raid_tally(&mut self) -> &mut RaidTally {
+        self.current_raid.get_or_insert_with(RaidTally::default)
     }
 
     /// Age floating effects and drop expired ones
