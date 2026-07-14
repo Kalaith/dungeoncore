@@ -267,7 +267,10 @@ fn process_single_party(state: &mut GameState, party_id: u64) {
         // Combat happens in combat module
         super::combat::resolve_combat(state, party_idx, floor_idx, room_idx);
     } else {
-        // Room cleared, advance
+        // Undefended room: its trap still springs on the passing party (so a
+        // snare/alarm room placed before a killbox carries into it), then the
+        // party moves on.
+        super::combat::spring_undefended_trap(state, party_idx, floor_idx, room_idx);
         advance_party(state, party_idx);
     }
 }

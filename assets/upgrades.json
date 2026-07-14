@@ -40,7 +40,7 @@
         {
             "type": "trap",
             "name": "Frost Snare",
-            "effect": "Icy bindings hold the whole party fast",
+            "effect": "Holds the party fast and leaves them exposed — set it before a killbox",
             "multiplier": 2,
             "souls_cost": 0,
             "mana_cost": 50,

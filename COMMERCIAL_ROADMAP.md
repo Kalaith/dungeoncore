@@ -98,10 +98,23 @@ every tick — and surfaces it as log lines and floating strings.
       real-time cooldown with a legible recharge bar. Works on siege parties too.
       Lives in `simulation/core_spell.rs` + `ui/core_spell_button.rs`. Future
       levers: manual trap triggers, a targeted single-room cast.)*
-- [ ] **Spatial strategy.** The dungeon is currently a linear queue of rooms.
+- [~] **Spatial strategy.** The dungeon is currently a linear queue of rooms.
       Branching paths, choke points, and sequence-dependent rooms (snare-before-
       damage, alarm-empowers-downstream) would make layout a real puzzle — the
       building phase is the confirmed "best part," so deepen it.
+      *(Partial — sequence-dependent rooms shipped, branching paths still open.
+      Room order now matters: (1) an undefended room's trap now springs on the
+      passing party (`spring_undefended_trap`), so a pure snare/alarm/poison
+      room placed **before** a killbox actually does something — previously
+      trap-only rooms were inert; (2) a held (snared) party now takes +50%
+      damage (`SNARE_VULNERABILITY_MULT`), so "snare room → killing room" is a
+      real combo; (3) alarm-empowers-downstream and poison-carries-downstream
+      already worked and now compose with the above. 1 integration test.
+      **Still open:** true branching paths / forks — a dungeon **graph** instead
+      of a linear queue — which is a large architectural change (room adjacency
+      model, party path-selection, branch rendering, build-onto-a-branch UI) and
+      wants a dedicated, human-in-the-loop effort rather than an autonomous
+      loop iteration.)*
 - [x] **A shaped destination.** Prestige is an uncapped scaler with no arc. Add
       named prestige tiers, a milestone/achievement track, and/or a soft
       "ascension" win state. Commercial players need a reason to say "I finished it."
