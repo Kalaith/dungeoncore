@@ -2,6 +2,7 @@
 //! the build-here ghost tile, and route connectors.
 
 use macroquad::prelude::*;
+use macroquad_toolkit::colors::with_alpha;
 use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
 
 use crate::game_state::{Adventurer, EffectAnchor, EffectKind, GameState, Monster, Room, RoomType};
@@ -296,10 +297,10 @@ fn draw_room_effects(state: &GameState, room: &Room, rect: Rect) {
         let stack = stack_by_anchor[anchor_idx];
         stack_by_anchor[anchor_idx] += 1;
 
-        let life = (effect.ttl / effect.max_ttl).clamp(0.0, 1.0);
+        let life = effect.life_fraction();
         let rise = (1.0 - life) * 28.0 + stack as f32 * 15.0;
         let color = effect_color(effect.kind);
-        let faded = Color::new(color.r, color.g, color.b, life);
+        let faded = with_alpha(color, life);
         let cx = anchor_x;
         let cy = rect.y + rect.h * 0.36 - rise;
         // Shadow for legibility over busy art.
@@ -307,7 +308,7 @@ fn draw_room_effects(state: &GameState, room: &Room, rect: Rect) {
             &effect.text,
             Rect::new(cx - 69.0, cy - 7.0, 140.0, 16.0),
             13.0,
-            Color::new(0.0, 0.0, 0.0, life * 0.7),
+            with_alpha(BLACK, life * 0.7),
         );
         draw_centered_text(
             &effect.text,

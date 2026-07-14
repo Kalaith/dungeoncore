@@ -1,4 +1,16 @@
+use macroquad_toolkit::timing::Cooldown;
 use serde::{Deserialize, Serialize};
+
+mod effects;
+mod floor;
+pub use effects::{EffectAnchor, EffectKind, RoomEffect};
+pub use floor::Floor;
+
+/// A ready (zero-duration) cooldown, used as the `#[serde(skip)]` default for
+/// transient fields — `Cooldown` has no `Default` impl of its own.
+fn ready_cooldown() -> Cooldown {
+    Cooldown::new(0.0)
+}
 
 /// Cumulative adventurer deaths that push the realm to peak threat (tier 4) and
 /// muster a siege. Also the denominator of the HUD's "dread" progress meter.
@@ -169,108 +181,6 @@ impl Room {
     }
 }
 
-/// Floor in the dungeon
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Floor {
-    pub id: u64,
-    pub number: i32,
-    pub rooms: Vec<Room>,
-    pub is_deepest: bool,
-}
-
-impl Floor {
-    pub fn new(id: u64, number: i32, is_deepest: bool) -> Self {
-        Self {
-            id,
-            number,
-            rooms: Vec::new(),
-            is_deepest,
-        }
-    }
-
-    /// The room at a given position key, if any.
-    pub fn room_at(&self, position: usize) -> Option<&Room> {
-        self.rooms.iter().find(|r| r.position == position)
-    }
-
-    /// Wire every room's `exits` as a single linear chain in ascending
-    /// `position` order (each room points at the next; the last has none). Used
-    /// to migrate pre-graph saves and to seed freshly-built linear floors.
-    pub fn rebuild_linear_exits(&mut self) {
-        let mut positions: Vec<usize> = self.rooms.iter().map(|r| r.position).collect();
-        positions.sort_unstable();
-        let next: std::collections::HashMap<usize, usize> =
-            positions.windows(2).map(|w| (w[0], w[1])).collect();
-        for room in &mut self.rooms {
-            room.exits = next
-                .get(&room.position)
-                .map(|&n| vec![n])
-                .unwrap_or_default();
-        }
-    }
-
-    /// Validate the floor graph: a single Entrance source and single Core sink,
-    /// every room reachable from the Entrance, and every room able to reach the
-    /// Core (no orphans, no dead ends). Returns Err with the first problem.
-    pub fn validate_graph(&self) -> Result<(), String> {
-        use std::collections::HashSet;
-        let entrances: Vec<usize> = self
-            .rooms
-            .iter()
-            .filter(|r| r.room_type == RoomType::Entrance)
-            .map(|r| r.position)
-            .collect();
-        let cores: Vec<usize> = self
-            .rooms
-            .iter()
-            .filter(|r| r.room_type == RoomType::Core)
-            .map(|r| r.position)
-            .collect();
-        if entrances.len() != 1 {
-            return Err(format!("floor {} needs exactly one entrance", self.number));
-        }
-        if cores.len() != 1 {
-            return Err(format!("floor {} needs exactly one core", self.number));
-        }
-        let core = cores[0];
-
-        // Reachability from the entrance (forward BFS over `exits`).
-        let mut seen = HashSet::new();
-        let mut stack = vec![entrances[0]];
-        while let Some(pos) = stack.pop() {
-            if !seen.insert(pos) {
-                continue;
-            }
-            if let Some(room) = self.room_at(pos) {
-                for &next in &room.exits {
-                    if self.room_at(next).is_none() {
-                        return Err(format!(
-                            "floor {}: room {} exits to missing room {}",
-                            self.number, pos, next
-                        ));
-                    }
-                    stack.push(next);
-                }
-            }
-        }
-        for room in &self.rooms {
-            if !seen.contains(&room.position) {
-                return Err(format!(
-                    "floor {}: room {} is unreachable from the entrance",
-                    self.number, room.position
-                ));
-            }
-            if room.position != core && room.exits.is_empty() {
-                return Err(format!(
-                    "floor {}: room {} is a dead end (no path to the core)",
-                    self.number, room.position
-                ));
-            }
-        }
-        Ok(())
-    }
-}
-
 /// Adventurer equipment
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Equipment {
@@ -398,12 +308,13 @@ pub struct AdventurerParty {
     #[serde(default)]
     pub sieging: bool,
     /// Room the party is currently animating out of (only meaningful while
-    /// `move_anim > 0`). Transient — movement is a cosmetic tween.
+    /// `move_anim` is not ready). Transient — movement is a cosmetic tween.
     #[serde(skip)]
     pub prev_room: usize,
-    /// Seconds of corridor-travel animation remaining; 0 when settled in a room.
-    #[serde(skip)]
-    pub move_anim: f32,
+    /// Corridor-travel animation; ready when the party has settled in a room,
+    /// armed to [`PARTY_MOVE_SECONDS`] while gliding to the next.
+    #[serde(skip, default = "ready_cooldown")]
+    pub move_anim: Cooldown,
 }
 
 /// Dungeon operational status
@@ -412,39 +323,6 @@ pub enum DungeonStatus {
     Open,
     Closing,
     Closed,
-}
-
-/// Kind of transient visual effect surfaced over a room
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum EffectKind {
-    Damage,
-    Ability,
-    MonsterDown,
-    AdventurerDown,
-    Loot,
-}
-
-/// Which side of the room a floating effect belongs over, so damage/deaths
-/// rise above the units actually involved rather than all stacking centre.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum EffectAnchor {
-    Center,
-    /// The defenders' (monster) side — left zone.
-    Defenders,
-    /// The invaders' (adventurer) side — right zone.
-    Invaders,
-}
-
-/// A short-lived floating effect anchored to a room (not persisted)
-#[derive(Clone, Debug)]
-pub struct RoomEffect {
-    pub floor: i32,
-    pub room: usize,
-    pub text: String,
-    pub kind: EffectKind,
-    pub anchor: EffectAnchor,
-    pub ttl: f32,
-    pub max_ttl: f32,
 }
 
 /// How a raid ended, from the dungeon's point of view.
@@ -572,10 +450,10 @@ pub struct GameState {
     /// Chosen difficulty for this run (scales invaders, sieges, income, core HP).
     #[serde(default)]
     pub difficulty: crate::data::difficulty::Difficulty,
-    /// Recharge remaining (real seconds) on the active Core Smite lever.
-    /// Transient — a fresh session always starts ready.
-    #[serde(skip)]
-    pub core_smite_cooldown: f32,
+    /// Recharge on the active Core Smite lever. Transient — a fresh session
+    /// always starts ready.
+    #[serde(skip, default = "ready_cooldown")]
+    pub core_smite_cooldown: Cooldown,
     /// The core has fallen; the run is over (not persisted meaningfully).
     #[serde(default)]
     pub game_over: bool,
@@ -655,7 +533,7 @@ impl GameState {
             core_powers: Vec::new(),
             milestones: Vec::new(),
             difficulty: crate::data::difficulty::Difficulty::default(),
-            core_smite_cooldown: 0.0,
+            core_smite_cooldown: Cooldown::new(0.0),
             game_over: false,
             tutorial_active: true,
             tutorial_step: 0,
@@ -747,69 +625,9 @@ impl GameState {
         }
     }
 
-    /// Spawn a short-lived floating effect centred over a room.
-    pub fn push_effect(
-        &mut self,
-        floor: i32,
-        room: usize,
-        text: impl Into<String>,
-        kind: EffectKind,
-    ) {
-        self.push_effect_at(floor, room, text, kind, EffectAnchor::Center);
-    }
-
-    /// Spawn a floating effect over a specific side of a room, so damage and
-    /// deaths appear above the units they concern.
-    pub fn push_effect_at(
-        &mut self,
-        floor: i32,
-        room: usize,
-        text: impl Into<String>,
-        kind: EffectKind,
-        anchor: EffectAnchor,
-    ) {
-        const EFFECT_TTL: f32 = 1.6;
-        self.effects.push(RoomEffect {
-            floor,
-            room,
-            text: text.into(),
-            kind,
-            anchor,
-            ttl: EFFECT_TTL,
-            max_ttl: EFFECT_TTL,
-        });
-        if self.effects.len() > 48 {
-            self.effects.remove(0);
-        }
-    }
-
     /// Mutable accumulator for the raid in progress, created on first use.
     pub fn raid_tally(&mut self) -> &mut RaidTally {
         self.current_raid.get_or_insert_with(RaidTally::default)
-    }
-
-    /// Age floating effects and drop expired ones
-    pub fn decay_effects(&mut self, dt: f32) {
-        for effect in &mut self.effects {
-            effect.ttl -= dt;
-        }
-        self.effects.retain(|effect| effect.ttl > 0.0);
-    }
-
-    /// Recharge the Core Smite lever in real time toward readiness.
-    pub fn decay_smite_cooldown(&mut self, dt: f32) {
-        if self.core_smite_cooldown > 0.0 {
-            self.core_smite_cooldown = (self.core_smite_cooldown - dt).max(0.0);
-        }
-    }
-
-    /// Advance corridor-travel animations for parties on the move.
-    pub fn decay_party_moves(&mut self, dt: f32) {
-        for party in &mut self.adventurer_parties {
-            if party.move_anim > 0.0 {
-                party.move_anim = (party.move_anim - dt).max(0.0);
-            }
-        }
     }
 
     /// Whether a permanent core power has been purchased.

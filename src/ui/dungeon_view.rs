@@ -265,8 +265,9 @@ fn adventurer_count_in_room(state: &GameState, room: &Room) -> usize {
 
 /// The living adventurers currently standing in a room (from any non-retreating
 /// party present), so the board can draw each one with its own health bar.
-/// Parties mid-corridor (`move_anim > 0`) are excluded — they're drawn gliding
-/// along the connector instead, so they don't pop into the destination early.
+/// Parties mid-corridor (`move_anim` not ready) are excluded — they're drawn
+/// gliding along the connector instead, so they don't pop into the destination
+/// early.
 fn adventurers_in_room<'a>(
     state: &'a GameState,
     room: &Room,
@@ -278,7 +279,7 @@ fn adventurers_in_room<'a>(
             party.current_floor == room.floor_number
                 && party.current_room == room.position
                 && !party.retreating
-                && party.move_anim <= 0.0
+                && party.move_anim.is_ready()
         })
         .flat_map(|party| party.members.iter().filter(|member| member.alive))
         .collect()
@@ -289,13 +290,12 @@ fn adventurers_in_room<'a>(
 fn party_transit_progress(state: &GameState, floor_number: i32, from_pos: usize) -> Option<f32> {
     state.adventurer_parties.iter().find_map(|party| {
         if party.current_floor == floor_number
-            && party.move_anim > 0.0
+            && !party.move_anim.is_ready()
             && party.prev_room == from_pos
             && party.current_room == from_pos + 1
             && !party.retreating
         {
-            let t = 1.0 - party.move_anim / crate::game_state::PARTY_MOVE_SECONDS;
-            Some(t.clamp(0.0, 1.0))
+            Some(party.move_anim.fraction_elapsed())
         } else {
             None
         }

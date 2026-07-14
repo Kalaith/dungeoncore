@@ -1,3 +1,5 @@
+use macroquad_toolkit::timing::Cooldown;
+
 use crate::data::adventurers::{
     get_adventurer_class, get_adventurer_classes, get_adventurer_names, get_entry_quotes,
     get_exit_quotes,
@@ -5,6 +7,7 @@ use crate::data::adventurers::{
 use crate::data::constants::{ADVENTURER_SPAWN_CHANCE, MAX_PARTY_SIZE, MIN_PARTY_SIZE};
 use crate::game_state::{
     Adventurer, AdventurerParty, DungeonStatus, GameState, HeroRecord, HeroStatus, LogEntry, Stats,
+    PARTY_MOVE_SECONDS,
 };
 
 /// Build a combat-ready adventurer from a class, level, and identity. `stat_mult`
@@ -182,7 +185,7 @@ pub fn spawn_party(state: &mut GameState) {
         alarmed: false,
         sieging: false,
         prev_room: 0,
-        move_anim: 0.0,
+        move_anim: Cooldown::new(PARTY_MOVE_SECONDS),
     };
 
     // Fresh raid: clear the prior summary card and start a new income tally.
@@ -362,7 +365,7 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
     let party = &state.adventurer_parties[party_idx];
     let next = super::pathing::choose_exit(state, floor, party, &exits);
     state.adventurer_parties[party_idx].prev_room = current_room;
-    state.adventurer_parties[party_idx].move_anim = crate::game_state::PARTY_MOVE_SECONDS;
+    state.adventurer_parties[party_idx].move_anim.trigger();
     state.adventurer_parties[party_idx].current_room = next;
     state.add_log(LogEntry::adventure(format!(
         "Party advances to room {} on floor {}",

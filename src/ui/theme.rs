@@ -1,4 +1,5 @@
 use macroquad::prelude::*;
+use macroquad_toolkit::colors::with_alpha;
 use macroquad_toolkit::input::is_hovered_rect;
 use macroquad_toolkit::ui::{
     draw_surface, draw_text_centered_in_box, truncate_text_to_width, SurfaceStyle,
@@ -56,14 +57,7 @@ pub fn draw_game_background(sw: f32, sh: f32) {
 
     draw_rectangle(0.0, 0.0, sw, 100.0, Color::new(0.0, 0.0, 0.0, 0.34));
     draw_rectangle(0.0, sh - 116.0, sw, 116.0, Color::new(0.0, 0.0, 0.0, 0.30));
-    draw_line(
-        0.0,
-        88.0,
-        sw,
-        88.0,
-        1.0,
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.18),
-    );
+    draw_line(0.0, 88.0, sw, 88.0, 1.0, with_alpha(TREASURE, 0.18));
 
     let grid_color = Color::new(0.24, 0.30, 0.40, 0.014);
     let mut x = 0.0;
@@ -81,8 +75,8 @@ pub fn draw_game_background(sw: f32, sh: f32) {
 pub fn draw_panel(rect: Rect, title: Option<&str>, accent: Color) {
     let style = SurfaceStyle::new(PANEL)
         .with_shadow(vec2(4.0, 5.0), Color::new(0.0, 0.0, 0.0, 0.40))
-        .with_border(1.0, Color::new(BORDER.r, BORDER.g, BORDER.b, 0.42))
-        .with_inner_border(1.0, 1.0, Color::new(accent.r, accent.g, accent.b, 0.09));
+        .with_border(1.0, with_alpha(BORDER, 0.42))
+        .with_inner_border(1.0, 1.0, with_alpha(accent, 0.09));
     draw_surface(rect, &style);
 
     if let Some(title) = title {
@@ -136,11 +130,7 @@ pub fn draw_centered_text(text: &str, rect: Rect, size: f32, color: Color) {
 }
 
 pub fn draw_pill(rect: Rect, text: &str, color: Color) {
-    draw_card(
-        rect,
-        Color::new(color.r, color.g, color.b, 0.14),
-        Color::new(color.r, color.g, color.b, 0.58),
-    );
+    draw_card(rect, with_alpha(color, 0.14), with_alpha(color, 0.58));
     draw_centered_text(
         text,
         rect,
@@ -150,19 +140,8 @@ pub fn draw_pill(rect: Rect, text: &str, color: Color) {
 }
 
 pub fn draw_icon_disc(center: Vec2, radius: f32, color: Color, label: &str) {
-    draw_circle(
-        center.x,
-        center.y,
-        radius,
-        Color::new(color.r, color.g, color.b, 0.22),
-    );
-    draw_circle_lines(
-        center.x,
-        center.y,
-        radius,
-        1.5,
-        Color::new(color.r, color.g, color.b, 0.72),
-    );
+    draw_circle(center.x, center.y, radius, with_alpha(color, 0.22));
+    draw_circle_lines(center.x, center.y, radius, 1.5, with_alpha(color, 0.72));
     draw_centered_text(
         label,
         Rect::new(
@@ -223,7 +202,7 @@ pub fn draw_command_button(rect: Rect, text: &str, tone: ButtonTone, enabled: bo
         if enabled {
             border
         } else {
-            Color::new(BORDER.r, BORDER.g, BORDER.b, 0.36)
+            with_alpha(BORDER, 0.36)
         },
     );
     let y_offset = if pressed { 1.5 } else { 0.0 };

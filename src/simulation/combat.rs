@@ -437,7 +437,9 @@ mod tests {
             alarmed: false,
             sieging: false,
             prev_room: 0,
-            move_anim: 0.0,
+            move_anim: macroquad_toolkit::timing::Cooldown::new(
+                crate::game_state::PARTY_MOVE_SECONDS,
+            ),
         }
     }
 

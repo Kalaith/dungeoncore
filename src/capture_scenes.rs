@@ -2,7 +2,9 @@
 //! past the file-size limit); used only by the headless capture harness to boot
 //! a representative, frozen scene for a PNG. None of this runs in normal play.
 
-use crate::game_state::{self, GameState};
+use macroquad_toolkit::timing::Cooldown;
+
+use crate::game_state::{self, GameState, PARTY_MOVE_SECONDS};
 use crate::simulation;
 
 /// First species flagged as a starter, used to seed capture scenes.
@@ -134,7 +136,11 @@ pub fn seed_capture_scene(state: &mut GameState, scene: &str) {
                 sieging: false,
                 prev_room: 0,
                 // Half-way through the glide (progress = 1 - 0.3/0.6 = 0.5).
-                move_anim: 0.3,
+                move_anim: {
+                    let mut glide = Cooldown::new_armed(PARTY_MOVE_SECONDS);
+                    glide.tick(PARTY_MOVE_SECONDS - 0.3);
+                    glide
+                },
             });
         }
         "coretree" => {
@@ -246,7 +252,7 @@ pub fn seed_capture_scene(state: &mut GameState, scene: &str) {
                     alarmed: false,
                     sieging: false,
                     prev_room: 0,
-                    move_anim: 0.0,
+                    move_anim: Cooldown::new(PARTY_MOVE_SECONDS),
                 });
                 state.selected_room = Some((floor, pos));
             }
@@ -362,7 +368,7 @@ pub fn seed_capture_scene(state: &mut GameState, scene: &str) {
                     alarmed: false,
                     sieging: false,
                     prev_room: 0,
-                    move_anim: 0.0,
+                    move_anim: Cooldown::new(PARTY_MOVE_SECONDS),
                 });
 
                 // Both sides trading blows: defenders take a strong hit on the

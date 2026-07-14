@@ -6,6 +6,8 @@
 //! a raid rather than trivializing it (the Legend of Keepers model: watch, and
 //! slightly steer).
 
+use macroquad_toolkit::timing::Cooldown;
+
 use crate::game_state::{EffectAnchor, EffectKind, GameState, LogEntry};
 
 /// Real-time seconds Core Smite takes to recharge after a cast.
@@ -34,7 +36,7 @@ pub fn smite_cooldown(state: &GameState) -> f32 {
 
 /// Is Core Smite recharged and ready to fire?
 pub fn is_ready(state: &GameState) -> bool {
-    state.core_smite_cooldown <= 0.0
+    state.core_smite_cooldown.is_ready()
 }
 
 /// Index of the party a smite would strike: the living, non-retreating party
@@ -56,7 +58,7 @@ pub fn cast_core_smite(state: &mut GameState) -> Result<(), String> {
     if !is_ready(state) {
         return Err(format!(
             "Core Smite is recharging ({:.0}s).",
-            state.core_smite_cooldown.ceil()
+            state.core_smite_cooldown.remaining().ceil()
         ));
     }
     if state.mana < CORE_SMITE_MANA_COST {
@@ -70,7 +72,7 @@ pub fn cast_core_smite(state: &mut GameState) -> Result<(), String> {
     };
 
     state.mana -= CORE_SMITE_MANA_COST;
-    state.core_smite_cooldown = smite_cooldown(state);
+    state.core_smite_cooldown = Cooldown::new_armed(smite_cooldown(state));
 
     let damage = smite_damage(state);
     let floor = state.adventurer_parties[party_idx].current_floor;
@@ -185,7 +187,7 @@ mod tests {
             alarmed: false,
             sieging: false,
             prev_room: 0,
-            move_anim: 0.0,
+            move_anim: Cooldown::new(crate::game_state::PARTY_MOVE_SECONDS),
         }
     }
 
@@ -195,7 +197,7 @@ mod tests {
         s.mana = 100;
         s.adventurer_parties.push(party_with(999, 2, 1, 0));
         cast_core_smite(&mut s).unwrap();
-        assert!(s.core_smite_cooldown > 0.0);
+        assert!(!s.core_smite_cooldown.is_ready());
         assert_eq!(s.mana, 100 - CORE_SMITE_MANA_COST);
         // Both members took the hit but survived their large HP pool.
         assert!(s.adventurer_parties[0].members.iter().all(|m| m.alive));
@@ -223,7 +225,7 @@ mod tests {
         assert!(cast_core_smite(&mut s).is_err());
         // On cooldown → blocked even with a target.
         s.adventurer_parties.push(party_with(999, 1, 1, 0));
-        s.core_smite_cooldown = 5.0;
+        s.core_smite_cooldown = Cooldown::new_armed(5.0);
         assert!(cast_core_smite(&mut s).is_err());
     }
 

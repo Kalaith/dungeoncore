@@ -297,8 +297,10 @@ fn render_playing_frame(
         // Age transient combat effects and party-travel animations each frame,
         // and recharge the Core Smite lever in real time.
         state.decay_effects(get_frame_time());
-        state.decay_party_moves(get_frame_time());
-        state.decay_smite_cooldown(get_frame_time());
+        for party in &mut state.adventurer_parties {
+            party.move_anim.tick(get_frame_time());
+        }
+        state.core_smite_cooldown.tick(get_frame_time());
 
         // === Time-based Updates ===
 
