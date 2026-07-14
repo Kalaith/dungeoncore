@@ -58,9 +58,13 @@ every tick — and surfaces it as log lines and floating strings.
       strong against; rooms whose attunement matches show an "Attuned" synergy
       pill. Still open: live "counters the current invaders" tags during a raid,
       and applying the same to trap placement.)*
-- [ ] **Dramatized threat & siege.** Threat as visible mounting dread ("the realm
+- [x] **Dramatized threat & siege.** Threat as visible mounting dread ("the realm
       marches in N days" countdown), a screen-state change + distinct presentation
       when the siege lands, not a log line reading "THE SIEGE BEGINS".
+      *(Done: HUD threat slot now carries a rising "dread" meter toward the siege
+      threshold; an active siege paints a pulsing red screen frame plus a bold
+      "DEFEND THE CORE" banner. The siege is threshold- not time-triggered, so a
+      dread meter replaces a literal day countdown.)*
 - [ ] **Teach the depth, not just the buttons.** The 5-step tutorial covers
       controls; nothing teaches element counters, attunement, or trait synergy.
       Add contextual tips and one guided "your first synergy" beat.

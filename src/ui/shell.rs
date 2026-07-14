@@ -127,13 +127,18 @@ pub fn draw_top_hud(state: &GameState, rect: Rect) -> ControlAction {
         );
     } else {
         let (threat_label, threat_color) = threat_display(state);
+        // A rising "dread" meter toward the siege makes threat feel like mounting
+        // pressure instead of a silent number.
         draw_top_stat(
             Rect::new(stats_x + stat_w * 3.0, y, stat_w, stat_h),
             &format!("Threat ({})", state.total_deaths),
             &threat_label,
             threat_color,
             StatIcon::Threat,
-            None,
+            Some((
+                state.total_deaths as f32,
+                crate::game_state::SIEGE_THREAT_DEATHS as f32,
+            )),
         );
     }
     let time_label = if state.prestige > 0 {

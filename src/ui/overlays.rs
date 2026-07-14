@@ -94,6 +94,42 @@ pub fn draw_raid_summary(summary: &RaidSummary, area: Rect) -> bool {
     )
 }
 
+/// Screen-state dressing for an active siege: a pulsing red frame around the
+/// whole screen plus a bold banner, so the siege reads as a distinct, alarming
+/// moment rather than a single line scrolling past in the log.
+pub fn draw_siege_overlay(sw: f32, sh: f32) {
+    let pulse = (get_time() as f32 * 3.0).sin().abs();
+
+    // Pulsing danger frame — an "alert" border that doesn't obscure content.
+    let thickness = 7.0 + pulse * 5.0;
+    draw_rectangle_lines(
+        2.0,
+        2.0,
+        sw - 4.0,
+        sh - 4.0,
+        thickness,
+        Color::new(0.86, 0.10, 0.13, 0.42 + pulse * 0.34),
+    );
+
+    // Centered banner just below the HUD.
+    let bw = 460.0_f32.min(sw - 40.0);
+    let bh = 40.0;
+    let bx = (sw - bw) * 0.5;
+    let by = 98.0;
+    let banner = Rect::new(bx, by, bw, bh);
+    draw_card(
+        banner,
+        Color::new(0.34, 0.02, 0.05, 0.94),
+        Color::new(DANGER.r, DANGER.g, DANGER.b, 0.7 + pulse * 0.3),
+    );
+    draw_centered_text(
+        "THE REALM'S SIEGE — DEFEND THE CORE",
+        banner,
+        17.0,
+        Color::new(1.0, 0.86, 0.86, 0.85 + pulse * 0.15),
+    );
+}
+
 /// Full-screen bestiary/codex: the element wheel and every monster the
 /// dungeon has discovered. Returns true when the player closes it.
 pub fn draw_codex(state: &GameState, sw: f32, sh: f32, scroll: &mut f32) -> bool {

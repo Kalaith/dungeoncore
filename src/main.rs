@@ -517,6 +517,11 @@ fn render_playing_frame(
 
     draw_event_log(state, log_rect);
 
+    // A siege turns the whole screen into an alarm state.
+    if state.siege_active {
+        draw_siege_overlay(sw, sh);
+    }
+
     // Onboarding tutorial: highlight the relevant panel and advance as the
     // player completes each step.
     if tutorial::is_active(state) {
@@ -615,6 +620,22 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
             state.status = DungeonStatus::Closed;
             // The player is mid-placement with a Fire monster selected.
             state.selected_monster = Some("Ember Wisp".to_string());
+        }
+        "siege" => {
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = false;
+            let _ = simulation::add_room(state, None);
+            let monster = state.unlocked_monsters.first().cloned();
+            if let (Some(monster), Some((floor, pos))) = (monster, find_combat_room(state)) {
+                let _ = simulation::place_monster(state, floor, pos, &monster);
+            }
+            // Peak threat with the dungeon clear musters a real siege party.
+            state.total_deaths = 100;
+            simulation::endgame::maybe_launch_siege(state);
+            state.core_hp = 380;
+            state.core_max_hp = 500;
         }
         "summary" => {
             if let Some(species) = first_starter_species() {

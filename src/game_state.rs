@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+/// Cumulative adventurer deaths that push the realm to peak threat (tier 4) and
+/// muster a siege. Also the denominator of the HUD's "dread" progress meter.
+pub const SIEGE_THREAT_DEATHS: i32 = 100;
+
 /// Combat stats for monsters and adventurers
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 pub struct Stats {
@@ -613,7 +617,7 @@ impl GameState {
     /// Current threat tier (0-4) derived from accumulated adventurer deaths
     pub fn threat_tier(&self) -> i32 {
         match self.total_deaths {
-            d if d >= 100 => 4,
+            d if d >= SIEGE_THREAT_DEATHS => 4,
             d if d >= 50 => 3,
             d if d >= 25 => 2,
             d if d >= 10 => 1,
