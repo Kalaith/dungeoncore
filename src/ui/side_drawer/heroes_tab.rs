@@ -106,6 +106,14 @@ pub(super) fn draw_heroes_tab(state: &GameState, rect: Rect, scroll: &mut f32) {
             tag,
             tag_color,
         );
+        // Rivals — recurring survivors or prolific slayers — carry a gold badge.
+        if hero.is_rival() {
+            draw_pill(
+                Rect::new(row.x + row.w - 98.0, row.y + 7.0, 44.0, 15.0),
+                "RIVAL",
+                TREASURE,
+            );
+        }
         let detail = match hero.status {
             HeroStatus::Dead => format!(
                 "{} {} · died F{} D{}",

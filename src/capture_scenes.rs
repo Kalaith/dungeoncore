@@ -164,6 +164,93 @@ pub fn seed_capture_scene(state: &mut GameState, scene: &str) {
             state.prestige = 2;
             let _ = simulation::add_room(state, None);
         }
+        "rival" => {
+            use crate::game_state::{Equipment, HeroRecord, HeroStatus};
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = false;
+            let _ = simulation::add_room(state, None);
+            let monster = state.unlocked_monsters.first().cloned();
+            if let (Some(monster), Some((floor, pos))) = (monster, find_combat_room(state)) {
+                let _ = simulation::place_monster(state, floor, pos, &monster);
+            }
+            state.status = DungeonStatus::Open;
+            state.total_deaths = 20;
+            // A veteran rival (5 delves, 12 kills) leads a fresh recruit into a
+            // defended room, so the gold ring + name plate + RIVAL badge show.
+            state.known_adventurers = vec![
+                HeroRecord {
+                    id: 500,
+                    name: "Sable the Bold".to_string(),
+                    class_name: "Rogue".to_string(),
+                    race: "Halfling".to_string(),
+                    level: 5,
+                    experience: 0,
+                    delves: 5,
+                    kills: 12,
+                    gold_stolen: 240,
+                    status: HeroStatus::Inside,
+                    death_floor: 0,
+                    death_day: 0,
+                },
+                HeroRecord {
+                    id: 501,
+                    name: "Pip".to_string(),
+                    class_name: "Warrior".to_string(),
+                    race: "Human".to_string(),
+                    level: 2,
+                    experience: 0,
+                    delves: 1,
+                    kills: 0,
+                    gold_stolen: 0,
+                    status: HeroStatus::Inside,
+                    death_floor: 0,
+                    death_day: 0,
+                },
+            ];
+            if let Some((floor, pos)) = find_combat_room(state) {
+                let mk = |id: u64, name: &str, class: &str, hp: i32| Adventurer {
+                    id,
+                    name: name.to_string(),
+                    class_name: class.to_string(),
+                    race: "Human".to_string(),
+                    level: 4,
+                    hp,
+                    max_hp: 50,
+                    alive: true,
+                    experience: 0,
+                    gold: 0,
+                    equipment: Equipment::default(),
+                    conditions: Vec::new(),
+                    scaled_stats: Stats {
+                        hp: 50,
+                        attack: 10,
+                        defense: 4,
+                    },
+                };
+                state.adventurer_parties.push(AdventurerParty {
+                    id: 1,
+                    members: vec![
+                        mk(500, "Sable the Bold", "Rogue", 38),
+                        mk(501, "Pip", "Warrior", 44),
+                    ],
+                    current_floor: floor,
+                    current_room: pos,
+                    retreating: false,
+                    casualties: 0,
+                    loot: 60,
+                    entry_time: 8,
+                    target_floor: 1,
+                    snared_ticks: 0,
+                    alarmed: false,
+                    sieging: false,
+                    prev_room: 0,
+                    move_anim: 0.0,
+                });
+                state.selected_room = Some((floor, pos));
+            }
+        }
         "goals" => {
             if let Some(species) = first_starter_species() {
                 let _ = simulation::unlock_species(state, &species);

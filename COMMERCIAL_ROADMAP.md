@@ -138,7 +138,7 @@ every tick — and surfaces it as log lines and floating strings.
       across in-run resets. Endless vs. campaign / seeded runs remain as future
       extensions. Also extracted the capture-scene seeding out of `main.rs` into
       `capture_scenes.rs` to bring main back under the 800-line limit.)*
-- [ ] **Remaining design-debt items from ROADMAP.md:**
+- [x] **Remaining design-debt items from ROADMAP.md:**
   - [x] Undead identity rule (no healing, cheap respawn) — requires a respawn-cost
         mechanic; all respawns are currently free.
         *(Done: added a respawn-cost mechanic in `respawn_monsters` — the living
@@ -148,8 +148,16 @@ every tick — and surfaces it as log lines and floating strings.
         skipped in the hourly regen trait and in combat lifesteal (`is_undead`
         helper in `data/monsters.rs`). Identity surfaced in the species blurb and
         an itemised respawn log line. 3 tests.)*
-  - [ ] Hero grudges/rivalries/bounties (data hooks exist) — *only after* heroes
+  - [x] Hero grudges/rivalries/bounties (data hooks exist) — *only after* heroes
         are visible actors in raids, per the design review.
+        *(Done together, since the gate was heroes-as-visible-actors: recurring
+        survivors (≥3 delves) or prolific slayers (≥5 kills) become named
+        "Rivals" — gold-ringed with a name plate on the raid board and a RIVAL
+        badge in the HEROES ledger, so heroes now read as recognisable actors.
+        Slaying a rival pays a notoriety-scaled BOUNTY (souls + gold) via
+        `record_hero_death`, with a prominent log line. `HeroRecord::is_rival` /
+        `bounty` in `game_state.rs`; 3 tests. Bounties/rivalries deepen naturally
+        post-launch.)*
 - [x] **Economy balance passes** flagged but never done:
   - [x] Gold glut — sinks are one-time (species unlocks) or occasional
         (evolutions); late-game gold piles up dead. Add an ongoing sink (upkeep,

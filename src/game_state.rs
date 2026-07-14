@@ -270,6 +270,21 @@ pub struct HeroRecord {
     pub death_day: i32,
 }
 
+impl HeroRecord {
+    /// A "rival": a recurring survivor (three delves or more) or a prolific
+    /// defender-slayer (five kills or more). Rivals are named, marked on the
+    /// board, and carry a bounty — the dungeon's grudge made concrete.
+    pub fn is_rival(&self) -> bool {
+        self.delves >= 3 || self.kills >= 5
+    }
+
+    /// Bounty (souls, gold) for finally slaying this rival, scaled by how much
+    /// notoriety they had built raiding the dungeon.
+    pub fn bounty(&self) -> (i32, i32) {
+        (1 + self.delves / 2, 40 + self.kills * 10)
+    }
+}
+
 /// Party of adventurers exploring the dungeon
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AdventurerParty {
@@ -593,13 +608,27 @@ impl GameState {
         }
     }
 
-    /// Record a hero's death in the ledger.
+    /// Record a hero's death in the ledger. If the fallen hero was a rival, the
+    /// dungeon claims a bounty (souls + gold) — the grudge, paid.
     pub fn record_hero_death(&mut self, hero_id: u64, floor: i32) {
         let day = self.day;
+        let mut bounty: Option<(String, i32, i32)> = None;
         if let Some(record) = self.hero_mut(hero_id) {
+            if record.status != HeroStatus::Dead && record.is_rival() {
+                let (souls, gold) = record.bounty();
+                bounty = Some((record.name.clone(), souls, gold));
+            }
             record.status = HeroStatus::Dead;
             record.death_floor = floor;
             record.death_day = day;
+        }
+        if let Some((name, souls, gold)) = bounty {
+            self.souls += souls;
+            self.gold += gold;
+            self.add_log(LogEntry::system(format!(
+                "BOUNTY CLAIMED — the rival {} falls at last! +{} souls, +{} gold.",
+                name, souls, gold
+            )));
         }
     }
 
@@ -725,5 +754,57 @@ impl GameState {
             .flat_map(|f| &f.rooms)
             .filter(|r| r.room_type != RoomType::Core && r.room_type != RoomType::Entrance)
             .count() as i32
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn hero(id: u64, delves: i32, kills: i32) -> HeroRecord {
+        HeroRecord {
+            id,
+            name: "Sable the Bold".to_string(),
+            class_name: "Rogue".to_string(),
+            race: "Halfling".to_string(),
+            level: 4,
+            experience: 0,
+            delves,
+            kills,
+            gold_stolen: 0,
+            status: HeroStatus::Inside,
+            death_floor: 0,
+            death_day: 0,
+        }
+    }
+
+    #[test]
+    fn rival_thresholds() {
+        assert!(!hero(1, 1, 0).is_rival());
+        assert!(hero(1, 3, 0).is_rival(), "recurring survivor is a rival");
+        assert!(hero(1, 1, 5).is_rival(), "prolific slayer is a rival");
+    }
+
+    #[test]
+    fn slaying_a_rival_pays_a_bounty() {
+        let mut s = GameState::new();
+        s.known_adventurers.push(hero(42, 4, 6));
+        let souls_before = s.souls;
+        let gold_before = s.gold;
+        s.record_hero_death(42, 2);
+        assert!(s.souls > souls_before, "rival death grants souls");
+        assert!(s.gold > gold_before, "rival death grants gold");
+        assert_eq!(s.known_adventurers[0].status, HeroStatus::Dead);
+    }
+
+    #[test]
+    fn slaying_a_nobody_pays_nothing() {
+        let mut s = GameState::new();
+        s.known_adventurers.push(hero(7, 1, 0));
+        let souls_before = s.souls;
+        let gold_before = s.gold;
+        s.record_hero_death(7, 1);
+        assert_eq!(s.souls, souls_before);
+        assert_eq!(s.gold, gold_before);
     }
 }

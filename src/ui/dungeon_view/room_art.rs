@@ -116,7 +116,19 @@ pub(super) fn draw_room_tile(
         draw_rect.w - 16.0,
         22.0,
     );
-    draw_room_units(room, strip, &adventurers, fighting);
+    // Recurring survivors / prolific slayers are "rivals": name them on the
+    // board so heroes read as recognisable actors, not anonymous tokens.
+    let rival_ids: Vec<u64> = adventurers
+        .iter()
+        .filter(|a| {
+            state
+                .known_adventurers
+                .iter()
+                .any(|h| h.id == a.id && h.is_rival())
+        })
+        .map(|a| a.id)
+        .collect();
+    draw_room_units(room, strip, &adventurers, fighting, &rival_ids);
 
     // Floating combat feedback (damage numbers, kills) rising over the room.
     draw_room_effects(state, room, draw_rect);
@@ -128,7 +140,13 @@ pub(super) fn draw_room_tile(
 /// on the left, adventurers on the right. Living units carry a health bar so a
 /// raid reads as a fight — defenders and invaders trading HP — not a count.
 /// Overflow collapses into a "+N" tag.
-fn draw_room_units(room: &Room, strip: Rect, adventurers: &[&Adventurer], fighting: bool) {
+fn draw_room_units(
+    room: &Room,
+    strip: Rect,
+    adventurers: &[&Adventurer],
+    fighting: bool,
+    rival_ids: &[u64],
+) {
     let radius = 7.0;
     let step = radius * 2.0 + 3.0;
     // Leave headroom below each disc for its health bar.
@@ -197,7 +215,23 @@ fn draw_room_units(room: &Room, strip: Rect, adventurers: &[&Adventurer], fighti
                 .next()
                 .map(|c| c.to_ascii_uppercase().to_string())
                 .unwrap_or_else(|| "A".to_string());
+            let is_rival = rival_ids.contains(&adventurer.id);
             draw_icon_disc(vec2(x, cy), radius, WARNING, &initial);
+            if is_rival {
+                // A gold ring and a name plate mark the dungeon's rival.
+                draw_circle_lines(x, cy, radius + 2.5, 1.6, TREASURE);
+                let first = adventurer
+                    .name
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or(&adventurer.name);
+                draw_centered_text(
+                    first,
+                    Rect::new(x - 30.0, cy - radius - 15.0, 60.0, 12.0),
+                    10.0,
+                    TREASURE,
+                );
+            }
             if fighting || adventurer.hp < adventurer.max_hp {
                 draw_unit_hp_bar(vec2(x, cy), radius, adventurer.hp, adventurer.max_hp);
             }
