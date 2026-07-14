@@ -5,6 +5,7 @@ pub mod economy;
 pub mod endgame;
 pub mod milestones;
 pub mod monsters;
+pub mod pathing;
 pub mod rooms;
 pub mod time;
 pub mod upgrades;

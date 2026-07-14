@@ -297,14 +297,16 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
         None => return,
     };
 
-    // Follow the room's graph edge. No exits ⇒ this is the Core sink ⇒ end of
-    // floor (descend / retreat / siege-assault). Phase B replaces `first()` with
-    // the loot-bait / threat-shy / beeline scoring; today floors are linear so
-    // there is only ever one exit.
-    let Some(next) = floor
+    // Follow the room's graph edges. No exits ⇒ this is the Core sink ⇒ end of
+    // floor (descend / retreat / siege-assault). At a fork, `choose_exit` picks
+    // the branch (greedy for loot / shy of threat, or beelining the Core when
+    // the realm is desperate); linear floors have a single exit.
+    let exits: Vec<usize> = floor
         .room_at(current_room)
-        .and_then(|room| room.exits.first().copied())
-    else {
+        .map(|room| room.exits.clone())
+        .unwrap_or_default();
+
+    if exits.is_empty() {
         // No exits ⇒ the Core sink ⇒ end of floor.
 
         // A siege party at the bottom assaults the core itself.
@@ -353,10 +355,12 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
             }
         }
         return;
-    };
+    }
 
     // Advance along the chosen edge, kicking off the corridor-travel animation
     // so the party visibly walks from its old room to the new one.
+    let party = &state.adventurer_parties[party_idx];
+    let next = super::pathing::choose_exit(state, floor, party, &exits);
     state.adventurer_parties[party_idx].prev_room = current_room;
     state.adventurer_parties[party_idx].move_anim = crate::game_state::PARTY_MOVE_SECONDS;
     state.adventurer_parties[party_idx].current_room = next;
