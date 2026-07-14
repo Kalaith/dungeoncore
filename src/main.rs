@@ -542,6 +542,7 @@ fn render_playing_frame(
     if !*show_codex && is_key_pressed(KeyCode::C) {
         *show_codex = true;
         *codex_scroll = 0.0;
+        state.tutorial_codex_seen = true;
     }
     if *show_codex && draw_codex(state, sw, sh, codex_scroll) {
         *show_codex = false;
@@ -591,8 +592,14 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
             if let Some(species) = first_starter_species() {
                 let _ = simulation::unlock_species(state, &species);
             }
+            // Mid-tutorial: a room and defender are down, now learning elements.
+            let _ = simulation::add_room(state, None);
+            let monster = state.unlocked_monsters.first().cloned();
+            if let (Some(monster), Some((floor, pos))) = (monster, find_combat_room(state)) {
+                let _ = simulation::place_monster(state, floor, pos, &monster);
+            }
             state.tutorial_active = true;
-            state.tutorial_step = 0;
+            state.tutorial_step = 2;
             state.status = DungeonStatus::Closed;
         }
         "placement" => {

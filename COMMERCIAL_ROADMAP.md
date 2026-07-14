@@ -67,9 +67,13 @@ every tick — and surfaces it as log lines and floating strings.
       threshold; an active siege paints a pulsing red screen frame plus a bold
       "DEFEND THE CORE" banner. The siege is threshold- not time-triggered, so a
       dread meter replaces a literal day countdown.)*
-- [ ] **Teach the depth, not just the buttons.** The 5-step tutorial covers
+- [x] **Teach the depth, not just the buttons.** The 5-step tutorial covers
       controls; nothing teaches element counters, attunement, or trait synergy.
       Add contextual tips and one guided "your first synergy" beat.
+      *(Done: tutorial is now 6 steps with a "Learn the elements" beat after the
+      first defender — gated on opening the Codex element wheel — plus the raid
+      step now points at the HP-bar read. Complements the at-placement matchup
+      hints. A deeper multi-tip synergy walkthrough remains possible later.)*
 
 ## Tier 2 — Player agency & the shape of a full game
 

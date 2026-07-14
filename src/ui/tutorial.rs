@@ -19,7 +19,7 @@ struct StepDef {
     anchor: TutorialAnchor,
 }
 
-const STEPS: [StepDef; 5] = [
+const STEPS: [StepDef; 6] = [
     StepDef {
         title: "Build a room",
         instruction: "Open the BUILD tab on the left (or click the glowing room on the map) to add a combat room.",
@@ -31,8 +31,13 @@ const STEPS: [StepDef; 5] = [
         anchor: TutorialAnchor::Drawer,
     },
     StepDef {
+        title: "Learn the elements",
+        instruction: "Press C to open the Codex — it shows each element and what it beats.",
+        anchor: TutorialAnchor::Hud,
+    },
+    StepDef {
         title: "Set a trap",
-        instruction: "Click a room to select it, then apply a Trap upgrade from the panel on the right.",
+        instruction: "Select a room, then apply a Trap upgrade from the right panel.",
         anchor: TutorialAnchor::Board,
     },
     StepDef {
@@ -42,7 +47,7 @@ const STEPS: [StepDef; 5] = [
     },
     StepDef {
         title: "Survive a raid",
-        instruction: "Adventurers are coming. Hold your core and let your defenders do their work!",
+        instruction: "Watch the HP bars trade blows. Hold your core and let your defenders work!",
         anchor: TutorialAnchor::Board,
     },
 ];
@@ -79,20 +84,22 @@ fn step_complete(state: &GameState, step_idx: usize) -> bool {
             .iter()
             .flat_map(|floor| &floor.rooms)
             .any(|room| !room.monsters.is_empty()),
+        // Learn the elements: the player opened the Codex element wheel.
+        2 => state.tutorial_codex_seen,
         // Set a trap: any room carries a Trap upgrade.
-        2 => state
+        3 => state
             .floors
             .iter()
             .flat_map(|floor| &floor.rooms)
             .any(|room| room.has_upgrade_type(RoomUpgradeType::Trap)),
         // Open the dungeon: it is open, has visitors, or a raid already ran.
-        3 => {
+        4 => {
             state.status == DungeonStatus::Open
                 || !state.adventurer_parties.is_empty()
                 || state.raids_completed >= 1
         }
         // Survive a raid: at least one party has come and gone.
-        4 => state.raids_completed >= 1,
+        5 => state.raids_completed >= 1,
         _ => true,
     }
 }

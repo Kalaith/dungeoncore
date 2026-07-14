@@ -457,6 +457,10 @@ pub struct GameState {
     pub tutorial_active: bool,
     #[serde(default)]
     pub tutorial_step: i32,
+    /// The player has opened the Codex at least once (drives the tutorial's
+    /// "learn the elements" beat). Transient — re-taught each session.
+    #[serde(skip)]
+    pub tutorial_codex_seen: bool,
 
     // Monster progression
     pub unlocked_species: Vec<String>,
@@ -523,6 +527,7 @@ impl GameState {
             game_over: false,
             tutorial_active: true,
             tutorial_step: 0,
+            tutorial_codex_seen: false,
             unlocked_species: vec![],
             unlocked_monsters: vec![],
             selected_room: None,
