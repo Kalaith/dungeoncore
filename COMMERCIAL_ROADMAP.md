@@ -31,18 +31,25 @@ The single founder complaint across every playtest: "what's happening isn't clea
 The combat engine computes targeting, elements, traits, conditions, and trap procs
 every tick — and surfaces it as log lines and floating strings.
 
-- [ ] **Live combat visualization.** HP bars on every combatant, damage numbers
+- [~] **Live combat visualization.** HP bars on every combatant, damage numbers
       anchored to units (not floating in space), a visible "who is hitting whom"
       indication, rooms flashing/highlighting while fighting. The per-tick data
       already exists in `simulation/combat.rs` — this is rendering work, not sim work.
+      *(Partial: HP bars on defenders/invaders shipped; room-flash pulse and
+      floating damage numbers already existed. Still open: damage numbers anchored
+      to specific units, explicit who-hits-whom indication.)*
 - [ ] **Party token movement.** Adventurer parties visibly walk room-to-room
       through the dungeon instead of teleporting between combat resolutions.
       This one change makes the dungeon read as a *place*.
-- [ ] **Post-raid summary card.** After each party dies/retreats: who died and to
+- [x] **Post-raid summary card.** After each party dies/retreats: who died and to
       what, damage by room/monster, MVP defender, income earned, loot lost.
       Deferred from Phase 6; it's the cheap half of legibility.
-- [ ] **Monster icons in rooms** instead of "increments a count" (explicit founder
+      *(Done: "Raid Report" card shows outcome, slain/escaped, and mana/gold/souls
+      banked vs. defenders lost, via a per-raid tally.)*
+- [x] **Monster icons in rooms** instead of "increments a count" (explicit founder
       request). Placed monsters render as individual units.
+      *(Done: per-unit discs coloured by element with a class/monster initial cue;
+      invaders labelled by class. Full sprite art is a Tier-3 item.)*
 - [ ] **Matchup hints at decision time.** Element strong/weak badges while placing
       monsters/traps; "counters Mage"-style tags; attunement synergy shown on
       hover. The Codex wheel is reference material — the funnel needs it at the
