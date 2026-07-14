@@ -139,23 +139,31 @@ match exits.len() {
 }
 ```
 
-**`choose_exit` — the rule that makes branching *fun*.** This is the crux: if
-the party always takes the shortest path to the Core, branches are pointless; if
-it's random, the player can't plan. Recommended v1 rule — a **legible greedy
-score** over each candidate child room:
+**`choose_exit` — the rule that makes branching *fun*.** Two **modes** (decided
+with the founder):
 
-```
-score(child) =  loot_appeal(child)          // treasure upgrade / stored loot  (+)
-              - visible_threat(child)         // count/strength of live monsters (−)
-              + core_bias(child)              // closer-to-core breaks ties      (+)
-```
+- **Greedy (default).** A legible score over each candidate child room —
+  adventurers are greedy for loot and shy of obvious danger:
+  ```
+  score(child) =  loot_appeal(child)   // treasure upgrade / stored loot  (+)
+                - visible_threat(child) // count/strength of live monsters (−)
+                + core_bias(child)      // closer-to-core breaks ties      (+)
+  ```
+  The player's puzzle: bait the party down a treasure branch that is *actually*
+  a snare→poison→killbox, or under-defend a branch and watch it slip past.
 
-Adventurers are **greedy for loot and shy of obvious danger** → the player's
-puzzle becomes: bait the party down a treasure branch that is *actually* a
-snare→poison→killbox gauntlet, or under-defend a branch and watch it rush the
-Core. Deterministic; use state-owned RNG only to break exact ties (keeps runs
-reproducible, per the RNG-audit item). Surface the choice in the log/board
-("The party eyes the gold and takes the left path") so it's legible, not magic.
+- **Beeline (desperation).** When the realm is losing adventurers **too fast**,
+  they stop looting and **rush the Core to destroy the dungeon** — score flips to
+  pure shortest-path-to-Core, ignoring loot and danger. Trigger reuses the
+  existing threat system: `threat_tier() >= 3` ("Hunted"/"Besieged"), the
+  already-existing `party.sieging` flag, or a future per-party
+  `beeline`/event/quest flag (special events & quests can force this too). This
+  makes the threat meter *mean* something spatially: push the realm too hard and
+  the heroes come straight for your heart.
+
+Deterministic; state-owned RNG only breaks exact ties (keeps runs reproducible).
+Surface the mode on the board/log ("The party eyes the gold and takes the left
+path" vs. "Enraged, the party storms straight for the Core") so it's legible.
 
 This composes directly with the already-shipped sequence mechanics: "downstream"
 now means *the branch the party actually chose*.
@@ -256,19 +264,19 @@ commit green and the game shippable throughout.
 
 ---
 
-## 12. Open questions (product decisions before Phase C)
+## 12. Open questions — RESOLVED (2026-07-14)
 
-These change *what the feature feels like*, so they want a human call:
+- **O1 — Path-selection.** ✅ **Loot-bait + threat-shy by default, escalating to
+  beeline-for-core when adventurers die too fast** (high threat) or an
+  event/quest forces it. See §5 ("Greedy" vs "Beeline" modes).
+- **O2 — Party splitting.** ✅ **Deferred** — one party, one token that chooses a
+  path (v1). Splitting is a post-launch stretch.
+- **O3 — Topology.** ✅ **Series-parallel with reconvergence** (every path reaches
+  the Core; the Entrance→Core route is always maintained), now permitting up to
+  3-way splits.
+- **O4 — Branch budget.** ✅ **Up to 3 exits per room** (3-way splits allowed) so
+  a floor can grow *wide* as well as deep. Invariant: there is always a route
+  from the Entrance to the Core (build ops may never orphan either). Revisit the
+  `MAX_ROOMS_PER_FLOOR` cap during Phase E if wide floors need more room.
 
-- **O1 — Path-selection philosophy.** Bait-toward-loot + shy-of-threat
-  (recommended, most puzzle-y) vs. always-shortest-to-core (branches become
-  pure optional-loot detours) vs. random. *Recommendation: loot-bait + threat-shy.*
-- **O2 — Party splitting.** Confirm single-token-chooses-path for v1, splitting
-  as a post-launch stretch. *Recommendation: defer splitting.*
-- **O3 — Topology freedom.** Strict series-parallel diamonds (recommended) vs.
-  allow a freer DAG later. *Recommendation: ship diamonds; revisit only if
-  playtests demand it.*
-- **O4 — Legibility budget.** Max children per room (recommend **2**) and whether
-  `MAX_ROOMS_PER_FLOOR` (currently 5) grows to accommodate branches.
-
-Once O1–O4 are settled I can start on **Phase A** (safe, invisible) immediately.
+**Status: Phase A in progress.**

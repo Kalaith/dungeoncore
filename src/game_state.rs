@@ -84,7 +84,15 @@ pub struct Monster {
 pub struct Room {
     pub id: u64,
     pub room_type: RoomType,
+    /// Stable per-floor node key. No longer implies linear order — it is this
+    /// room's identity within the floor and the endpoint used by `exits`.
     pub position: usize,
+    /// Child rooms this room routes into (directed graph edges within the
+    /// floor). The Entrance has >= 1 exit; a fork has >= 2 (up to 3); the Core
+    /// sink has none. Empty on pre-graph saves; `GameState::migrate` rebuilds
+    /// the linear chain from `position` order.
+    #[serde(default)]
+    pub exits: Vec<usize>,
     pub floor_number: i32,
     pub monsters: Vec<Monster>,
     /// Installed upgrades — at most one per RoomUpgradeType.
@@ -103,6 +111,7 @@ impl Room {
             id,
             room_type,
             position,
+            exits: Vec::new(),
             floor_number,
             monsters: Vec::new(),
             upgrades: Vec::new(),
@@ -177,6 +186,88 @@ impl Floor {
             rooms: Vec::new(),
             is_deepest,
         }
+    }
+
+    /// The room at a given position key, if any.
+    pub fn room_at(&self, position: usize) -> Option<&Room> {
+        self.rooms.iter().find(|r| r.position == position)
+    }
+
+    /// Wire every room's `exits` as a single linear chain in ascending
+    /// `position` order (each room points at the next; the last has none). Used
+    /// to migrate pre-graph saves and to seed freshly-built linear floors.
+    pub fn rebuild_linear_exits(&mut self) {
+        let mut positions: Vec<usize> = self.rooms.iter().map(|r| r.position).collect();
+        positions.sort_unstable();
+        let next: std::collections::HashMap<usize, usize> =
+            positions.windows(2).map(|w| (w[0], w[1])).collect();
+        for room in &mut self.rooms {
+            room.exits = next
+                .get(&room.position)
+                .map(|&n| vec![n])
+                .unwrap_or_default();
+        }
+    }
+
+    /// Validate the floor graph: a single Entrance source and single Core sink,
+    /// every room reachable from the Entrance, and every room able to reach the
+    /// Core (no orphans, no dead ends). Returns Err with the first problem.
+    pub fn validate_graph(&self) -> Result<(), String> {
+        use std::collections::HashSet;
+        let entrances: Vec<usize> = self
+            .rooms
+            .iter()
+            .filter(|r| r.room_type == RoomType::Entrance)
+            .map(|r| r.position)
+            .collect();
+        let cores: Vec<usize> = self
+            .rooms
+            .iter()
+            .filter(|r| r.room_type == RoomType::Core)
+            .map(|r| r.position)
+            .collect();
+        if entrances.len() != 1 {
+            return Err(format!("floor {} needs exactly one entrance", self.number));
+        }
+        if cores.len() != 1 {
+            return Err(format!("floor {} needs exactly one core", self.number));
+        }
+        let core = cores[0];
+
+        // Reachability from the entrance (forward BFS over `exits`).
+        let mut seen = HashSet::new();
+        let mut stack = vec![entrances[0]];
+        while let Some(pos) = stack.pop() {
+            if !seen.insert(pos) {
+                continue;
+            }
+            if let Some(room) = self.room_at(pos) {
+                for &next in &room.exits {
+                    if self.room_at(next).is_none() {
+                        return Err(format!(
+                            "floor {}: room {} exits to missing room {}",
+                            self.number, pos, next
+                        ));
+                    }
+                    stack.push(next);
+                }
+            }
+        }
+        for room in &self.rooms {
+            if !seen.contains(&room.position) {
+                return Err(format!(
+                    "floor {}: room {} is unreachable from the entrance",
+                    self.number, room.position
+                ));
+            }
+            if room.position != core && room.exits.is_empty() {
+                return Err(format!(
+                    "floor {}: room {} is a dead end (no path to the core)",
+                    self.number, room.position
+                ));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -535,6 +626,7 @@ impl GameState {
         let mut floor1 = Floor::new(1, 1, true);
         floor1.rooms.push(Room::new(1, RoomType::Entrance, 0, 1));
         floor1.rooms.push(Room::new(2, RoomType::Core, 1, 1));
+        floor1.rebuild_linear_exits();
 
         Self {
             mana: 100,
@@ -592,6 +684,16 @@ impl GameState {
                         room.upgrades.push(upgrade);
                     }
                 }
+            }
+        }
+
+        // Linear room queue → graph edges. Pre-graph saves have no `exits`; seed
+        // them as a single chain in position order (identical traversal). A
+        // floor that already carries edges is left untouched.
+        for floor in &mut self.floors {
+            let has_edges = floor.rooms.iter().any(|r| !r.exits.is_empty());
+            if !has_edges && floor.rooms.len() > 1 {
+                floor.rebuild_linear_exits();
             }
         }
     }
@@ -806,5 +908,53 @@ mod tests {
         s.record_hero_death(7, 1);
         assert_eq!(s.souls, souls_before);
         assert_eq!(s.gold, gold_before);
+    }
+
+    // --- Dungeon graph (Phase A) --------------------------------------------
+
+    #[test]
+    fn fresh_floor_is_a_valid_graph() {
+        let s = GameState::new();
+        assert!(s.floors[0].validate_graph().is_ok());
+        // Entrance(0) -> Core(1); the sink has no exits.
+        assert_eq!(s.floors[0].room_at(0).unwrap().exits, vec![1]);
+        assert!(s.floors[0].room_at(1).unwrap().exits.is_empty());
+    }
+
+    #[test]
+    fn migrate_rebuilds_linear_exits_for_pre_graph_saves() {
+        let mut s = GameState::new();
+        // Simulate an old save: strip all edges.
+        for f in &mut s.floors {
+            for r in &mut f.rooms {
+                r.exits.clear();
+            }
+        }
+        s.migrate();
+        assert_eq!(s.floors[0].room_at(0).unwrap().exits, vec![1]);
+        assert!(s.floors[0].validate_graph().is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_an_unreachable_dead_end() {
+        let mut s = GameState::new();
+        // A stray room nothing points to and that goes nowhere.
+        s.floors[0]
+            .rooms
+            .push(Room::new(99, RoomType::Normal, 7, 1));
+        assert!(s.floors[0].validate_graph().is_err());
+    }
+
+    #[test]
+    fn building_extends_the_linear_chain() {
+        let mut s = GameState::new();
+        s.mana = 1000;
+        crate::simulation::add_room(&mut s, None).unwrap();
+        let f = &s.floors[0];
+        assert!(f.validate_graph().is_ok());
+        // Entrance(0) -> Normal(1) -> Core(2).
+        assert_eq!(f.room_at(0).unwrap().exits, vec![1]);
+        assert_eq!(f.room_at(1).unwrap().exits, vec![2]);
+        assert!(f.room_at(2).unwrap().exits.is_empty());
     }
 }

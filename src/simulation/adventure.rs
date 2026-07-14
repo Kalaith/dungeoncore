@@ -297,10 +297,16 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
         None => return,
     };
 
-    let next_room_pos = current_room + 1;
-    let max_room_pos = floor.rooms.iter().map(|r| r.position).max().unwrap_or(0);
+    // Follow the room's graph edge. No exits ⇒ this is the Core sink ⇒ end of
+    // floor (descend / retreat / siege-assault). Phase B replaces `first()` with
+    // the loot-bait / threat-shy / beeline scoring; today floors are linear so
+    // there is only ever one exit.
+    let Some(next) = floor
+        .room_at(current_room)
+        .and_then(|room| room.exits.first().copied())
+    else {
+        // No exits ⇒ the Core sink ⇒ end of floor.
 
-    if next_room_pos > max_room_pos {
         // A siege party at the bottom assaults the core itself.
         if state.adventurer_parties[party_idx].sieging && current_floor >= target_floor {
             let party_spent = super::endgame::assault_core(state, party_idx);
@@ -310,7 +316,7 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
             }
             return;
         }
-        // End of floor
+
         if current_floor < target_floor && current_floor < state.floors.len() as i32 {
             // Descend to next floor
             state.adventurer_parties[party_idx].current_floor += 1;
@@ -346,17 +352,18 @@ fn advance_party(state: &mut GameState, party_idx: usize) {
                 }
             }
         }
-    } else {
-        // Advance to next room, kicking off the corridor-travel animation so
-        // the party visibly walks from its old room to the new one.
-        state.adventurer_parties[party_idx].prev_room = current_room;
-        state.adventurer_parties[party_idx].move_anim = crate::game_state::PARTY_MOVE_SECONDS;
-        state.adventurer_parties[party_idx].current_room = next_room_pos;
-        state.add_log(LogEntry::adventure(format!(
-            "Party advances to room {} on floor {}",
-            next_room_pos, current_floor
-        )));
-    }
+        return;
+    };
+
+    // Advance along the chosen edge, kicking off the corridor-travel animation
+    // so the party visibly walks from its old room to the new one.
+    state.adventurer_parties[party_idx].prev_room = current_room;
+    state.adventurer_parties[party_idx].move_anim = crate::game_state::PARTY_MOVE_SECONDS;
+    state.adventurer_parties[party_idx].current_room = next;
+    state.add_log(LogEntry::adventure(format!(
+        "Party advances to room {} on floor {}",
+        next, current_floor
+    )));
 }
 
 fn handle_retreating_parties(state: &mut GameState) {

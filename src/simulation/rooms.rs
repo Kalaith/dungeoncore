@@ -75,6 +75,9 @@ pub fn add_room(state: &mut GameState, target_floor: Option<i32>) -> Result<(), 
     } else {
         floor.rooms.push(new_room);
     }
+    // Extending the linear chain (Phase A): rewire exits in position order.
+    // (Phase C's fork build op will wire branch edges explicitly instead.)
+    floor.rebuild_linear_exits();
 
     let room_name = if is_boss { "Boss room" } else { "Normal room" };
     state.add_log(LogEntry::building(format!(
@@ -128,6 +131,7 @@ fn create_new_floor(state: &mut GameState) -> Result<(), String> {
         2,
         new_floor_num,
     ));
+    new_floor.rebuild_linear_exits();
 
     state.floors.push(new_floor);
     state.total_floors += 1;
