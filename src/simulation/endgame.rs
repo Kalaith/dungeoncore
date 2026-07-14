@@ -461,10 +461,14 @@ pub fn repel_siege(state: &mut GameState) {
     state.total_deaths = 0;
     state.threat_warned = 0;
 
+    let rank = crate::simulation::milestones::prestige_rank(state.prestige);
     state.add_log(LogEntry::system(format!(
-        "THE SIEGE IS BROKEN! Prestige {} attained. The core swells with power (+150 HP, +100 max mana) and the realm retreats to lick its wounds.",
-        state.prestige
+        "THE SIEGE IS BROKEN! Prestige {} attained — your dungeon is now a {}. The core swells (+150 HP, +100 max mana) and the realm retreats to lick its wounds.",
+        state.prestige, rank
     )));
+
+    // A repelled siege can cross prestige milestones (Ascendant, Eternal Core).
+    crate::simulation::milestones::check_milestones(state);
 }
 
 #[cfg(test)]

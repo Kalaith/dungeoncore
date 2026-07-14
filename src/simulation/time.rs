@@ -40,6 +40,9 @@ pub fn advance_time(state: &mut GameState) {
     // Escalating warnings when too many adventurers die in the dungeon.
     check_threat_level(state);
 
+    // Unlock any newly-earned milestones on the goal track.
+    crate::simulation::milestones::check_milestones(state);
+
     // At peak fury the realm musters its army for a siege on the core.
     crate::simulation::endgame::maybe_launch_siege(state);
 }

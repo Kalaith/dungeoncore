@@ -209,7 +209,7 @@ fn draw_node(state: &GameState, power: &CorePower, rect: Rect) -> Option<String>
             .map(|p| p.name)
             .unwrap_or("prerequisite");
         draw_text_fit(
-            &format!("\u{1F512} Requires {}", req_name),
+            &format!("Requires {}", req_name),
             rect.x + 12.0,
             rect.y + rect.h - 10.0,
             rect.w - 24.0,

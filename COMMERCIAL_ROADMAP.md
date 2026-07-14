@@ -102,9 +102,18 @@ every tick — and surfaces it as log lines and floating strings.
       Branching paths, choke points, and sequence-dependent rooms (snare-before-
       damage, alarm-empowers-downstream) would make layout a real puzzle — the
       building phase is the confirmed "best part," so deepen it.
-- [ ] **A shaped destination.** Prestige is an uncapped scaler with no arc. Add
+- [x] **A shaped destination.** Prestige is an uncapped scaler with no arc. Add
       named prestige tiers, a milestone/achievement track, and/or a soft
       "ascension" win state. Commercial players need a reason to say "I finished it."
+      *(Done: prestige now reads as a named rank to climb — Fledgling Core →
+      Rooted → Dread Warren → Abyssal Throne → Nightmare Bastion → Eternal Core
+      — shown on the HUD and named on each siege repel. A 12-milestone goal
+      track (`simulation/milestones.rs`, persisted, monotonic-so-permanent
+      conditions) unlocks as you play, with a "Goals" overlay ([K]) showing
+      achieved/locked state and progress. Prestige 10 is a soft "ascension" win
+      state (the Eternal Core milestone). Milestone ids seed the eventual Steam
+      achievement set. Also fixed tofu glyphs (⚡/🔒/★) across the new UIs with
+      drawn shapes.)*
 - [x] **Expanded core-power tree.** 3 soul-bought powers is too shallow to carry
       the prestige loop; the `CORE_POWERS` framework already supports more —
       build a branching tree (10–20 nodes) so repeated prestiges diverge.

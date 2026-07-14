@@ -63,11 +63,14 @@ pub fn draw_core_spell_button(state: &GameState, rect: Rect) -> bool {
     } else {
         TEXT_DIM
     };
+    // A small drawn "spark" diamond stands in for a bolt glyph the font lacks.
+    let spark = vec2(rect.x + 20.0, rect.y + 16.0);
+    draw_poly(spark.x, spark.y, 4, 6.0, 45.0, text_color);
     draw_text_fit(
-        "\u{26A1} Core Smite",
-        rect.x + 12.0,
+        "Core Smite",
+        rect.x + 34.0,
         rect.y + 20.0,
-        rect.w - 20.0,
+        rect.w - 42.0,
         16.0,
         text_color,
     );

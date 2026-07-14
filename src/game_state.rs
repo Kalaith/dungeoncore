@@ -460,6 +460,9 @@ pub struct GameState {
     /// Permanent soul-bought core powers (ids).
     #[serde(default)]
     pub core_powers: Vec<String>,
+    /// Ids of milestones the player has achieved (the goal/achievement track).
+    #[serde(default)]
+    pub milestones: Vec<String>,
     /// Recharge remaining (real seconds) on the active Core Smite lever.
     /// Transient — a fresh session always starts ready.
     #[serde(skip)]
@@ -540,6 +543,7 @@ impl GameState {
             siege_active: false,
             prestige: 0,
             core_powers: Vec::new(),
+            milestones: Vec::new(),
             core_smite_cooldown: 0.0,
             game_over: false,
             tutorial_active: true,

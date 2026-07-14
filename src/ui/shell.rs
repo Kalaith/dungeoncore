@@ -46,7 +46,7 @@ pub fn draw_top_hud(state: &GameState, rect: Rect) -> ControlAction {
         TEXT,
     );
     draw_text_fit(
-        "[C] Codex",
+        "[C] Codex   [K] Goals",
         title_rect.x + 62.0,
         title_rect.y + title_rect.h * 0.5 + 22.0,
         title_rect.w - 66.0,
@@ -141,10 +141,15 @@ pub fn draw_top_hud(state: &GameState, rect: Rect) -> ControlAction {
             )),
         );
     }
+    // Prestige reads as a named rank to climb, not a bare counter.
     let time_label = if state.prestige > 0 {
-        format!("Prestige {}", state.prestige)
+        format!(
+            "{} · P{}",
+            crate::simulation::milestones::prestige_rank(state.prestige),
+            state.prestige
+        )
     } else {
-        String::new()
+        crate::simulation::milestones::prestige_rank(0).to_string()
     };
     draw_top_stat(
         Rect::new(stats_x + stat_w * 4.0, y, stat_w, stat_h),

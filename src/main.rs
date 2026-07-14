@@ -80,6 +80,9 @@ async fn main() {
         let mut codex_scroll = 0.0;
         // The `coretree` scene boots straight into the core-power tree overlay.
         let mut show_core_tree = config.scene == "coretree";
+        // The `goals` scene boots straight into the milestone overlay.
+        let mut show_milestones = config.scene == "goals";
+        let mut milestones_scroll = 0.0;
         let mut t0 = get_time();
         let mut t1 = t0;
         let mut t2 = t0;
@@ -96,6 +99,8 @@ async fn main() {
                 &mut show_codex,
                 &mut codex_scroll,
                 &mut show_core_tree,
+                &mut show_milestones,
+                &mut milestones_scroll,
                 &mut t0,
                 &mut t1,
                 &mut t2,
@@ -125,6 +130,8 @@ async fn main() {
     let mut show_codex = false;
     let mut codex_scroll = 0.0;
     let mut show_core_tree = false;
+    let mut show_milestones = false;
+    let mut milestones_scroll = 0.0;
 
     loop {
         match screen {
@@ -214,6 +221,8 @@ async fn main() {
             &mut show_codex,
             &mut codex_scroll,
             &mut show_core_tree,
+            &mut show_milestones,
+            &mut milestones_scroll,
             &mut last_time_advance,
             &mut last_adventure_tick,
             &mut last_save,
@@ -241,6 +250,8 @@ fn render_playing_frame(
     show_codex: &mut bool,
     codex_scroll: &mut f32,
     show_core_tree: &mut bool,
+    show_milestones: &mut bool,
+    milestones_scroll: &mut f32,
     last_time_advance: &mut f64,
     last_adventure_tick: &mut f64,
     last_save: &mut f64,
@@ -563,7 +574,7 @@ fn render_playing_frame(
 
     // Core Power tree overlay: opened with 'P' or the BUILD-tab button. Drawn
     // before the Codex so 'C'/'P' don't fight over the same frame.
-    if !*show_core_tree && !*show_codex && is_key_pressed(KeyCode::P) {
+    if !*show_core_tree && !*show_codex && !*show_milestones && is_key_pressed(KeyCode::P) {
         *show_core_tree = true;
     }
     if *show_core_tree {
@@ -578,8 +589,17 @@ fn render_playing_frame(
         }
     }
 
+    // Goals overlay: the milestone track, opened with 'K'.
+    if !*show_milestones && !*show_core_tree && !*show_codex && is_key_pressed(KeyCode::K) {
+        *show_milestones = true;
+        *milestones_scroll = 0.0;
+    }
+    if *show_milestones && draw_milestones(state, sw, sh, milestones_scroll) {
+        *show_milestones = false;
+    }
+
     // Codex overlay: opened with 'C', drawn last so it sits over everything.
-    if !*show_codex && !*show_core_tree && is_key_pressed(KeyCode::C) {
+    if !*show_codex && !*show_core_tree && !*show_milestones && is_key_pressed(KeyCode::C) {
         *show_codex = true;
         *codex_scroll = 0.0;
         state.tutorial_codex_seen = true;
@@ -734,6 +754,19 @@ fn seed_capture_scene(state: &mut GameState, scene: &str) {
             let _ = simulation::endgame::buy_core_power(state, "dread_aura");
             let _ = simulation::endgame::buy_core_power(state, "wellspring");
             let _ = simulation::endgame::buy_core_power(state, "searing_smite");
+        }
+        "goals" => {
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = false;
+            // A run several prestiges deep with a spread of milestones earned.
+            state.prestige = 4;
+            state.raids_completed = 18;
+            state.total_floors = 4;
+            let _ = simulation::add_room(state, None);
+            let _ = simulation::endgame::buy_core_power(state, "deep_roots");
+            simulation::milestones::check_milestones(state);
         }
         "siege" => {
             if let Some(species) = first_starter_species() {
