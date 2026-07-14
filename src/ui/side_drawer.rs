@@ -73,6 +73,7 @@ pub enum DrawerAction {
     ProcessEvolutions,
     UnlockSpecies(String),
     OpenCorePowers,
+    ChannelGold,
     ResetGame,
 }
 
@@ -81,6 +82,7 @@ pub enum BuildTabAction {
     None,
     Build,
     OpenCorePowers,
+    ChannelGold,
 }
 
 pub fn draw_side_drawer(
@@ -114,6 +116,7 @@ pub fn draw_side_drawer(
         DrawerTab::Build => match draw_build_tab(state, content) {
             BuildTabAction::Build => action = DrawerAction::BuildRoom,
             BuildTabAction::OpenCorePowers => action = DrawerAction::OpenCorePowers,
+            BuildTabAction::ChannelGold => action = DrawerAction::ChannelGold,
             BuildTabAction::None => {}
         },
         DrawerTab::Monsters => {

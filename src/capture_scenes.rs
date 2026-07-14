@@ -151,6 +151,19 @@ pub fn seed_capture_scene(state: &mut GameState, scene: &str) {
             let _ = simulation::endgame::buy_core_power(state, "wellspring");
             let _ = simulation::endgame::buy_core_power(state, "searing_smite");
         }
+        "build" => {
+            if let Some(species) = first_starter_species() {
+                let _ = simulation::unlock_species(state, &species);
+            }
+            state.tutorial_active = false;
+            // Surplus gold and headroom in mana so the Channel-the-Hoard sink is
+            // live, and a couple of prestiges' worth of core-power progress.
+            state.gold = 640;
+            state.mana = 120;
+            state.souls = 6;
+            state.prestige = 2;
+            let _ = simulation::add_room(state, None);
+        }
         "goals" => {
             if let Some(species) = first_starter_species() {
                 let _ = simulation::unlock_species(state, &species);

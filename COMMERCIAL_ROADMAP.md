@@ -143,12 +143,20 @@ every tick — and surfaces it as log lines and floating strings.
         mechanic; all respawns are currently free.
   - [ ] Hero grudges/rivalries/bounties (data hooks exist) — *only after* heroes
         are visible actors in raids, per the design review.
-- [ ] **Economy balance passes** flagged but never done:
-  - [ ] Gold glut — sinks are one-time (species unlocks) or occasional
+- [x] **Economy balance passes** flagged but never done:
+  - [x] Gold glut — sinks are one-time (species unlocks) or occasional
         (evolutions); late-game gold piles up dead. Add an ongoing sink (upkeep,
         rerolls, rush-building) or restructure.
-  - [ ] Mana starvation — stat-driven combat cut death income (10/death);
+        *(Done: "Channel the Hoard" — a repeatable BUILD-tab action that converts
+        100 gold → 20 mana (a deliberately lossy 5:1 so slain-invader mana stays
+        primary). Turns dead late-game gold into an ongoing sink. Lives in
+        `simulation/economy.rs`.)*
+  - [x] Mana starvation — stat-driven combat cut death income (10/death);
         verify building doesn't stall across a long session.
+        *(Verified + mitigated: baseline hourly regen is always ≥1 (1.0 +
+        deep_core_bonus + adventurer/core-power bonuses) so mana can never hard-
+        stall at zero; the new gold→mana channel adds a burst valve when a build
+        is mana-starved. Death income (level×10, ×difficulty) left as tuned.)*
 
 ## Tier 3 — Presentation: art, audio, game feel (zero → shipping quality)
 

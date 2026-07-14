@@ -103,6 +103,36 @@ pub(super) fn draw_build_tab(state: &GameState, rect: Rect) -> BuildTabAction {
         return BuildTabAction::OpenCorePowers;
     }
 
+    // Ongoing gold sink + mana safety-valve: channel surplus gold into mana.
+    use crate::simulation::economy::{can_channel_gold, GOLD_CHANNEL_COST, GOLD_CHANNEL_MANA};
+    let cy = y + 78.0;
+    if cy + 66.0 <= rect.y + rect.h {
+        draw_text_fit(
+            &format!("CHANNEL THE HOARD · {} gold", state.gold),
+            rect.x,
+            cy,
+            rect.w,
+            10.0,
+            TREASURE,
+        );
+        draw_text_fit(
+            &format!("{GOLD_CHANNEL_COST} gold -> {GOLD_CHANNEL_MANA} mana"),
+            rect.x,
+            cy + 16.0,
+            rect.w,
+            11.0,
+            TEXT_MUTED,
+        );
+        if draw_command_button(
+            Rect::new(rect.x, cy + 26.0, rect.w, 40.0),
+            "Channel Gold -> Mana",
+            ButtonTone::Primary,
+            can_channel_gold(state),
+        ) {
+            return BuildTabAction::ChannelGold;
+        }
+    }
+
     BuildTabAction::None
 }
 

@@ -78,7 +78,13 @@ async fn main() {
     if let Some(config) = capture::CaptureConfig::from_env(CAPTURE_PREFIX) {
         let mut cap_state = create_new_game(data::difficulty::Difficulty::default());
         capture_scenes::seed_capture_scene(&mut cap_state, &config.scene);
-        let mut drawer_tab = DrawerTab::Monsters;
+        // Most scenes show the Monsters tab; the `build` scene opens BUILD so
+        // the build controls / channel sink are visible.
+        let mut drawer_tab = if config.scene == "build" {
+            DrawerTab::Build
+        } else {
+            DrawerTab::Monsters
+        };
         let mut upgrade_section = UpgradeSection::Traps;
         let mut drawer_open = true;
         let mut upgrade_scroll = 0.0;
@@ -426,6 +432,11 @@ fn render_playing_frame(
             }
         }
         DrawerAction::OpenCorePowers => *show_core_tree = true,
+        DrawerAction::ChannelGold => {
+            if let Err(e) = simulation::economy::channel_gold_to_mana(state) {
+                state.add_log(game_state::LogEntry::system(e));
+            }
+        }
         DrawerAction::ResetGame => {
             *state = create_new_game(state.difficulty);
             let _ = persistence::save_game(state);
