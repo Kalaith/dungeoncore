@@ -1,5 +1,6 @@
 pub mod adventurers;
 pub mod constants;
+pub mod difficulty;
 pub mod elements;
 pub mod equipment;
 pub mod evolutions;

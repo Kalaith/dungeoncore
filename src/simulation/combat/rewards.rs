@@ -84,8 +84,9 @@ pub(super) fn reward_adventurer_kills(
 
     let floor_num = state.floors[floor_idx].number;
 
+    let income_mult = state.income_mult();
     for (victim_name, victim_level) in kills {
-        let mana_gain = victim_level * 10;
+        let mana_gain = ((victim_level * 10) as f32 * income_mult).round() as i32;
         state.mana = (state.mana + mana_gain).min(state.max_mana);
         state.total_deaths += 1;
         state.raid_tally().mana_gained += mana_gain;

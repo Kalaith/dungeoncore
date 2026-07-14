@@ -463,6 +463,9 @@ pub struct GameState {
     /// Ids of milestones the player has achieved (the goal/achievement track).
     #[serde(default)]
     pub milestones: Vec<String>,
+    /// Chosen difficulty for this run (scales invaders, sieges, income, core HP).
+    #[serde(default)]
+    pub difficulty: crate::data::difficulty::Difficulty,
     /// Recharge remaining (real seconds) on the active Core Smite lever.
     /// Transient — a fresh session always starts ready.
     #[serde(skip)]
@@ -544,6 +547,7 @@ impl GameState {
             prestige: 0,
             core_powers: Vec::new(),
             milestones: Vec::new(),
+            difficulty: crate::data::difficulty::Difficulty::default(),
             core_smite_cooldown: 0.0,
             game_over: false,
             tutorial_active: true,
@@ -682,10 +686,21 @@ impl GameState {
         self.core_powers.iter().any(|p| p == id)
     }
 
-    /// Current threat tier (0-4) derived from accumulated adventurer deaths
+    /// Deaths required to trigger a siege, scaled by difficulty.
+    pub fn siege_threshold(&self) -> i32 {
+        (SIEGE_THREAT_DEATHS as f32 * self.difficulty.profile().siege_threshold_mult).round() as i32
+    }
+
+    /// Mana-income multiplier from difficulty (applied to death income).
+    pub fn income_mult(&self) -> f32 {
+        self.difficulty.profile().income_mult
+    }
+
+    /// Current threat tier (0-4) derived from accumulated adventurer deaths.
+    /// The tier-4 (siege) threshold scales with difficulty.
     pub fn threat_tier(&self) -> i32 {
         match self.total_deaths {
-            d if d >= SIEGE_THREAT_DEATHS => 4,
+            d if d >= self.siege_threshold() => 4,
             d if d >= 50 => 3,
             d if d >= 25 => 2,
             d if d >= 10 => 1,

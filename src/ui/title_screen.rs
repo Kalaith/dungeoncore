@@ -2,6 +2,8 @@ use macroquad::prelude::*;
 use macroquad_toolkit::assets::AssetManager;
 use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
 
+use crate::data::difficulty::Difficulty;
+
 use super::theme::*;
 
 pub const TITLE_BACKGROUND_KEY: &str = "title_background";
@@ -109,6 +111,130 @@ pub fn draw_title_screen(
     }
 
     TitleAction::None
+}
+
+/// Action from the new-game difficulty picker.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NewGameSetupAction {
+    None,
+    Back,
+    Start(Difficulty),
+}
+
+/// Difficulty-selection screen shown when the player starts a new game.
+pub fn draw_new_game_setup(assets: &AssetManager, notice: Option<&str>) -> NewGameSetupAction {
+    let sw = screen_width();
+    let sh = screen_height();
+    draw_title_background(assets, sw, sh);
+
+    let panel_w = (sw * 0.5).clamp(460.0, 720.0);
+    let panel_h = (sh * 0.72).clamp(360.0, 500.0);
+    let panel = Rect::new((sw - panel_w) * 0.5, (sh - panel_h) * 0.5, panel_w, panel_h);
+    draw_title_panel(panel);
+
+    draw_text_fit(
+        "CHOOSE YOUR REIGN",
+        panel.x + 28.0,
+        panel.y + 38.0,
+        panel.w - 56.0,
+        22.0,
+        TEXT,
+    );
+    draw_text_fit(
+        "Difficulty is fixed for the run. It scales invaders, siege timing, income, and core resilience.",
+        panel.x + 28.0,
+        panel.y + 62.0,
+        panel.w - 56.0,
+        12.0,
+        TEXT_MUTED,
+    );
+
+    let mut action = NewGameSetupAction::None;
+    let card_x = panel.x + 28.0;
+    let card_w = panel.w - 56.0;
+    let card_h = 84.0;
+    let gap = 12.0;
+    let mut cy = panel.y + 88.0;
+    for diff in Difficulty::all() {
+        let profile = diff.profile();
+        let card = Rect::new(card_x, cy, card_w, card_h);
+        let hovered = is_hovered_rect(card);
+        let accent = match diff {
+            Difficulty::Apprentice => EMERALD,
+            Difficulty::Keeper => SOUL,
+            Difficulty::Overlord => DANGER,
+        };
+        draw_card(
+            card,
+            Color::new(
+                accent.r,
+                accent.g,
+                accent.b,
+                if hovered { 0.18 } else { 0.08 },
+            ),
+            Color::new(
+                accent.r,
+                accent.g,
+                accent.b,
+                if hovered { 0.7 } else { 0.32 },
+            ),
+        );
+        draw_text_fit(
+            profile.name,
+            card.x + 16.0,
+            card.y + 26.0,
+            card.w - 32.0,
+            17.0,
+            accent,
+        );
+        draw_wrapped_blurb(profile.blurb, card.x + 16.0, card.y + 46.0, card.w - 32.0);
+        if was_clicked_rect(card) {
+            action = NewGameSetupAction::Start(diff);
+        }
+        cy += card_h + gap;
+    }
+
+    if draw_title_button(
+        Rect::new(card_x, panel.y + panel.h - 56.0, card_w, 40.0),
+        "Back",
+        true,
+        ButtonTone::Ghost,
+    ) || is_key_pressed(KeyCode::Escape)
+    {
+        action = NewGameSetupAction::Back;
+    }
+
+    if let Some(message) = notice {
+        draw_title_notice(message, sw, sh);
+    }
+
+    action
+}
+
+/// Draw a short blurb wrapped to at most two lines within `max_w`.
+fn draw_wrapped_blurb(text: &str, x: f32, y: f32, max_w: f32) {
+    // Rough char budget per line for the blurb font size.
+    let per_line = (max_w / 6.4).floor().max(8.0) as usize;
+    let mut line = String::new();
+    let mut lines: Vec<String> = Vec::new();
+    for word in text.split_whitespace() {
+        if line.len() + word.len() + 1 > per_line && !line.is_empty() {
+            lines.push(std::mem::take(&mut line));
+        }
+        if !line.is_empty() {
+            line.push(' ');
+        }
+        line.push_str(word);
+        if lines.len() == 2 {
+            break;
+        }
+    }
+    if lines.len() < 2 && !line.is_empty() {
+        lines.push(line);
+    }
+    for (i, l) in lines.iter().take(2).enumerate() {
+        draw_text_fit(l, x, y + i as f32 * 15.0, max_w, 11.0, TEXT_MUTED);
+    }
 }
 
 pub fn draw_title_settings_screen(

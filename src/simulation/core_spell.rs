@@ -102,8 +102,9 @@ pub fn cast_core_smite(state: &mut GameState) -> Result<(), String> {
     // Death income: mana per fallen invader, exactly as combat pays, tallied
     // for the raid card and folded into threat. Hero-death recording happens
     // when the party settles — matching how combat kills are booked.
+    let income_mult = state.income_mult();
     for (name, level) in &kills {
-        let mana_gain = level * 10;
+        let mana_gain = ((level * 10) as f32 * income_mult).round() as i32;
         state.mana = (state.mana + mana_gain).min(state.max_mana);
         state.total_deaths += 1;
         state.raid_tally().mana_gained += mana_gain;

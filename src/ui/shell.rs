@@ -135,18 +135,17 @@ pub fn draw_top_hud(state: &GameState, rect: Rect) -> ControlAction {
             &threat_label,
             threat_color,
             StatIcon::Threat,
-            Some((
-                state.total_deaths as f32,
-                crate::game_state::SIEGE_THREAT_DEATHS as f32,
-            )),
+            Some((state.total_deaths as f32, state.siege_threshold() as f32)),
         );
     }
-    // Prestige reads as a named rank to climb, not a bare counter.
+    // Prestige reads as a named rank to climb, not a bare counter. The number
+    // leads so it survives truncation in the narrow stat cell; the rank name
+    // follows as flavour.
     let time_label = if state.prestige > 0 {
         format!(
-            "{} · P{}",
-            crate::simulation::milestones::prestige_rank(state.prestige),
-            state.prestige
+            "P{} {}",
+            state.prestige,
+            crate::simulation::milestones::prestige_rank(state.prestige)
         )
     } else {
         crate::simulation::milestones::prestige_rank(0).to_string()

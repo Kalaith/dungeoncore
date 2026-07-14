@@ -7,8 +7,16 @@ use crate::game_state::{
     Adventurer, AdventurerParty, DungeonStatus, GameState, HeroRecord, HeroStatus, LogEntry, Stats,
 };
 
-/// Build a combat-ready adventurer from a class, level, and identity.
-fn build_adventurer(id: u64, name: String, class_name: &str, race: &str, level: i32) -> Adventurer {
+/// Build a combat-ready adventurer from a class, level, and identity. `stat_mult`
+/// scales the final HP/attack/defense by the run's difficulty.
+fn build_adventurer(
+    id: u64,
+    name: String,
+    class_name: &str,
+    race: &str,
+    level: i32,
+    stat_mult: f32,
+) -> Adventurer {
     let class = get_adventurer_class(class_name)
         .unwrap_or_else(|| get_adventurer_classes().into_iter().next().unwrap());
     let race_mod = crate::data::adventurers::get_race(race).unwrap_or_default();
@@ -16,7 +24,15 @@ fn build_adventurer(id: u64, name: String, class_name: &str, race: &str, level: 
     let base_hp = class.hp + (level - 1) * 10 + race_mod.hp;
     let equipment = crate::data::equipment::recommended_loadout(&class.name, level);
     let equipment_bonus = crate::data::equipment::equipment_stat_bonus(&equipment, &class.name);
-    let hp = (base_hp + equipment_bonus.hp).max(1);
+    let raw_hp = (base_hp + equipment_bonus.hp).max(1);
+    let raw_attack =
+        (class.attack + (level - 1) * 2 + equipment_bonus.attack + race_mod.attack).max(1);
+    let raw_defense =
+        (class.defense + (level - 1) + equipment_bonus.defense + race_mod.defense).max(0);
+
+    let hp = ((raw_hp as f32 * stat_mult).round() as i32).max(1);
+    let attack = ((raw_attack as f32 * stat_mult).round() as i32).max(1);
+    let defense = ((raw_defense as f32 * stat_mult).round() as i32).max(0);
 
     Adventurer {
         id,
@@ -33,10 +49,8 @@ fn build_adventurer(id: u64, name: String, class_name: &str, race: &str, level: 
         conditions: Vec::new(),
         scaled_stats: Stats {
             hp,
-            attack: (class.attack + (level - 1) * 2 + equipment_bonus.attack + race_mod.attack)
-                .max(1),
-            defense: (class.defense + (level - 1) + equipment_bonus.defense + race_mod.defense)
-                .max(0),
+            attack,
+            defense,
         },
     }
 }
@@ -74,9 +88,12 @@ pub fn spawn_party(state: &mut GameState) {
         return;
     }
 
-    if !macroquad_toolkit::rng::chance(ADVENTURER_SPAWN_CHANCE) {
+    let spawn_chance = ADVENTURER_SPAWN_CHANCE * state.difficulty.profile().spawn_chance_mult;
+    if !macroquad_toolkit::rng::chance(spawn_chance) {
         return;
     }
+
+    let stat_mult = state.difficulty.profile().invader_stat_mult;
 
     let names = get_adventurer_names();
     let entry_quotes = get_entry_quotes();
@@ -109,7 +126,9 @@ pub fn spawn_party(state: &mut GameState) {
                     record.race.clone(),
                     record.level,
                 );
-                members.push(build_adventurer(hero_id, name, &class, &race, level));
+                members.push(build_adventurer(
+                    hero_id, name, &class, &race, level, stat_mult,
+                ));
                 continue;
             }
         }
@@ -137,7 +156,14 @@ pub fn spawn_party(state: &mut GameState) {
             death_floor: 0,
             death_day: 0,
         });
-        members.push(build_adventurer(id, name, &class.name, &race, level));
+        members.push(build_adventurer(
+            id,
+            name,
+            &class.name,
+            &race,
+            level,
+            stat_mult,
+        ));
     }
 
     let target_floor = state.floors.len().min(2) as i32;

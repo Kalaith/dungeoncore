@@ -33,9 +33,10 @@ pub fn draw_milestones(state: &GameState, sw: f32, sh: f32, scroll: &mut f32) ->
     let total = MILESTONES.len();
     draw_text_fit(
         &format!(
-            "Rank: {}  (Prestige {})",
+            "Rank: {}  (Prestige {})    {} difficulty",
             prestige_rank(state.prestige),
-            state.prestige
+            state.prestige,
+            state.difficulty.name()
         ),
         x + 20.0,
         y + 36.0,

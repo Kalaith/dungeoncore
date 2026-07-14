@@ -125,9 +125,19 @@ every tick — and surfaces it as log lines and floating strings.
       effects baked in on purchase. New `ui/core_tree.rs` overlay ([P] or the
       BUILD-tab button) renders the tree with owned/available/locked states and
       prereq connectors. Original 3 ids kept for save compatibility.)*
-- [ ] **Difficulty options / modes.** One fixed difficulty today. Minimum: 2–3
+- [x] **Difficulty options / modes.** One fixed difficulty today. Minimum: 2–3
       difficulty presets. Strong candidates for a management game: endless mode
       vs. structured campaign, challenge modifiers, seeded runs.
+      *(Done: 3 presets — Apprentice / Keeper / Overlord — chosen on a new
+      "Choose Your Reign" screen when starting a new game. `data/difficulty.rs`
+      holds a `DifficultyProfile` of multipliers that scale invader stats, spawn
+      frequency, siege threshold, mana income, and starting core HP; wired into
+      `adventure.rs`, `endgame.rs` (siege elites), `combat/rewards.rs`,
+      `core_spell.rs`, and `game_state` (siege_threshold/income_mult/threat_tier).
+      Persisted with a Keeper serde-default; shown in the Goals overlay and kept
+      across in-run resets. Endless vs. campaign / seeded runs remain as future
+      extensions. Also extracted the capture-scene seeding out of `main.rs` into
+      `capture_scenes.rs` to bring main back under the 800-line limit.)*
 - [ ] **Remaining design-debt items from ROADMAP.md:**
   - [ ] Undead identity rule (no healing, cheap respawn) — requires a respawn-cost
         mechanic; all respawns are currently free.

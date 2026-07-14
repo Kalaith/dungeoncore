@@ -299,8 +299,10 @@ pub fn maybe_launch_siege(state: &mut GameState) {
     let classes = crate::data::adventurers::get_adventurer_classes();
     let races = crate::data::adventurers::get_race_names();
 
-    // Elites scale with how deep the dungeon runs and how many sieges repelled.
+    // Elites scale with how deep the dungeon runs and how many sieges repelled,
+    // and with the run's difficulty.
     let level = 5 + state.total_floors + state.prestige * 2;
+    let stat_mult = state.difficulty.profile().invader_stat_mult;
     let size = 5usize;
     let mut members = Vec::with_capacity(size);
     for _ in 0..size {
@@ -327,7 +329,10 @@ pub fn maybe_launch_siege(state: &mut GameState) {
             death_day: 0,
         });
 
-        let hp = class.hp + (level - 1) * 12;
+        let hp = (((class.hp + (level - 1) * 12) as f32 * stat_mult).round() as i32).max(1);
+        let attack = (((class.attack + (level - 1) * 3) as f32 * stat_mult).round() as i32).max(1);
+        let defense =
+            (((class.defense + (level - 1) * 2) as f32 * stat_mult).round() as i32).max(0);
         members.push(Adventurer {
             id,
             name,
@@ -343,8 +348,8 @@ pub fn maybe_launch_siege(state: &mut GameState) {
             conditions: Vec::new(),
             scaled_stats: Stats {
                 hp,
-                attack: class.attack + (level - 1) * 3,
-                defense: class.defense + (level - 1) * 2,
+                attack,
+                defense,
             },
         });
     }
