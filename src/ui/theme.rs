@@ -32,6 +32,24 @@ pub enum ButtonTone {
     Arcane,
 }
 
+/// Distinct hue for each combat element, so same-element units read alike and
+/// different ones read apart. Paired with a unit's letter glyph, this stays
+/// legible without relying on colour alone. Unknown/neutral falls back to green.
+pub fn element_color(element: &str) -> Color {
+    match element {
+        "Fire" => Color::new(1.00, 0.42, 0.24, 1.0),
+        "Water" => Color::new(0.32, 0.64, 1.00, 1.0),
+        "Nature" => Color::new(0.42, 0.84, 0.40, 1.0),
+        "Earth" => Color::new(0.80, 0.62, 0.36, 1.0),
+        "Air" => Color::new(0.66, 0.90, 0.96, 1.0),
+        "Spirit" => Color::new(1.00, 0.90, 0.56, 1.0),
+        "Death" => Color::new(0.64, 0.44, 0.80, 1.0),
+        "Arcane" => Color::new(0.72, 0.40, 1.00, 1.0),
+        "Body" => Color::new(0.92, 0.72, 0.62, 1.0),
+        _ => EMERALD,
+    }
+}
+
 pub fn draw_game_background(sw: f32, sh: f32) {
     clear_background(BG_DEEP);
     draw_rectangle(0.0, 0.0, sw, sh, BG);

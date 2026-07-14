@@ -131,7 +131,17 @@ fn draw_room_units(room: &Room, strip: Rect, adventurers: &[&Adventurer], fighti
             if drawn >= max_icons {
                 break;
             }
-            let color = if monster.alive { EMERALD } else { TEXT_DIM };
+            // Colour a living defender by its element so different monster
+            // types read apart at a glance; the initial keeps them legible
+            // without relying on hue alone.
+            let color = if monster.alive {
+                match crate::data::monsters::monster_element_id(&monster.type_name) {
+                    Some(element) => element_color(&element),
+                    None => EMERALD,
+                }
+            } else {
+                TEXT_DIM
+            };
             let initial = monster
                 .type_name
                 .chars()
@@ -163,7 +173,15 @@ fn draw_room_units(room: &Room, strip: Rect, adventurers: &[&Adventurer], fighti
         let shown = adventurers.len().min(max_icons);
         let mut x = strip.x + strip.w - radius - 1.0;
         for adventurer in adventurers.iter().take(shown) {
-            draw_icon_disc(vec2(x, cy), radius, WARNING, "A");
+            // Label each invader with its class initial so a Warrior, Rogue,
+            // and Mage read apart rather than as identical "A" tokens.
+            let initial = adventurer
+                .class_name
+                .chars()
+                .next()
+                .map(|c| c.to_ascii_uppercase().to_string())
+                .unwrap_or_else(|| "A".to_string());
+            draw_icon_disc(vec2(x, cy), radius, WARNING, &initial);
             if fighting || adventurer.hp < adventurer.max_hp {
                 draw_unit_hp_bar(vec2(x, cy), radius, adventurer.hp, adventurer.max_hp);
             }

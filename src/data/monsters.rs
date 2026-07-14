@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 
 /// Monster template from JSON
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -46,23 +47,42 @@ struct MonstersData {
 // Embed JSON at compile time for WASM compatibility
 const MONSTERS_JSON: &str = include_str!("../../assets/monsters.json");
 
+/// Parse the embedded monster data once and keep it for the process lifetime.
+/// The JSON is immutable at runtime, so re-parsing it on every lookup (as the
+/// old code did) was pure waste — costly when called per-unit each frame.
+fn monsters_data() -> &'static MonstersData {
+    static CACHE: OnceLock<MonstersData> = OnceLock::new();
+    CACHE
+        .get_or_init(|| serde_json::from_str(MONSTERS_JSON).expect("Failed to parse monsters.json"))
+}
+
 /// Load all monster templates from embedded JSON
 pub fn get_monster_templates() -> Vec<MonsterTemplate> {
-    let data: MonstersData =
-        serde_json::from_str(MONSTERS_JSON).expect("Failed to parse monsters.json");
-    data.monsters
+    monsters_data().monsters.clone()
 }
 
 /// Find a monster template by name
 pub fn get_monster_template(name: &str) -> Option<MonsterTemplate> {
-    get_monster_templates().into_iter().find(|t| t.name == name)
+    monsters_data()
+        .monsters
+        .iter()
+        .find(|t| t.name == name)
+        .cloned()
+}
+
+/// The element id of a monster type, if any. Cheap cached lookup safe to call
+/// per-unit each frame (no JSON parse, no full-vec clone).
+pub fn monster_element_id(name: &str) -> Option<String> {
+    monsters_data()
+        .monsters
+        .iter()
+        .find(|t| t.name == name)
+        .and_then(|t| t.element.clone())
 }
 
 /// Get all species data
 pub fn get_all_species() -> Vec<SpeciesData> {
-    let data: MonstersData =
-        serde_json::from_str(MONSTERS_JSON).expect("Failed to parse monsters.json");
-    data.species
+    monsters_data().species.clone()
 }
 
 /// Get one species record by internal ID.
