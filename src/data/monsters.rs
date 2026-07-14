@@ -70,6 +70,29 @@ pub fn get_monster_template(name: &str) -> Option<MonsterTemplate> {
         .cloned()
 }
 
+/// Whether a monster type belongs to the Undead species. Undead have a distinct
+/// identity: they rise again for free but can never heal (see the respawn and
+/// regeneration logic). Cheap cached lookup.
+pub fn is_undead(name: &str) -> bool {
+    monsters_data()
+        .monsters
+        .iter()
+        .find(|t| t.name == name)
+        .map(|t| t.species == "Undead")
+        .unwrap_or(false)
+}
+
+/// Mana to reknit a fallen non-undead defender: half its summon cost (min 2).
+/// Undead pay nothing — this is only consulted for the living.
+pub fn respawn_mana_cost(name: &str) -> i32 {
+    monsters_data()
+        .monsters
+        .iter()
+        .find(|t| t.name == name)
+        .map(|t| (t.base_cost / 2).max(2))
+        .unwrap_or(2)
+}
+
 /// The element id of a monster type, if any. Cheap cached lookup safe to call
 /// per-unit each frame (no JSON parse, no full-vec clone).
 pub fn monster_element_id(name: &str) -> Option<String> {

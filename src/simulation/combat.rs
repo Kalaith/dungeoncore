@@ -268,7 +268,10 @@ pub fn resolve_combat(state: &mut GameState, party_idx: usize, floor_idx: usize,
                 .iter_mut()
                 .find(|m| m.id == monster_id && m.alive)
             {
-                monster.hp = (monster.hp + heal).min(monster.max_hp);
+                // Undead identity: the dead cannot mend, even by draining life.
+                if !crate::data::monsters::is_undead(&monster.type_name) {
+                    monster.hp = (monster.hp + heal).min(monster.max_hp);
+                }
             }
         }
     }

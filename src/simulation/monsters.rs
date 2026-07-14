@@ -170,24 +170,57 @@ pub fn respawn_monsters(state: &mut GameState) {
         return;
     }
 
-    let mut respawned = 0;
+    // Undead identity: the undead rise again for free and whole; the living must
+    // be reknit with mana (half their summon cost). If mana runs short a living
+    // defender still crawls back, but wounded (half HP) — so a poor dungeon
+    // degrades gracefully rather than losing its garrison outright.
+    let mut mana = state.mana;
+    let mut free = 0;
+    let mut paid = 0;
+    let mut wounded = 0;
     for floor in &mut state.floors {
         for room in &mut floor.rooms {
             for monster in &mut room.monsters {
-                if !monster.alive {
+                if monster.alive {
+                    continue;
+                }
+                if crate::data::monsters::is_undead(&monster.type_name) {
                     monster.hp = monster.max_hp;
                     monster.alive = true;
-                    respawned += 1;
+                    free += 1;
+                    continue;
+                }
+                let cost = crate::data::monsters::respawn_mana_cost(&monster.type_name);
+                if mana >= cost {
+                    mana -= cost;
+                    monster.hp = monster.max_hp;
+                    monster.alive = true;
+                    paid += 1;
+                } else {
+                    monster.hp = (monster.max_hp / 2).max(1);
+                    monster.alive = true;
+                    wounded += 1;
                 }
             }
         }
     }
+    state.mana = mana;
 
-    if respawned > 0 {
-        state.add_log(LogEntry::system(format!(
-            "All monsters respawned! ({} monsters)",
-            respawned
-        )));
+    let total = free + paid + wounded;
+    if total > 0 {
+        let mut msg = format!("Defenders respawn ({total}):");
+        if free > 0 {
+            msg.push_str(&format!(" {free} undead rose free;"));
+        }
+        if paid > 0 {
+            msg.push_str(&format!(" {paid} reknit with mana;"));
+        }
+        if wounded > 0 {
+            msg.push_str(&format!(" {wounded} crawled back wounded (low mana);"));
+        }
+        msg.pop(); // trailing ';'
+        msg.push('.');
+        state.add_log(LogEntry::system(msg));
     }
 }
 
@@ -258,6 +291,10 @@ pub fn process_hourly_traits(state: &mut GameState) {
         for room in &mut floor.rooms {
             for monster in &mut room.monsters {
                 if !monster.alive {
+                    continue;
+                }
+                // Undead identity: the dead do not mend. Skip all regeneration.
+                if crate::data::monsters::is_undead(&monster.type_name) {
                     continue;
                 }
 
@@ -405,5 +442,70 @@ pub fn process_evolutions(state: &mut GameState) {
     // Add log messages after all mutations are done
     for message in log_messages {
         state.add_log(crate::game_state::LogEntry::system(message));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game_state::{Monster, Stats};
+
+    fn dead_monster(type_name: &str, max_hp: i32) -> Monster {
+        Monster {
+            id: macroquad_toolkit::rng::random_u64(),
+            type_name: type_name.to_string(),
+            hp: 0,
+            max_hp,
+            alive: false,
+            is_boss: false,
+            scaled_stats: Stats {
+                hp: max_hp,
+                attack: 5,
+                defense: 2,
+            },
+            active_traits: Vec::new(),
+            experience: 0,
+        }
+    }
+
+    #[test]
+    fn undead_respawn_free_and_whole_at_zero_mana() {
+        let mut s = GameState::new();
+        s.mana = 0;
+        s.floors[0].rooms[0]
+            .monsters
+            .push(dead_monster("Skeleton", 40));
+        respawn_monsters(&mut s);
+        let m = &s.floors[0].rooms[0].monsters[0];
+        assert!(m.alive);
+        assert_eq!(m.hp, m.max_hp, "undead rise whole");
+        assert_eq!(s.mana, 0, "undead cost nothing");
+    }
+
+    #[test]
+    fn living_respawn_charges_mana_when_affordable() {
+        let mut s = GameState::new();
+        s.mana = 100;
+        s.floors[0].rooms[0]
+            .monsters
+            .push(dead_monster("Goblin", 40));
+        respawn_monsters(&mut s);
+        let m = &s.floors[0].rooms[0].monsters[0];
+        assert!(m.alive);
+        assert_eq!(m.hp, m.max_hp);
+        assert!(s.mana < 100, "the living cost mana to reknit");
+    }
+
+    #[test]
+    fn living_respawn_wounded_when_broke() {
+        let mut s = GameState::new();
+        s.mana = 0;
+        s.floors[0].rooms[0]
+            .monsters
+            .push(dead_monster("Goblin", 40));
+        respawn_monsters(&mut s);
+        let m = &s.floors[0].rooms[0].monsters[0];
+        assert!(m.alive, "never lost outright");
+        assert!(m.hp > 0 && m.hp < m.max_hp, "crawls back wounded");
     }
 }

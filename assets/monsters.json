@@ -772,7 +772,7 @@
             "display_name": "Undead",
             "starter": false,
             "unlock_cost": 100,
-            "description": "Reanimated corpses and spirits"
+            "description": "Reanimated corpses and spirits. They rise again for free after a raid, but the dead never heal."
         },
         {
             "name": "Draconic",

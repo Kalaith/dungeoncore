@@ -139,8 +139,15 @@ every tick — and surfaces it as log lines and floating strings.
       extensions. Also extracted the capture-scene seeding out of `main.rs` into
       `capture_scenes.rs` to bring main back under the 800-line limit.)*
 - [ ] **Remaining design-debt items from ROADMAP.md:**
-  - [ ] Undead identity rule (no healing, cheap respawn) — requires a respawn-cost
+  - [x] Undead identity rule (no healing, cheap respawn) — requires a respawn-cost
         mechanic; all respawns are currently free.
+        *(Done: added a respawn-cost mechanic in `respawn_monsters` — the living
+        are reknit for half their summon mana (crawling back at half HP if the
+        dungeon is too poor, so no garrison is ever lost outright), while Undead
+        rise again free and whole. Undead are also exempt from all healing:
+        skipped in the hourly regen trait and in combat lifesteal (`is_undead`
+        helper in `data/monsters.rs`). Identity surfaced in the species blurb and
+        an itemised respawn log line. 3 tests.)*
   - [ ] Hero grudges/rivalries/bounties (data hooks exist) — *only after* heroes
         are visible actors in raids, per the design review.
 - [x] **Economy balance passes** flagged but never done:
