@@ -8,6 +8,7 @@ use crate::data::upgrades::{get_all_upgrades, UpgradeTemplate};
 use crate::game_state::{GameState, Monster, Room, RoomType};
 
 use super::theme::*;
+use macroquad_toolkit::colors::with_alpha;
 
 #[derive(Debug, Clone)]
 pub enum UpgradeAction {
@@ -103,11 +104,7 @@ fn selected_room(state: &GameState) -> Option<&Room> {
 
 fn draw_selected_monster(state: &GameState, monster_name: &str, bounds: Rect, y: f32) -> f32 {
     let rect = Rect::new(bounds.x, y, bounds.w, 136.0);
-    draw_card(
-        rect,
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.085),
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.25),
-    );
+    draw_card(rect, with_alpha(SOUL, 0.085), with_alpha(SOUL, 0.25));
     draw_text_fit(
         monster_name,
         rect.x + 12.0,
@@ -196,7 +193,7 @@ fn draw_selected_room(
     draw_card(
         rect,
         Color::new(0.0, 0.0, 0.0, 0.18),
-        Color::new(tone.r, tone.g, tone.b, 0.26),
+        with_alpha(tone, 0.26),
     );
 
     draw_room_badge(
@@ -373,7 +370,7 @@ fn draw_upgrade_catalog(
     draw_card(
         rect,
         Color::new(0.0, 0.0, 0.0, 0.10),
-        Color::new(BORDER.r, BORDER.g, BORDER.b, 0.18),
+        with_alpha(BORDER, 0.18),
     );
 
     for (idx, upgrade) in upgrades.iter().enumerate() {
@@ -509,11 +506,11 @@ fn draw_upgrade_row(state: &GameState, upgrade: &UpgradeTemplate, rect: Rect) ->
     draw_card(
         rect,
         if hovered {
-            Color::new(color.r, color.g, color.b, 0.13)
+            with_alpha(color, 0.13)
         } else {
-            Color::new(color.r, color.g, color.b, 0.075)
+            with_alpha(color, 0.075)
         },
-        Color::new(color.r, color.g, color.b, if enabled { 0.30 } else { 0.12 }),
+        with_alpha(color, if enabled { 0.30 } else { 0.12 }),
     );
     draw_text_fit(
         &upgrade.name,
@@ -672,11 +669,7 @@ fn template_evolution_hint(monster_name: &str) -> String {
 }
 
 fn draw_hint(rect: Rect, text: &str, color: Color) {
-    draw_card(
-        rect,
-        Color::new(color.r, color.g, color.b, 0.055),
-        Color::new(color.r, color.g, color.b, 0.18),
-    );
+    draw_card(rect, with_alpha(color, 0.055), with_alpha(color, 0.18));
     let lines = macroquad_toolkit::ui::wrap_text(text, rect.w - 20.0, 11.0);
     let mut y = rect.y + 18.0;
     for line in lines.iter().take(3) {
@@ -702,11 +695,7 @@ fn draw_section_rule(x: f32, y: f32, w: f32, label: &str) {
 }
 
 fn draw_room_badge(rect: Rect, room_type: &RoomType, color: Color) {
-    draw_card(
-        rect,
-        Color::new(color.r, color.g, color.b, 0.14),
-        Color::new(color.r, color.g, color.b, 0.42),
-    );
+    draw_card(rect, with_alpha(color, 0.14), with_alpha(color, 0.42));
     draw_centered_text(room_icon_letter(room_type), rect, 17.0, color);
 }
 
@@ -724,11 +713,11 @@ pub fn draw_close_button(rect: Rect) -> bool {
     draw_card(
         rect,
         if hovered {
-            Color::new(SOUL.r, SOUL.g, SOUL.b, 0.12)
+            with_alpha(SOUL, 0.12)
         } else {
             Color::new(0.0, 0.0, 0.0, 0.05)
         },
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.18),
+        with_alpha(SOUL, 0.18),
     );
     draw_centered_text("X", rect, 13.0, if hovered { SOUL } else { TEXT_DIM });
     was_clicked_rect(rect)

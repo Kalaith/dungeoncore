@@ -7,6 +7,7 @@ use crate::game_state::GameState;
 use crate::ui::theme::*;
 
 use super::{draw_section_title, UpgradeSection};
+use macroquad_toolkit::colors::with_alpha;
 
 pub(super) fn draw_traps_tab(
     state: &GameState,
@@ -69,11 +70,7 @@ pub(super) fn draw_traps_tab(
 
     if let Some(upgrade) = &state.selected_upgrade {
         let hint = Rect::new(rect.x, rect.y + rect.h - 62.0, rect.w, 52.0);
-        draw_card(
-            hint,
-            Color::new(DANGER.r, DANGER.g, DANGER.b, 0.10),
-            Color::new(DANGER.r, DANGER.g, DANGER.b, 0.30),
-        );
+        draw_card(hint, with_alpha(DANGER, 0.10), with_alpha(DANGER, 0.30));
         draw_text_fit(
             upgrade,
             hint.x + 10.0,
@@ -104,16 +101,16 @@ fn draw_upgrade_option(
     let selected = state.selected_upgrade.as_ref() == Some(&template.name);
     let hovered = can_afford && is_hovered_rect(rect);
     let fill = if selected {
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.13)
+        with_alpha(TREASURE, 0.13)
     } else if hovered {
-        Color::new(DANGER.r, DANGER.g, DANGER.b, 0.10)
+        with_alpha(DANGER, 0.10)
     } else {
         CARD
     };
     let border = if selected {
         TREASURE
     } else {
-        Color::new(DANGER.r, DANGER.g, DANGER.b, 0.24)
+        with_alpha(DANGER, 0.24)
     };
     draw_card(rect, fill, border);
 

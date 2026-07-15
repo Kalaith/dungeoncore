@@ -15,6 +15,7 @@ mod icons;
 mod room_art;
 
 use backdrop::{draw_board_surface, draw_floor_rail, draw_room_route_backplate};
+use macroquad_toolkit::colors::with_alpha;
 use room_art::{draw_connector, draw_future_room_tile, draw_party_transit, draw_room_tile};
 
 const BASE_ROOM_W: f32 = 156.0;
@@ -51,7 +52,7 @@ pub fn draw_dungeon_board(state: &GameState, rect: Rect) -> DungeonAction {
     draw_card(
         rect,
         Color::new(0.0, 0.0, 0.0, 0.18),
-        Color::new(BORDER.r, BORDER.g, BORDER.b, 0.18),
+        with_alpha(BORDER, 0.18),
     );
 
     draw_text_fit("Dungeon", rect.x + 22.0, rect.y + 30.0, 160.0, 24.0, TEXT);
@@ -96,7 +97,7 @@ pub fn draw_dungeon_board(state: &GameState, rect: Rect) -> DungeonAction {
             .map(|(floor_num, _)| floor_num == floor.number)
             .unwrap_or(floor.is_deepest);
         let row_border = if selected_floor {
-            Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.48)
+            with_alpha(TREASURE, 0.48)
         } else {
             BORDER_MUTED
         };
@@ -212,11 +213,7 @@ fn draw_placement_badge(_state: &GameState, monster: &str, rect: Rect) {
     let element = crate::data::monsters::monster_element_id(monster);
     let accent = element.as_deref().map(element_color).unwrap_or(SOUL);
 
-    draw_card(
-        badge,
-        Color::new(accent.r, accent.g, accent.b, 0.12),
-        Color::new(accent.r, accent.g, accent.b, 0.52),
-    );
+    draw_card(badge, with_alpha(accent, 0.12), with_alpha(accent, 0.52));
     draw_text_fit(
         &format!("PLACING {}", monster.to_uppercase()),
         badge.x + 12.0,

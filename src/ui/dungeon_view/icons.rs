@@ -4,6 +4,7 @@ use macroquad::prelude::*;
 
 use crate::game_state::RoomType;
 use crate::ui::theme::*;
+use macroquad_toolkit::colors::with_alpha;
 
 pub(super) fn draw_entrance_art(rect: Rect, color: Color) {
     let arch = Rect::new(
@@ -25,7 +26,7 @@ pub(super) fn draw_entrance_art(rect: Rect, color: Color) {
         vec2(arch.x + arch.w, arch.y + arch.h * 0.38),
         Color::new(0.0, 0.0, 0.0, 0.38),
     );
-    let line = Color::new(color.r, color.g, color.b, 0.52);
+    let line = with_alpha(color, 0.52);
     draw_rectangle_lines(
         arch.x,
         arch.y + arch.h * 0.36,
@@ -54,7 +55,7 @@ pub(super) fn draw_entrance_art(rect: Rect, color: Color) {
         arch.x + arch.w * 0.28,
         arch.y + arch.h * 0.70,
         4.0,
-        Color::new(EMERALD.r, EMERALD.g, EMERALD.b, 0.58),
+        with_alpha(EMERALD, 0.58),
     );
 }
 
@@ -86,12 +87,7 @@ pub(super) fn draw_combat_art(rect: Rect, color: Color) {
 
 pub(super) fn draw_core_art(rect: Rect, color: Color) {
     let center = vec2(rect.x + rect.w * 0.5, rect.y + rect.h * 0.50);
-    draw_circle(
-        center.x,
-        center.y,
-        rect.h * 0.36,
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.13),
-    );
+    draw_circle(center.x, center.y, rect.h * 0.36, with_alpha(SOUL, 0.13));
     draw_room_icon(&RoomType::Core, center, rect.h * 0.28, color);
     draw_line(
         center.x,
@@ -99,7 +95,7 @@ pub(super) fn draw_core_art(rect: Rect, color: Color) {
         center.x,
         rect.y + rect.h - 8.0,
         1.5,
-        Color::new(color.r, color.g, color.b, 0.24),
+        with_alpha(color, 0.24),
     );
 }
 
@@ -111,12 +107,7 @@ fn draw_torch(pos: Vec2) {
         22.0,
         Color::new(0.28, 0.18, 0.10, 0.90),
     );
-    draw_circle(
-        pos.x,
-        pos.y - 9.0,
-        6.0,
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.30),
-    );
+    draw_circle(pos.x, pos.y - 9.0, 6.0, with_alpha(TREASURE, 0.30));
     draw_triangle(
         vec2(pos.x, pos.y - 18.0),
         vec2(pos.x - 5.0, pos.y - 5.0),
@@ -224,13 +215,13 @@ pub(super) fn draw_room_icon(room_type: &RoomType, center: Vec2, size: f32, colo
                 vec2(center.x, center.y - size * 0.62),
                 vec2(center.x - size * 0.48, center.y),
                 vec2(center.x, center.y + size * 0.62),
-                Color::new(color.r, color.g, color.b, 0.28),
+                with_alpha(color, 0.28),
             );
             draw_triangle(
                 vec2(center.x, center.y - size * 0.62),
                 vec2(center.x + size * 0.48, center.y),
                 vec2(center.x, center.y + size * 0.62),
-                Color::new(color.r, color.g, color.b, 0.28),
+                with_alpha(color, 0.28),
             );
             draw_line(
                 center.x,

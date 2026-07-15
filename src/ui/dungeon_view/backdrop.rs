@@ -3,12 +3,13 @@
 use macroquad::prelude::*;
 
 use crate::ui::theme::*;
+use macroquad_toolkit::colors::with_alpha;
 
 pub(super) fn draw_board_surface(rect: Rect) {
     draw_card(
         rect,
         Color::new(0.004, 0.007, 0.013, 0.82),
-        Color::new(BORDER_MUTED.r, BORDER_MUTED.g, BORDER_MUTED.b, 0.20),
+        with_alpha(BORDER_MUTED, 0.20),
     );
     draw_citadel_backdrop(rect);
     let mut x = rect.x;
@@ -89,7 +90,7 @@ fn draw_citadel_backdrop(rect: Rect) {
         rect.x + rect.w * 0.88,
         rect.y + rect.h * 0.33,
         rect.w * 0.055,
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.055),
+        with_alpha(SOUL, 0.055),
     );
 }
 
@@ -97,16 +98,11 @@ pub(super) fn draw_room_route_backplate(rect: Rect, selected: bool, border: Colo
     draw_card(
         rect,
         if selected {
-            Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.020)
+            with_alpha(TREASURE, 0.020)
         } else {
             Color::new(0.0, 0.0, 0.0, 0.12)
         },
-        Color::new(
-            border.r,
-            border.g,
-            border.b,
-            if selected { 0.26 } else { 0.12 },
-        ),
+        with_alpha(border, if selected { 0.26 } else { 0.12 }),
     );
     let floor_y = rect.y + rect.h * 0.64;
     draw_rectangle(
@@ -122,21 +118,16 @@ pub(super) fn draw_room_route_backplate(rect: Rect, selected: bool, border: Colo
         rect.x + rect.w,
         floor_y,
         2.0,
-        Color::new(
-            TREASURE.r,
-            TREASURE.g,
-            TREASURE.b,
-            if selected { 0.22 } else { 0.10 },
-        ),
+        with_alpha(TREASURE, if selected { 0.22 } else { 0.10 }),
     );
 }
 
 pub(super) fn draw_floor_rail(rect: Rect, floor_num: i32, room_count: usize, deepest: bool) {
     draw_card(
         rect,
-        Color::new(CARD.r, CARD.g, CARD.b, 0.66),
+        with_alpha(CARD, 0.66),
         if deepest {
-            Color::new(ARCANE.r, ARCANE.g, ARCANE.b, 0.34)
+            with_alpha(ARCANE, 0.34)
         } else {
             BORDER_MUTED
         },

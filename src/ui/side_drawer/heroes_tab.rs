@@ -6,6 +6,7 @@ use crate::game_state::{GameState, HeroStatus};
 use crate::ui::theme::*;
 
 use super::draw_section_title;
+use macroquad_toolkit::colors::with_alpha;
 
 pub(super) fn draw_heroes_tab(state: &GameState, rect: Rect, scroll: &mut f32) {
     draw_section_title(rect, "HEROES", "Everyone who has delved.");
@@ -86,8 +87,8 @@ pub(super) fn draw_heroes_tab(state: &GameState, rect: Rect, scroll: &mut f32) {
         };
         draw_card(
             row,
-            Color::new(tag_color.r, tag_color.g, tag_color.b, 0.06),
-            Color::new(tag_color.r, tag_color.g, tag_color.b, 0.22),
+            with_alpha(tag_color, 0.06),
+            with_alpha(tag_color, 0.22),
         );
         draw_text_fit(
             &format!("{}  L{}", hero.name, hero.level),

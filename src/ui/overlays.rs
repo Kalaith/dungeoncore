@@ -6,6 +6,7 @@ use crate::game_state::{GameState, RaidOutcome, RaidSummary};
 
 use super::theme::*;
 use super::upgrade_panel::draw_close_button;
+use macroquad_toolkit::colors::with_alpha;
 
 /// A compact post-raid summary card floating over the dungeon board: the
 /// outcome, the casualties the dungeon inflicted, and the income it banked —
@@ -120,7 +121,7 @@ pub fn draw_siege_overlay(sw: f32, sh: f32) {
     draw_card(
         banner,
         Color::new(0.34, 0.02, 0.05, 0.94),
-        Color::new(DANGER.r, DANGER.g, DANGER.b, 0.7 + pulse * 0.3),
+        with_alpha(DANGER, 0.7 + pulse * 0.3),
     );
     draw_centered_text(
         "THE REALM'S SIEGE — DEFEND THE CORE",
@@ -236,7 +237,7 @@ pub fn draw_codex(state: &GameState, sw: f32, sh: f32, scroll: &mut f32) -> bool
     }
     for (slot, m) in discovered.iter().skip(first).take(visible).enumerate() {
         let row = Rect::new(list.x, list.y + slot as f32 * row_h, list.w, row_h - 6.0);
-        draw_card(row, CARD, Color::new(BORDER.r, BORDER.g, BORDER.b, 0.2));
+        draw_card(row, CARD, with_alpha(BORDER, 0.2));
         draw_text_fit(
             &format!("{}  {}", m.emoji, m.name),
             row.x + 10.0,

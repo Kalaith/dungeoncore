@@ -11,6 +11,7 @@ use crate::game_state::GameState;
 use crate::simulation::core_spell::{is_ready, smite_target, CORE_SMITE_MANA_COST};
 
 use super::theme::*;
+use macroquad_toolkit::colors::with_alpha;
 
 /// Width/height of the Core Smite button.
 pub const CORE_SPELL_BTN_W: f32 = 176.0;
@@ -51,11 +52,7 @@ pub fn draw_core_spell_button(state: &GameState, rect: Rect) -> bool {
     } else {
         base
     };
-    let border = if live {
-        SOUL
-    } else {
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.34)
-    };
+    let border = if live { SOUL } else { with_alpha(SOUL, 0.34) };
     draw_card(rect, fill, border);
 
     let text_color = if live {
@@ -87,7 +84,7 @@ pub fn draw_core_spell_button(state: &GameState, rect: Rect) -> bool {
         format!("[Q]   {} mana", CORE_SMITE_MANA_COST)
     };
     let sub_color = if !ready {
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.9)
+        with_alpha(SOUL, 0.9)
     } else if !affordable {
         DANGER
     } else {

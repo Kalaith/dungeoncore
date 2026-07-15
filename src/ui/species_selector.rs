@@ -6,6 +6,7 @@ use crate::game_state::GameState;
 use macroquad::prelude::*;
 
 use super::theme::*;
+use macroquad_toolkit::colors::with_alpha;
 
 pub fn draw_species_selector(
     state: &mut GameState,
@@ -84,18 +85,8 @@ pub fn draw_species_selector(
         let accent = if selectable { SOUL } else { BORDER_MUTED };
         draw_card(
             card,
-            Color::new(
-                accent.r,
-                accent.g,
-                accent.b,
-                if selectable { 0.06 } else { 0.02 },
-            ),
-            Color::new(
-                accent.r,
-                accent.g,
-                accent.b,
-                if selectable { 0.44 } else { 0.16 },
-            ),
+            with_alpha(accent, if selectable { 0.06 } else { 0.02 }),
+            with_alpha(accent, if selectable { 0.44 } else { 0.16 }),
         );
 
         draw_text_fit(

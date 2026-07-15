@@ -39,7 +39,7 @@ pub(super) fn draw_room_tile(
             draw_rect.w + 4.0,
             draw_rect.h + 4.0,
             2.0,
-            Color::new(WARNING.r, WARNING.g, WARNING.b, 0.45 + pulse * 0.35),
+            with_alpha(WARNING, 0.45 + pulse * 0.35),
         );
     }
     if selected {
@@ -371,7 +371,7 @@ fn draw_room_label_plate(rect: Rect, title: &str, room: &Room, color: Color) {
     draw_card(
         rect,
         Color::new(0.0, 0.0, 0.0, 0.34),
-        Color::new(color.r, color.g, color.b, 0.28),
+        with_alpha(color, 0.28),
     );
     draw_text_fit(
         title,
@@ -394,7 +394,7 @@ pub(super) fn draw_future_room_tile(state: &GameState, rect: Rect, plan: &BuildP
     let can_build = can_afford && state.adventurer_parties.is_empty();
     let hovered = is_hovered_rect(rect);
     let fill = if can_build {
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.10)
+        with_alpha(TREASURE, 0.10)
     } else {
         Color::new(0.045, 0.052, 0.075, 0.72)
     };
@@ -439,7 +439,7 @@ pub(super) fn draw_future_room_tile(state: &GameState, rect: Rect, plan: &BuildP
     draw_card(
         label_rect,
         Color::new(0.0, 0.0, 0.0, 0.34),
-        Color::new(border.r, border.g, border.b, 0.24),
+        with_alpha(border, 0.24),
     );
     draw_centered_text(&label, label_rect, 11.0, TEXT_MUTED);
     draw_centered_text(
@@ -458,12 +458,7 @@ pub(super) fn draw_party_transit(connector: Rect, progress: f32) {
     let cx = connector.x + connector.w * progress;
     let cy = connector.y + connector.h * 0.5;
     // A short motion trail behind the marker sells the direction of travel.
-    draw_circle(
-        cx - 5.0,
-        cy,
-        4.0,
-        Color::new(WARNING.r, WARNING.g, WARNING.b, 0.16),
-    );
+    draw_circle(cx - 5.0, cy, 4.0, with_alpha(WARNING, 0.16));
     draw_icon_disc(vec2(cx, cy), 6.5, WARNING, "A");
 }
 
@@ -485,12 +480,7 @@ pub(super) fn draw_connector(rect: Rect, ghost: bool) {
         rect.x + rect.w - 4.0,
         rect.y + rect.h * 0.5,
         2.0,
-        Color::new(
-            TREASURE.r,
-            TREASURE.g,
-            TREASURE.b,
-            if ghost { 0.22 } else { 0.36 },
-        ),
+        with_alpha(TREASURE, if ghost { 0.22 } else { 0.36 }),
     );
 }
 
@@ -498,25 +488,25 @@ fn room_tone(room: &Room) -> (Color, Color, Color, &'static str) {
     match room.room_type {
         RoomType::Entrance => (
             Color::new(0.05, 0.34, 0.22, 0.94),
-            Color::new(EMERALD.r, EMERALD.g, EMERALD.b, 0.78),
+            with_alpha(EMERALD, 0.78),
             Color::new(0.70, 1.00, 0.82, 1.0),
             "Entrance",
         ),
         RoomType::Normal => (
             Color::new(0.07, 0.19, 0.29, 0.94),
-            Color::new(MANA.r, MANA.g, MANA.b, 0.58),
+            with_alpha(MANA, 0.58),
             Color::new(0.72, 0.91, 1.0, 1.0),
             "Room",
         ),
         RoomType::Boss => (
             Color::new(0.36, 0.12, 0.07, 0.94),
-            Color::new(WARNING.r, WARNING.g, WARNING.b, 0.78),
+            with_alpha(WARNING, 0.78),
             Color::new(1.0, 0.80, 0.58, 1.0),
             "Boss",
         ),
         RoomType::Core => (
             Color::new(0.26, 0.10, 0.42, 0.96),
-            Color::new(SOUL.r, SOUL.g, SOUL.b, 0.82),
+            with_alpha(SOUL, 0.82),
             Color::new(0.93, 0.78, 1.0, 1.0),
             "Core",
         ),

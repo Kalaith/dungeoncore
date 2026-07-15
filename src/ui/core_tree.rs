@@ -11,6 +11,7 @@ use crate::simulation::endgame::{core_power, prereqs_met, CorePower, CORE_POWERS
 
 use super::theme::*;
 use super::upgrade_panel::draw_close_button;
+use macroquad_toolkit::colors::with_alpha;
 
 /// Outcome of a frame of the core-power tree overlay.
 pub enum CoreTreeResult {
@@ -81,11 +82,11 @@ pub fn draw_core_tree(state: &GameState, sw: f32, sh: f32) -> CoreTreeResult {
         let owned = state.has_core_power(power.id);
         let available = !owned && prereqs_met(state, power);
         let line_color = if owned {
-            Color::new(EMERALD.r, EMERALD.g, EMERALD.b, 0.5)
+            with_alpha(EMERALD, 0.5)
         } else if available {
-            Color::new(SOUL.r, SOUL.g, SOUL.b, 0.4)
+            with_alpha(SOUL, 0.4)
         } else {
-            Color::new(BORDER.r, BORDER.g, BORDER.b, 0.5)
+            with_alpha(BORDER, 0.5)
         };
         for req in power.requires {
             if let Some((_, req_rect)) = placed.iter().find(|(p, _)| &p.id == req) {
@@ -141,13 +142,8 @@ fn draw_node(state: &GameState, power: &CorePower, rect: Rect) -> Option<String>
     };
     draw_card(
         rect,
-        Color::new(accent.r, accent.g, accent.b, fill_alpha),
-        Color::new(
-            accent.r,
-            accent.g,
-            accent.b,
-            if available { 0.55 } else { 0.28 },
-        ),
+        with_alpha(accent, fill_alpha),
+        with_alpha(accent, if available { 0.55 } else { 0.28 }),
     );
 
     let title_color = if owned || available { TEXT } else { TEXT_DIM };

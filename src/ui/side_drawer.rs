@@ -19,6 +19,7 @@ mod traps_tab;
 use build_tab::draw_build_tab;
 use evolution_tab::draw_evolution_tab;
 use heroes_tab::draw_heroes_tab;
+use macroquad_toolkit::colors::with_alpha;
 use monster_tab::draw_monster_tab;
 use traps_tab::draw_traps_tab;
 
@@ -174,11 +175,7 @@ fn draw_tab_rail(
     } else {
         WARNING
     };
-    draw_card(
-        chip_rect,
-        Color::new(color.r, color.g, color.b, 0.09),
-        Color::new(color.r, color.g, color.b, 0.26),
-    );
+    draw_card(chip_rect, with_alpha(color, 0.09), with_alpha(color, 0.26));
     draw_centered_text(
         if state.adventurer_parties.is_empty() {
             "Safe"
@@ -213,13 +210,13 @@ fn draw_small_tab(rect: Rect, text: &str, color: Color, active: bool) -> bool {
     draw_card(
         rect,
         if active {
-            Color::new(color.r, color.g, color.b, 0.16)
+            with_alpha(color, 0.16)
         } else if hovered {
-            Color::new(color.r, color.g, color.b, 0.10)
+            with_alpha(color, 0.10)
         } else {
             Color::new(0.0, 0.0, 0.0, 0.10)
         },
-        Color::new(color.r, color.g, color.b, if active { 0.42 } else { 0.18 }),
+        with_alpha(color, if active { 0.42 } else { 0.18 }),
     );
     draw_centered_text(text, rect, 10.0, if active { color } else { TEXT_MUTED });
     was_clicked_rect(rect)
@@ -230,13 +227,13 @@ fn draw_rail_tab(rect: Rect, icon: &str, label: &str, color: Color, active: bool
     draw_card(
         rect,
         if active {
-            Color::new(color.r, color.g, color.b, 0.14)
+            with_alpha(color, 0.14)
         } else if hovered {
-            Color::new(color.r, color.g, color.b, 0.08)
+            with_alpha(color, 0.08)
         } else {
             Color::new(0.0, 0.0, 0.0, 0.10)
         },
-        Color::new(color.r, color.g, color.b, if active { 0.48 } else { 0.16 }),
+        with_alpha(color, if active { 0.48 } else { 0.16 }),
     );
     draw_centered_text(
         icon,

@@ -5,6 +5,7 @@ use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
 use crate::data::difficulty::Difficulty;
 
 use super::theme::*;
+use macroquad_toolkit::colors::with_alpha;
 
 pub const TITLE_BACKGROUND_KEY: &str = "title_background";
 pub const TITLE_BACKGROUND_PATH: &str = "assets/title_screen.png";
@@ -50,7 +51,7 @@ pub fn draw_title_screen(
         panel.y + 31.0,
         panel.w - 52.0,
         15.0,
-        Color::new(TEXT.r, TEXT.g, TEXT.b, 0.92),
+        with_alpha(TEXT, 0.92),
     );
     let btn_x = panel.x + 22.0;
     let btn_w = panel.w - 44.0;
@@ -166,18 +167,8 @@ pub fn draw_new_game_setup(assets: &AssetManager, notice: Option<&str>) -> NewGa
         };
         draw_card(
             card,
-            Color::new(
-                accent.r,
-                accent.g,
-                accent.b,
-                if hovered { 0.18 } else { 0.08 },
-            ),
-            Color::new(
-                accent.r,
-                accent.g,
-                accent.b,
-                if hovered { 0.7 } else { 0.32 },
-            ),
+            with_alpha(accent, if hovered { 0.18 } else { 0.08 }),
+            with_alpha(accent, if hovered { 0.7 } else { 0.32 }),
         );
         draw_text_fit(
             profile.name,
@@ -342,15 +333,9 @@ fn draw_title_panel(rect: Rect) {
     draw_card(
         rect,
         Color::new(0.018, 0.020, 0.034, 0.72),
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.28),
+        with_alpha(SOUL, 0.28),
     );
-    draw_rectangle(
-        rect.x,
-        rect.y,
-        3.0,
-        rect.h,
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.68),
-    );
+    draw_rectangle(rect.x, rect.y, 3.0, rect.h, with_alpha(SOUL, 0.68));
 }
 
 fn draw_title_button(rect: Rect, text: &str, enabled: bool, tone: ButtonTone) -> bool {
@@ -377,13 +362,8 @@ fn draw_title_button(rect: Rect, text: &str, enabled: bool, tone: ButtonTone) ->
     };
     draw_card(
         rect,
-        Color::new(base.r, base.g, base.b, alpha),
-        Color::new(
-            border.r,
-            border.g,
-            border.b,
-            if hovered { 0.78 } else { 0.38 },
-        ),
+        with_alpha(base, alpha),
+        with_alpha(border, if hovered { 0.78 } else { 0.38 }),
     );
     draw_centered_text(
         text,
@@ -400,7 +380,7 @@ fn draw_title_notice(message: &str, sw: f32, sh: f32) {
     draw_card(
         rect,
         Color::new(0.018, 0.020, 0.034, 0.82),
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.32),
+        with_alpha(TREASURE, 0.32),
     );
     draw_centered_text(
         message,

@@ -8,6 +8,7 @@ use crate::game_state::GameState;
 use crate::ui::theme::*;
 
 use super::{draw_section_title, DrawerAction};
+use macroquad_toolkit::colors::with_alpha;
 
 pub(super) fn draw_evolution_tab(state: &GameState, rect: Rect) -> DrawerAction {
     draw_section_title(rect, "EVOLUTION", "Advance unlocked species.");
@@ -74,8 +75,8 @@ pub(super) fn draw_evolution_tab(state: &GameState, rect: Rect) -> DrawerAction 
         let unlock_rect = Rect::new(rect.x, rect.y + rect.h - 94.0, rect.w, 40.0);
         draw_card(
             unlock_rect,
-            Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.075),
-            Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.24),
+            with_alpha(TREASURE, 0.075),
+            with_alpha(TREASURE, 0.24),
         );
         draw_text_fit(
             &format!("Next race: {}", get_species_display_name(&species_name)),
@@ -197,8 +198,8 @@ fn collect_evolution_rows(state: &GameState) -> Vec<EvolutionUiRow> {
 fn draw_evolution_row(row: &EvolutionUiRow, rect: Rect) {
     draw_card(
         rect,
-        Color::new(row.color.r, row.color.g, row.color.b, 0.075),
-        Color::new(row.color.r, row.color.g, row.color.b, 0.26),
+        with_alpha(row.color, 0.075),
+        with_alpha(row.color, 0.26),
     );
     draw_text_fit(
         &row.monster,

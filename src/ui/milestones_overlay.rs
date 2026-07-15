@@ -9,6 +9,7 @@ use crate::simulation::milestones::{achieved_count, prestige_rank, MILESTONES};
 
 use super::theme::*;
 use super::upgrade_panel::draw_close_button;
+use macroquad_toolkit::colors::with_alpha;
 
 /// Draw the milestones overlay; returns true when it should close.
 pub fn draw_milestones(state: &GameState, sw: f32, sh: f32, scroll: &mut f32) -> bool {
@@ -84,13 +85,8 @@ pub fn draw_milestones(state: &GameState, sw: f32, sh: f32, scroll: &mut f32) ->
             let row = Rect::new(list.x, ry, list.w, row_h - 8.0);
             draw_card(
                 row,
-                Color::new(
-                    accent.r,
-                    accent.g,
-                    accent.b,
-                    if owned { 0.12 } else { 0.04 },
-                ),
-                Color::new(accent.r, accent.g, accent.b, if owned { 0.5 } else { 0.24 }),
+                with_alpha(accent, if owned { 0.12 } else { 0.04 }),
+                with_alpha(accent, if owned { 0.5 } else { 0.24 }),
             );
             // Achieved marker: a filled diamond when earned, an outline when not
             // (drawn, so it never depends on font glyph coverage).

@@ -9,6 +9,7 @@ use crate::game_state::GameState;
 use crate::ui::theme::*;
 
 use super::draw_section_title;
+use macroquad_toolkit::colors::with_alpha;
 
 pub(super) fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> {
     let mut selected = None;
@@ -39,11 +40,7 @@ pub(super) fn draw_monster_tab(state: &GameState, rect: Rect) -> Option<String> 
 
     if let Some(monster) = &state.selected_monster {
         let hint = Rect::new(rect.x, rect.y + rect.h - 62.0, rect.w, 52.0);
-        draw_card(
-            hint,
-            Color::new(SOUL.r, SOUL.g, SOUL.b, 0.10),
-            Color::new(SOUL.r, SOUL.g, SOUL.b, 0.30),
-        );
+        draw_card(hint, with_alpha(SOUL, 0.10), with_alpha(SOUL, 0.30));
         draw_text_fit(
             monster,
             hint.x + 10.0,
@@ -73,16 +70,16 @@ fn draw_monster_option(state: &GameState, template: &MonsterTemplate, rect: Rect
     let selected = state.selected_monster.as_ref() == Some(&template.name);
     let hovered = enabled && is_hovered_rect(rect);
     let fill = if selected {
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.13)
+        with_alpha(TREASURE, 0.13)
     } else if hovered {
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.10)
+        with_alpha(SOUL, 0.10)
     } else {
         CARD
     };
     let border = if selected {
         TREASURE
     } else if unlocked {
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.24)
+        with_alpha(SOUL, 0.24)
     } else {
         BORDER_MUTED
     };
@@ -150,19 +147,14 @@ fn draw_monster_portrait(rect: Rect, unlocked: bool, selected: bool) {
     draw_card(
         rect,
         Color::new(0.0, 0.0, 0.0, 0.30),
-        Color::new(
-            color.r,
-            color.g,
-            color.b,
-            if selected { 0.55 } else { 0.20 },
-        ),
+        with_alpha(color, if selected { 0.55 } else { 0.20 }),
     );
     if unlocked {
         draw_circle(
             rect.x + rect.w * 0.50,
             rect.y + rect.h * 0.42,
             rect.w * 0.22,
-            Color::new(color.r, color.g, color.b, 0.42),
+            with_alpha(color, 0.42),
         );
         draw_triangle(
             vec2(rect.x + rect.w * 0.21, rect.y + rect.h * 0.30),

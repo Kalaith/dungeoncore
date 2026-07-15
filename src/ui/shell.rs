@@ -4,6 +4,7 @@ use crate::game_state::{DungeonStatus, GameState, RoomType};
 
 use super::controls::ControlAction;
 use super::theme::*;
+use macroquad_toolkit::colors::with_alpha;
 
 pub const HUD_HEIGHT: f32 = 84.0;
 pub const LOG_BAR_HEIGHT: f32 = 108.0;
@@ -28,7 +29,7 @@ pub fn draw_top_hud(state: &GameState, rect: Rect) -> ControlAction {
         rect.x + rect.w,
         rect.y + rect.h - 1.0,
         1.0,
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.22),
+        with_alpha(TREASURE, 0.22),
     );
 
     let title_w = (rect.w * 0.20).clamp(210.0, 300.0);
@@ -175,11 +176,7 @@ fn threat_display(state: &GameState) -> (String, Color) {
 
 pub fn draw_adventurer_status_chip(state: &GameState, rect: Rect) {
     let (label, color, icon) = adventurer_status(state);
-    draw_card(
-        rect,
-        Color::new(color.r, color.g, color.b, 0.10),
-        Color::new(color.r, color.g, color.b, 0.42),
-    );
+    draw_card(rect, with_alpha(color, 0.10), with_alpha(color, 0.42));
     draw_text_fit(
         icon,
         rect.x + 12.0,
@@ -219,7 +216,7 @@ fn draw_top_stat(
         rect.x,
         rect.y + rect.h,
         1.0,
-        Color::new(BORDER.r, BORDER.g, BORDER.b, 0.20),
+        with_alpha(BORDER, 0.20),
     );
     draw_stat_icon(
         vec2(rect.x + 28.0, rect.y + rect.h * 0.54),
@@ -271,13 +268,7 @@ fn draw_speed_segments(rect: Rect, speed: i32) -> bool {
         let active =
             (idx == 1 && speed == 1) || (idx == 2 && speed == 2) || (idx == 3 && speed >= 4);
         if active {
-            draw_rectangle(
-                seg.x,
-                seg.y,
-                seg.w,
-                seg.h,
-                Color::new(MANA.r, MANA.g, MANA.b, 0.12),
-            );
+            draw_rectangle(seg.x, seg.y, seg.w, seg.h, with_alpha(MANA, 0.12));
         }
         if idx > 0 {
             draw_line(
@@ -295,14 +286,7 @@ fn draw_speed_segments(rect: Rect, speed: i32) -> bool {
 }
 
 fn draw_brand_mark(center: Vec2, radius: f32) {
-    draw_poly(
-        center.x,
-        center.y,
-        4,
-        radius,
-        45.0,
-        Color::new(SOUL.r, SOUL.g, SOUL.b, 0.22),
-    );
+    draw_poly(center.x, center.y, 4, radius, 45.0, with_alpha(SOUL, 0.22));
     draw_poly_lines(center.x, center.y, 4, radius, 45.0, 2.0, SOUL);
     draw_poly_lines(
         center.x,
@@ -338,7 +322,7 @@ fn draw_stat_icon(center: Vec2, radius: f32, icon: StatIcon, color: Color) {
                 center.x,
                 center.y + 3.0,
                 radius * 0.55,
-                Color::new(color.r, color.g, color.b, 0.22),
+                with_alpha(color, 0.22),
             );
             draw_triangle(
                 vec2(center.x, center.y - radius),
@@ -348,12 +332,7 @@ fn draw_stat_icon(center: Vec2, radius: f32, icon: StatIcon, color: Color) {
             );
         }
         StatIcon::Gold => {
-            draw_circle(
-                center.x,
-                center.y,
-                radius,
-                Color::new(color.r, color.g, color.b, 0.18),
-            );
+            draw_circle(center.x, center.y, radius, with_alpha(color, 0.18));
             draw_circle_lines(center.x, center.y, radius, 2.0, color);
             draw_text_fit(
                 "G",
@@ -365,14 +344,7 @@ fn draw_stat_icon(center: Vec2, radius: f32, icon: StatIcon, color: Color) {
             );
         }
         StatIcon::Soul => {
-            draw_poly(
-                center.x,
-                center.y,
-                4,
-                radius,
-                45.0,
-                Color::new(color.r, color.g, color.b, 0.20),
-            );
+            draw_poly(center.x, center.y, 4, radius, 45.0, with_alpha(color, 0.20));
             draw_poly_lines(center.x, center.y, 4, radius, 45.0, 2.0, color);
         }
         StatIcon::Time => {

@@ -4,6 +4,7 @@ use macroquad_toolkit::input::{is_hovered_rect, was_clicked_rect};
 use crate::game_state::{DungeonStatus, GameState, LogEntry, RoomUpgradeType};
 
 use super::theme::*;
+use macroquad_toolkit::colors::with_alpha;
 
 /// Which piece of UI a tutorial step points the player toward.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -140,7 +141,7 @@ pub fn draw(state: &GameState, board_rect: Rect, anchor_rect: Rect) -> bool {
 
     // Pulsing highlight around the step's target.
     let pulse = (get_time() as f32 * 4.0).sin().abs();
-    let glow = Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.35 + pulse * 0.45);
+    let glow = with_alpha(TREASURE, 0.35 + pulse * 0.45);
     draw_rectangle_lines(
         anchor_rect.x - 3.0,
         anchor_rect.y - 3.0,
@@ -156,7 +157,7 @@ pub fn draw(state: &GameState, board_rect: Rect, anchor_rect: Rect) -> bool {
     draw_card(
         card,
         Color::new(0.05, 0.04, 0.10, 0.94),
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.55),
+        with_alpha(TREASURE, 0.55),
     );
 
     draw_text_fit(
@@ -190,12 +191,7 @@ pub fn draw(state: &GameState, board_rect: Rect, anchor_rect: Rect) -> bool {
     draw_card(
         skip,
         Color::new(0.0, 0.0, 0.0, 0.22),
-        Color::new(
-            TEXT_MUTED.r,
-            TEXT_MUTED.g,
-            TEXT_MUTED.b,
-            if hovered { 0.6 } else { 0.3 },
-        ),
+        with_alpha(TEXT_MUTED, if hovered { 0.6 } else { 0.3 }),
     );
     draw_centered_text("Skip", skip, 12.0, if hovered { TEXT } else { TEXT_MUTED });
 

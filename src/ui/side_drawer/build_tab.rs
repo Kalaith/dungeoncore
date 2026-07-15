@@ -7,6 +7,7 @@ use crate::game_state::{GameState, RoomType};
 use crate::ui::theme::*;
 
 use super::{draw_section_title, BuildTabAction};
+use macroquad_toolkit::colors::with_alpha;
 
 pub(super) fn draw_build_tab(state: &GameState, rect: Rect) -> BuildTabAction {
     draw_section_title(rect, "BUILD", "Shape the dungeon path.");
@@ -17,8 +18,8 @@ pub(super) fn draw_build_tab(state: &GameState, rect: Rect) -> BuildTabAction {
     let card = Rect::new(rect.x, rect.y + 70.0, rect.w, 126.0);
     draw_card(
         card,
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.075),
-        Color::new(TREASURE.r, TREASURE.g, TREASURE.b, 0.24),
+        with_alpha(TREASURE, 0.075),
+        with_alpha(TREASURE, 0.24),
     );
     draw_text_fit(
         &label,
